@@ -99,11 +99,11 @@ export function excavatorHouse(): Model {
   m.box(-9, 1, -5, 1, 3, 10, C.Steel); // counterweight
   m.box(-7, 3, -6, 6, 1, 1, C.White).box(-7, 3, 5, 6, 1, 1, C.White); // one stripe down each side
   // Cab, front left.
-  m.box(0, 5, -6, 5, 6, 4, P);
+  m.box(0, 5, -6, 5, 5, 4, P);
   m.box(4, 6, -5, 1, 3, 2, C.Glass); // windscreen
   m.box(1, 6, -6, 3, 3, 1, C.Glass); // left window
   m.box(1, 6, -3, 3, 3, 1, C.Glass); // right window, looking at the arm
-  m.clear(4, 10, -6, 1, 1, 1).clear(4, 10, -3, 1, 1, 1).clear(0, 10, -6, 1, 1, 1).clear(0, 10, -3, 1, 1, 1);
+  cabRoof(m, 0, 10, -6, 5, 4, P);
   // Engine hood behind, on the right, with a stubby exhaust.
   m.box(-8, 5, 0, 6, 2, 6, P);
   m.box(-8, 6, 1, 6, 1, 4, C.Gray).box(-7, 6, 2, 4, 1, 2, C.Dark); // grille on top
@@ -641,8 +641,7 @@ export function rollerBody(): Model {
   m.box(0, 6, -1, 1, 3, 2, C.Gray).box(0, 9, -2, 1, 1, 4, C.Dark);
   // Canopy on four posts.
   for (const [x, z] of [[-5, -4], [-5, 3], [1, -4], [1, 3]]) m.box(x, 6, z, 1, 6, 1, C.Dark);
-  m.box(-6, 12, -5, 9, 1, 10, P);
-  bevelTop(m, -6, 12, -5, 9, 10);
+  cabRoof(m, -6, 12, -5, 9, 10, P);
   // Yoke round the drum: two arms forward from the body, and a hazard bar across the front.
   m.box(2, 3, -6, 9, 3, 1, P).box(2, 3, 5, 9, 3, 1, P);
   m.box(2, 5, -5, 2, 1, 10, P);
@@ -756,18 +755,33 @@ export interface Look {
   scarf?: number; // a headscarf over the hair
   long?: boolean; // long hair, down to the shoulders
   dress?: boolean; // a dress (the shirt colour carries on as a skirt) instead of trousers
+  bald?: boolean; // just a ring of hair round the back and sides
+  beard?: number; // a beard in this colour
+  fullBeard?: boolean; // the beard reaches up round the mouth
+  jacket?: number; // an open jacket or cardigan over the shirt
+  shortSleeves?: boolean;
+  shorts?: boolean;
+  shoes?: number; // brown shoes unless it says (white trainers, say)
 }
 
 /** A person, in 1/20-tile cells like the worker: about 0.8 tile tall (a child's 0.6). */
 export function person(l: Look, child = false): Model {
   const m = new Model();
   const legs = child ? 3 : 4;
-  for (const z of [-2, 1]) m.box(-1, 0, z, 2, legs, 2, l.dress ? l.skin : l.pants).box(-1, 0, z, 2, 1, 2, 0x3b2a20);
+  for (const z of [-2, 1]) {
+    m.box(-1, 0, z, 2, legs, 2, l.dress ? l.skin : l.pants).box(-1, 0, z, 2, 1, 2, l.shoes ?? 0x3b2a20);
+    if (l.shorts && !l.dress) m.box(-1, 1, z, 2, legs - 2, 2, l.skin); // bare legs under the shorts
+  }
   const b = legs;
   const bodyH = child ? 4 : 5;
-  m.box(-2, b, -3, 4, bodyH, 6, l.shirt);
+  const top = l.jacket ?? l.shirt;
+  m.box(-2, b, -3, 4, bodyH, 6, top);
+  if (l.jacket !== undefined) m.box(1, b + 1, -1, 1, bodyH - 1, 2, l.shirt); // the shirt showing down the front
   if (l.dress) m.box(-2, b - 2, -3, 4, 2, 6, l.shirt).box(-3, b - 2, -3, 1, 1, 6, l.shirt); // the skirt, a little flared
-  for (const z of [-4, 3]) m.box(-1, b, z, 2, bodyH, 1, l.shirt).box(-1, b, z, 2, 1, 1, l.skin);
+  for (const z of [-4, 3]) {
+    m.box(-1, b, z, 2, bodyH, 1, top).box(-1, b, z, 2, 1, 1, l.skin);
+    if (l.shortSleeves && l.jacket === undefined) m.box(-1, b, z, 2, bodyH - 2, 1, l.skin); // bare arms
+  }
   head(m, l, b + bodyH);
   return m;
 }
@@ -783,6 +797,17 @@ function head(m: Model, l: Look, h: number): void {
     m.box(-3, h - 1, -3, 5, 7, 1, l.scarf).box(-3, h - 1, 3, 5, 7, 1, l.scarf);
     m.box(-3, h + 5, -3, 5, 1, 7, l.scarf);
     m.box(2, h + 4, -2, 1, 1, 5, l.scarf);
+    return;
+  }
+  if (l.beard !== undefined) {
+    // Along the chin and up the jaw; a full one round the mouth too, leaving the smile.
+    m.box(2, h, -2, 1, 1, 5, l.beard).box(0, h, -2, 2, 2, 1, l.beard).box(0, h, 2, 2, 2, 1, l.beard);
+    if (l.fullBeard) m.box(2, h + 1, -2, 1, 1, 1, l.beard).box(2, h + 1, 2, 1, 1, 1, l.beard);
+  }
+  if (l.bald) {
+    // A ring of hair round the back and over the ears.
+    m.box(-2, h + 2, -2, 1, 2, 5, l.hair).box(-1, h + 2, -2, 2, 2, 1, l.hair).box(-1, h + 2, 2, 2, 2, 1, l.hair);
+    if (l.hat !== undefined) m.box(-3, h + 5, -3, 7, 1, 7, l.hat).box(-2, h + 6, -2, 5, 1, 5, l.hat);
     return;
   }
   m.box(-2, h + 4, -2, 5, 2, 5, l.hair).box(-2, h + 1, -2, 1, 4, 5, l.hair);
@@ -1422,11 +1447,25 @@ export function field(w: number, d: number, crop: number): Model {
 export function tractor(): Model {
   const m = new Model();
   const P = 0x3fa34d;
-  for (const z of [-5, 4]) m.box(-6, 0, z, 6, 6, 1, C.Rubber).set(-4, 2, z, C.Hazard).set(-3, 3, z, C.Hazard);
-  for (const z of [-4, 3]) m.box(3, 0, z, 3, 3, 1, C.Rubber);
-  m.box(-6, 3, -3, 13, 3, 6, P).box(1, 6, -2, 6, 2, 4, P);
-  m.box(-5, 6, -3, 5, 6, 6, C.Glass).box(-5, 12, -3, 5, 1, 6, P);
-  m.box(7, 4, -2, 1, 2, 4, C.Dark).box(4, 8, 1, 1, 3, 1, C.Dark);
+  // Big back wheels and little front ones, chunky, with yellow hubs.
+  const wheel = (x0: number, z0: number, r: number, hub: number) => {
+    m.box(x0, 0, z0, r, r, 2, C.Rubber).clear(x0, 0, z0, 1, 1, 2).clear(x0 + r - 1, 0, z0, 1, 1, 2).clear(x0, r - 1, z0, 1, 1, 2).clear(x0 + r - 1, r - 1, z0, 1, 1, 2);
+    const o = z0 < 0 ? z0 : z0 + 1, c = Math.floor((r - hub) / 2);
+    m.box(x0 + c, c, o, hub, hub, 1, C.Hazard);
+  };
+  for (const z of [-7, 5]) wheel(-7, z, 7, 3);
+  for (const z of [-5, 3]) wheel(3, z, 4, 2);
+  m.box(-7, 3, -3, 15, 2, 6, C.Dark); // chassis
+  m.box(0, 5, -3, 8, 3, 6, P); // bonnet
+  m.box(8, 4, -2, 1, 3, 4, C.Dark).set(8, 6, -3, C.Light).set(8, 6, 2, C.Light); // grille and lights
+  m.box(5, 8, 1, 1, 3, 1, C.Dark); // exhaust
+  m.box(-8, 7, -7, 8, 1, 2, P).box(-8, 7, 5, 8, 1, 2, P); // mudguards over the back wheels
+  // The cab: green posts with glass between, and a flat roof.
+  m.box(-6, 5, -4, 6, 2, 8, P);
+  for (const [x, z] of [[-6, -4], [-6, 3], [-1, -4], [-1, 3]]) m.box(x, 7, z, 1, 5, 1, P);
+  m.box(-5, 7, -4, 4, 4, 1, C.Glass).box(-5, 7, 3, 4, 4, 1, C.Glass).box(-1, 7, -3, 1, 4, 6, C.Glass).box(-6, 7, -3, 1, 4, 6, C.Glass);
+  m.box(-5, 11, -4, 4, 1, 8, P).box(-6, 11, -3, 6, 1, 6, P);
+  cabRoof(m, -7, 12, -5, 8, 10, P);
   return m;
 }
 

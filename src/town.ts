@@ -405,7 +405,11 @@ const HOUSEHOLDS: Who[][] = [
   ["man", "woman"],
 ];
 const SKINS = [0xf6d3a6, 0xf1c7a0, 0xe8b98a, 0xe0ac7e, 0xc68a5b, 0x8d5a3b, 0x5e3b28];
-const HAIRS = [0x2b2118, 0x5a3a22, 0x8a5a3c, 0xe0b040, 0xb5523b];
+/** Hair, darkest first; browns are the most common, then black, then fair and red. */
+const HAIRS = [0x1a1410, 0x2b2118, 0x4a3020, 0x5a3a22, 0x7a5232, 0xa0764a, 0xc9a15a, 0xe0c070, 0xb5523b];
+const HAIR_WEIGHTS = [2, 3, 3, 3, 2, 1.5, 1, 0.6, 0.5];
+const GREYS = [0xe8e8e8, 0xcfcfcf, 0xa9a9a9];
+const JACKETS = [0x2f3b52, 0x6b4a2b, 0x8a8f96, 0x3f6b4a, 0xb5523b, 0xd9c7a8];
 const SHIRTS = [0x4aa8ff, 0xff5d8f, 0x3fb950, 0xffc93c, 0xc77dff, 0xff8a1f, 0x6fd3b0, 0xf7b6c8, 0xd8382c, 0x2f74d0];
 const PANTS = [0x3c4652, 0x2f3b52, 0x6b4a2b, 0x4a4f57];
 const DOGS: [number, number][] = [[0xc98a3e, 0xf3e6c8], [0x3a3f47, 0xffffff], [0xf3e6c8, 0x9a6a3c]];
@@ -420,24 +424,54 @@ function rng(seed: number): () => number {
   return () => ((s = (s * 16807) % 2147483647) / 2147483647);
 }
 
+/**
+ * Ordinary variety, lightly: parents' skin tones are close (now and then not), children take
+ * after them, hair runs from black to fair to red (darker skin, darker hair), and some dads are bald
+ * or bearded, some mums keep their hair short, some people wear a jacket, short sleeves or shorts.
+ */
 function household(who: Who[], r: () => number): Resident[] {
-  const skin = SKINS[Math.floor(r() * SKINS.length)];
-  const hair = HAIRS[Math.floor(r() * HAIRS.length)];
+  const pickOf = <T,>(xs: readonly T[]) => xs[Math.floor(r() * xs.length)];
+  const hairFor = (skin: number): number => {
+    if (skin >= 4) return HAIRS[r() < 0.6 ? 0 : 1];
+    let t = r() * HAIR_WEIGHTS.reduce((a, b) => a + b, 0);
+    for (let i = 0; i < HAIRS.length; i++) if ((t -= HAIR_WEIGHTS[i]) < 0) return HAIRS[i];
+    return HAIRS[2];
+  };
+  const clamp = (i: number) => Math.max(0, Math.min(SKINS.length - 1, i));
+  // The grown-ups' skin and hair; the children take after one or the other.
+  const a = Math.floor(r() * SKINS.length);
+  const b = r() < 0.08 ? Math.floor(r() * SKINS.length) : clamp(a + Math.floor(r() * 3) - 1);
+  const parents = [{ skin: a, hair: hairFor(a) }, { skin: b, hair: hairFor(b) }];
   const scarf = r() < 0.12; // mum wears a headscarf
   const wheel = r() < 0.12 ? Math.floor(r() * who.length) : -1; // someone uses a wheelchair
+  let grownUps = 0;
   return who.map((w, k) => {
+    const grown = w !== "boy" && w !== "girl";
+    const old = w === "grandpa" || w === "grandma";
+    const male = w === "man" || w === "boy" || w === "grandpa";
+    const from = grown ? parents[grownUps++ % 2] : pickOf(parents);
+    const skin = grown ? from.skin : clamp(Math.round((parents[0].skin + parents[1].skin) / 2 + (r() - 0.5)));
+    const hair = old ? pickOf(GREYS) : from.hair;
     const look: M.Look = {
-      skin,
-      hair: w === "grandpa" || w === "grandma" ? (r() < 0.5 ? 0xe8e8e8 : 0xcfcfcf) : hair,
+      skin: SKINS[skin],
+      hair,
       shirt: SHIRTS[Math.floor(r() * SHIRTS.length)],
       pants: PANTS[Math.floor(r() * PANTS.length)],
-      long: w === "woman" || w === "girl" || w === "grandma",
+      long: (w === "woman" && r() < 0.8) || (w === "girl" && r() < 0.9) || (w === "grandma" && r() < 0.4),
       dress: (w === "girl" && r() < 0.6) || (w === "woman" && r() < 0.4) || (w === "grandma" && r() < 0.6),
       scarf: w === "woman" && scarf ? SHIRTS[(k + 3) % SHIRTS.length] : undefined,
+      bald: (w === "man" && r() < 0.15) || (w === "grandpa" && r() < 0.45),
+      jacket: grown && r() < 0.2 ? pickOf(JACKETS) : undefined,
+      shortSleeves: r() < 0.35,
+      shorts: (w === "boy" && r() < 0.35) || (w === "girl" && r() < 0.25) || (w === "man" && r() < 0.12),
+      shoes: !grown && r() < 0.5 ? 0xf0f0f0 : grown && r() < 0.15 ? 0xf0f0f0 : undefined,
     };
-    const grown = w !== "boy" && w !== "girl";
+    if (male && grown && r() < (old ? 0.3 : 0.25)) {
+      look.beard = old ? pickOf(GREYS) : hair;
+      look.fullBeard = r() < 0.5;
+    }
     if (k === wheel && grown) return { kind: "wheel", model: M.wheelchair({ ...look, dress: false }) };
-    if (w === "grandpa" || w === "grandma") return { kind: "elder", model: M.elder(look) };
+    if (old) return { kind: "elder", model: M.elder(look) };
     if (!grown) return { kind: "child", model: M.person(look, true) };
     return { kind: "adult", model: M.person(look) };
   });

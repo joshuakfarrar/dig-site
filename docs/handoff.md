@@ -220,6 +220,13 @@ Estimated at adult pace from distances, speeds and animation times, about 1 s of
   - The top has a lower housing (so the boom lies over it), a bigger striped counterweight and a flat-roofed operator's cab. The beacon is on that cab.
   - Collision is now radius 0.65 with halfLen 1.45. `top.position` and `BOOM_ROOT` are unchanged, so the lift geometry is the same.
   - Checked by lifting all of the cottage (walls and roof) and the flats (walls, both storey modules and the garden roof). The crane fits its parking spot on all 24 lots.
+- **Excavator cab and roller canopy** now have the flat `cabRoof`. The farm tractor got a proper cab (green posts, glass, flat roof) and chunky wheels with yellow hubs.
+- **People, light-touch variety** (`household` in `town.ts`, `Look` in `models.ts`):
+  - **Skin:** parents' tones are close; about 8% of couples differ more. Children take after both.
+  - **Hair:** each grown-up has their own, weighted to browns, then black, fair and red. Darker skin gets darker hair; grandparents are grey.
+  - **Faces:** some dads are bald (15%) or bearded (25%), and grandpas more so. About 20% of mums have short hair.
+  - **Clothes:** 20% of grown-ups wear an open jacket; some people have short sleeves, shorts or white trainers.
+  - Shown on the lineup's people row.
 - **Dev helpers:** `game.build` now exposes `wallLoads`, `moduleLoads`, `roofLoad` and `wallsUp`, for driving the crane from the console.
 - **Town yard:**
   - Packed gravel with a concrete edge, white parking bays and tyre tracks.

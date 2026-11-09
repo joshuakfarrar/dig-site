@@ -65,12 +65,19 @@ export function createLineup(): Mode {
     const g = new THREE.Group();
     const look = (shirt: number, long = false, dress = false): M.Look => ({ shirt, pants: 0x3c4652, hair: 0x5a3a22, skin: 0xe0ac7e, long, dress });
     const people = [
-      M.person(look(0x4aa8ff)), M.person(look(0xff5d8f, true, true)), M.person(look(0x3fb950), true), M.person(look(0xffc93c, true, true), true),
-      M.elder({ ...look(0xb9a6e6), hair: 0xe8e8e8 }), M.wheelchair(look(0xff8a1f)), M.dog(0xc98a3e, 0xf3e6c8),
+      M.person({ ...look(0x4aa8ff), beard: 0x5a3a22, fullBeard: true }),
+      M.person({ ...look(0xff5d8f, true, true), skin: 0xf1c7a0, hair: 0xc9a15a }),
+      M.person({ ...look(0x3fb950), shorts: true, shoes: 0xf0f0f0, shortSleeves: true }, true),
+      M.person({ ...look(0xffc93c, true, true), shoes: 0xf0f0f0 }, true),
+      M.person({ ...look(0xd8382c), skin: 0x8d5a3b, hair: 0x1a1410, bald: true, jacket: 0x2f3b52 }),
+      M.person({ ...look(0x6fd3b0), skin: 0xf6d3a6, hair: 0xb5523b, shortSleeves: true }),
+      M.elder({ ...look(0xb9a6e6), hair: 0xe8e8e8, bald: true, beard: 0xe8e8e8 }),
+      M.wheelchair({ ...look(0xff8a1f), skin: 0x5e3b28, hair: 0x1a1410, jacket: 0x6b4a2b }),
+      M.dog(0xc98a3e, 0xf3e6c8),
     ];
     people.forEach((p, k) => {
       const m = p.mesh(M.WorkerCell, [0, 0, 0.5]);
-      m.position.set((k - 3) * 0.45, 0, 0);
+      m.position.set(0, 0, (k - 4) * 0.42); // side by side, all facing +x
       g.add(m);
     });
     addMesh("People", g);
