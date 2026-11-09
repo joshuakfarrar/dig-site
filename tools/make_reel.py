@@ -37,6 +37,7 @@ BEAT = 15  # frames
 SR = 44100
 SPB = 0.5  # seconds a beat
 CARD_BEATS = 8
+STREET_POPS = 6  # houses popping up in the street shot, one a beat (POPS in promo.ts)
 
 INK = (43, 49, 56)
 COLOURS = [(255, 138, 31), (63, 185, 80), (74, 168, 255), (255, 93, 143), (242, 183, 5), (199, 125, 255)]
@@ -47,7 +48,7 @@ WORDS = {
     "r_pour": [(0, "POUR!", 2)],
     "r_roof": [(0, "BUILD!", 3)],
     "r_home": [(0, "WELCOME\nHOME!", 1)],
-    "r_street": [(1, "ONE HOUSE...", 4), (5, "...A WHOLE\nSTREET!", 0)],
+    "r_street": [(1, "ONE HOUSE...", 4), (6, "...A WHOLE\nSTREET!", 0)],
     "r_dusk": [(0, "...A WHOLE\nTOWN!", 5)],
     "r_play": [(0, "WITH FRIENDS\nTO PLAY WITH", 3)],
     "r_roller": [(0, "NO ADS", 2)],
@@ -359,7 +360,7 @@ def main():
             words.append(start_beat + b)
             stickers[(s["name"], b)] = sticker(text, COLOURS[col], W - 140)
         if s["name"] == "r_street":
-            pops = [start_beat + 1 + k for k in range(8)]
+            pops = [start_beat + 1 + k for k in range(STREET_POPS)]
         for j in range(s["frames"]):
             im = Image.open(CAP / "frames" / f"{s['from'] + j:04d}.jpg").convert("RGB")
             im = punch(im, j).convert("RGBA")

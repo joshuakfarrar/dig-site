@@ -210,18 +210,108 @@ const SHOTS: Shot[] = [
  * `tools/make_reel.py` adds the words, the tune and the card.
  */
 const BEAT = 15;
-// The near row first, from the far end (all four big and clear), then the far row filling in
-// behind, nearest first.
-const POPS = [4, 5, 6, 7, 3, 2, 1, 0];
+// The two lots right under the camera are out of frame: they're built from the start. The six
+// you can see pop up a house either side in turn, on down the street.
+const PREBUILT = [3, 7];
+const POPS = [2, 6, 1, 5, 0, 4];
 // A new building waits about 0.45 s before it pops up (for the fade from its site to clear); run
 // that much first, so the pop lands on the beat.
 const POP_LEAD = 0.43;
-// High over the east end of the second street (road B), looking west down it. Every house in
-// Home Street faces south: the near row faces this street, and the far row shows its fronts over
-// their gardens. (Down the first street instead, the near row shows its back gardens.) The park's
-// on the other side.
-const STREET_EYE: Vec = [16, 11.5, 13.5];
-const STREET_AT: Vec = [-4, 0, 3];
+// High over the east end of the first street, looking down it, the truck driving away down the
+// middle as the houses pop up either side.
+const STREET_EYE: Vec = [15.5, 12.5, -0.6];
+const STREET_AT: Vec = [-3.5, 0, -1.2];
+
+/**
+ * Promo only: every house on Home Street faces south, so from the first street the near row
+ * would show its back gardens. For the film, the near row's lots (on the second street, z 11)
+ * are turned round to face the first street: each lot's whole group spun half round about its
+ * middle, its people mirrored the same way while each frame is drawn, and its ring on the far
+ * street hidden. The game itself never does this.
+ */
+const NEAR_ROW_ROAD = 11;
+function turnNearRow(): void {
+  for (const l of g().town.lots as Any[]) {
+    if (l.roadZ !== NEAR_ROW_ROAD) continue;
+    const cz = (l.zone.minZ + l.zone.maxZ) / 2;
+    l.group.rotation.y = Math.PI;
+    l.group.position.set(2 * l.x, 0, 2 * cz);
+  }
+}
+/** While a frame's drawn: the turned lots' people stand where their turned gardens are. */
+function mirrorPeople(on: boolean): void {
+  const town = g().town;
+  if (!town) return;
+  for (const l of town.lots as Any[]) {
+    if (l.roadZ !== NEAR_ROW_ROAD) continue;
+    const cz = (l.zone.minZ + l.zone.maxZ) / 2;
+    if (l.ring) l.ring.visible = !on && l.ring.visible;
+    for (const p of l.people) {
+      p.mesh.position.x = 2 * l.x - p.mesh.position.x;
+      p.mesh.position.z = 2 * cz - p.mesh.position.z;
+      p.mesh.rotation.y += on ? Math.PI : -Math.PI;
+    }
+  }
+}
+let mirroring = false;
+
+/** The truck's way down the first street: its westbound lane (the traffic going east keeps to z -1.25). */
+const LANE_Z = -2.75;
+
+/**
+ * Each house popping up is the town rebuilt with one more lot built. Everything moving is carried
+ * across, so nothing snaps back to where it started: the truck, the traffic, and everyone already
+ * out in their gardens.
+ */
+interface Kept {
+  truck: { x: number; z: number; h: number; v: number };
+  cars: { x: number; z: number; h: number; v: number; next: number }[];
+  people: Map<number, Any[]>;
+}
+let kept: Kept | null = null;
+function keepWorld(): void {
+  const town = g().town;
+  const t = town.truck;
+  kept = {
+    truck: { x: t.pos.x, z: t.pos.y, h: t.heading, v: t.speed },
+    cars: town.cars.map((c: Any) => ({ x: c.pos.x, z: c.pos.y, h: c.heading, v: c.speed, next: c.next })),
+    people: new Map(
+      (town.lots as Any[]).map((l) => [
+        l.i,
+        l.people.map((p: Any) => ({ x: p.pos.x, y: p.pos.y, route: p.route.map((r: Any) => r.clone()), wait: p.wait, phase: p.phase, inside: p.inside, wave: p.wave, waveCooldown: p.waveCooldown, rot: p.mesh.rotation.y })),
+      ]),
+    ),
+  };
+}
+function restoreWorld(): void {
+  if (!kept) return;
+  const town = g().town;
+  const t = town.truck;
+  t.pos.set(kept.truck.x, kept.truck.z);
+  t.heading = kept.truck.h;
+  t.speed = kept.truck.v;
+  town.cars.forEach((c: Any, i: number) => {
+    const k = kept!.cars[i];
+    if (!k) return;
+    c.pos.set(k.x, k.z);
+    c.heading = k.h;
+    c.speed = k.v;
+    c.next = k.next;
+  });
+  for (const l of town.lots as Any[]) {
+    const was = kept.people.get(l.i);
+    if (!was || was.length !== l.people.length || !l.built) continue;
+    l.people.forEach((p: Any, k: number) => {
+      const w = was[k];
+      // Only people who were already out: a just-built lot's family pops out with its party.
+      if (!p.mesh.visible) return;
+      p.pos.set(w.x, w.y);
+      p.route = w.route;
+      Object.assign(p, { wait: w.wait, phase: w.phase, inside: w.inside, wave: w.wave, waveCooldown: w.waveCooldown });
+      p.mesh.rotation.y = w.rot;
+    });
+  }
+}
 let popped = -1;
 
 const REEL: Shot[] = [
@@ -313,25 +403,35 @@ const REEL: Shot[] = [
     seconds: 0,
     frames: 12 * BEAT,
     setup() {
-      town([[]], 0);
-      g().town.truck.root.visible = false;
+      // The empty street, the near row turned to face it, and the truck already rolling in from the east.
+      town([PREBUILT], 0);
+      turnNearRow();
+      const t = g().town.truck;
+      t.pos.set(12.5, LANE_Z); // just in the bottom of the frame
+      t.heading = Math.PI;
+      t.speed = 3.6;
       popped = -1;
+      mirroring = true;
     },
-    frame(t) {
-      // One beat of the empty street, then a house a beat (each its own little party), then the last
-      // one's confetti settling.
+    frame(t, k) {
+      // One beat of the empty street, then a house a beat either side of the truck as it goes (each
+      // its own little party), then the truck rolling on through the finished street.
       const f = Math.round(t * FPS);
-      const k = Math.floor(f / BEAT) - 1;
-      if (k >= 0 && k < POPS.length && k !== popped) {
-        popped = k;
+      const n = Math.floor(f / BEAT) - 1;
+      if (n >= 0 && n < POPS.length && n !== popped) {
+        popped = n;
         const game = g();
-        game.saved.built = [POPS.slice(0, k + 1)];
+        keepWorld();
+        game.saved.built = [[...PREBUILT, ...POPS.slice(0, n + 1)]];
         game.saved.at = 0;
-        game.goTown(POPS[k]);
-        game.town.truck.root.visible = false;
+        game.goTown(POPS[n]);
+        turnNearRow();
+        restoreWorld();
         run(POP_LEAD); // the house pops up on this beat, with its chime
+        restoreWorld(); // and nothing jumps ahead meanwhile
       }
-      return { eye: STREET_EYE, at: STREET_AT };
+      const e = ease(k);
+      return { eye: mix(STREET_EYE, [STREET_EYE[0] - 6, STREET_EYE[1] - 1.2, STREET_EYE[2]], e), at: mix(STREET_AT, [STREET_AT[0] - 5, 0, STREET_AT[2]], e), input: { moveX: -0.8 } };
     },
   },
   {
@@ -341,11 +441,17 @@ const REEL: Shot[] = [
     frames: 4 * BEAT,
     setup() {
       town([[0, 1, 2, 3, 4, 5, 6, 7]], 0);
-      g().town.truck.root.visible = false;
+      turnNearRow();
       run(2);
+      const t = g().town.truck;
+      t.pos.set(-2, LANE_Z);
+      t.heading = Math.PI;
+      t.speed = 3.2;
+      mirroring = true;
     },
     frame(_t, k) {
-      return { eye: mix(STREET_EYE, [STREET_EYE[0] - 1.5, STREET_EYE[1] - 0.8, STREET_EYE[2]], k), at: STREET_AT };
+      const e = [STREET_EYE[0] - 6, STREET_EYE[1] - 1.2, STREET_EYE[2]] as Vec;
+      return { eye: mix(e, [e[0] - 1.5, e[1] - 0.6, e[2]], k), at: [STREET_AT[0] - 5, 0, STREET_AT[2]], input: { moveX: -0.8 } };
     },
   },
   {
@@ -470,7 +576,9 @@ function draw(eye: Vec, at: Vec): void {
   });
   game.renderer.setPixelRatio(1);
   game.renderer.setSize(W, H, false);
+  if (mirroring) mirrorPeople(true);
   game.renderer.render(game.mode.scene, cam);
+  if (mirroring) mirrorPeople(false);
 }
 
 let frameNo = 0;
@@ -509,6 +617,7 @@ const promo = {
     const c = cutOf(name);
     useCut(c);
     const s = c.shots.find((x) => x.name === name)!;
+    mirroring = false;
     s.setup();
     const n = Math.round(t * FPS);
     for (let f = 0; f <= n; f++) stepShot(s, f);
@@ -531,6 +640,7 @@ const promo = {
     frameNo = 0;
     const list: { name: string; caption: string; from: number; frames: number }[] = [];
     for (const s of c.shots.filter((x) => !names || names.includes(x.name))) {
+      mirroring = false;
       s.setup();
       const n = framesOf(s);
       list.push({ name: s.name, caption: s.caption, from: frameNo, frames: n });
