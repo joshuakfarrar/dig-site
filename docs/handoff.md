@@ -144,6 +144,25 @@ Phase 3 is complete apart from the "about an hour of play" check, which needs a 
 - **Gardens** (`gardens()` in `town.ts`): hedges down the sides and along the back, plus two seeded items (tree, shed, washing line, veg patch, trampoline). They go in the back garden if it's deep enough, otherwise down the sides.
 - **Countryside** (`buildCountryside`): a farm behind the first street (barn, three fields, tractor), patches of lighter and darker grass, and wildflower clusters. Trees are kept out of the farm.
 
+## Playtest fixes, round three (2026-11-09)
+
+- **Guided loading** (`loadJob` in `build.ts`) on hauling sites (`finish: "haul"`: Home Street, and the Harbour's odd lots):
+  - The truck parks at `pairs[i].park`, centred 1.7 in front of or behind the pit.
+  - The excavator digs that side's two quarters into it. `bedInReach` means the bed is 3.0 ± 1.05 from the excavator, and it uses the `Excavator.LOAD` pose.
+  - When the truck's full, `tipJob`. When the pit's dug and the truck's empty, `digDone`. There's no heaps stage.
+  - You start in the truck, and the progress strip shows a truck step after dig.
+- **Push sites** (Market Square, the Harbour's even lots): heaps, then the dozer. No dump truck or skip.
+- **Parking:** only the machines a site uses. Homes: excavator (-6.4, 5.4), mixer (-3.6, 6.4), roller (-1.4, 6.9), crane by the trailer (6.4, -4.2), dozer or dump (7.4, 5.6), sweeper (-8.6, 2.6).
+- **Front walk:** one row of slabs on the path's half-tile grid, leaving out the path's own columns, so nothing overlaps and flickers. No pots.
+- **Flowers:** `M.flowers` takes the seed modulo, so negative seeds no longer give black flowers.
+
+## Stage order (2026-11-09)
+
+The order is `dig, pour, clean, walls, roof, path, sweep, done`. The user wants the ground sorted first (dig, pour, clear the heaps) so heaps don't clutter the site while the crane works.
+- Hauling sites go from pour straight to walls.
+- `cleanDone` starts the walls; `pathDone` goes to sweep or done.
+- `skipTo` works by stage name (`past()`).
+
 ## Design decisions the user made
 - **Diversity includes ordinary families:** the user wants a mix that reads as real streets, mostly cis/het families with children, plus the other kinds of households, not an unusual mix everywhere.
 

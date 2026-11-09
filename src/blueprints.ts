@@ -129,30 +129,26 @@ export function floorMesh(bp: Blueprint): THREE.Mesh {
 
 /**
  * The front walk: when the doors are spread along the front (a terrace, a duplex), a paved walk
- * runs along the house from the foot of every door's ramp to the path, edged with flowers, with a
- * pot of flowers either side of each ramp. Laid out from the footprint's middle at ground level.
+ * runs along the house past the foot of every door's ramp to the path, edged with flowers. Its
+ * slabs sit on the same half-tile grid as the path to the gate and leave out the part the path
+ * already covers, so the two join up neatly instead of overlapping. Laid out from the footprint's
+ * middle at ground level.
  */
 export function frontWalk(bp: Blueprint): THREE.Group {
   const g = new THREE.Group();
   const doors = frontDoors(bp);
-  const PATH_HALF = 0.75;
-  const x0 = Math.min(-PATH_HALF, ...doors.map((x) => x - 0.45));
-  const x1 = Math.max(PATH_HALF, ...doors.map((x) => x + 0.45));
-  const flowers = [0xff5d8f, 0xffc93c, 0xffffff, 0xc77dff];
-  doors.forEach((x, k) => {
-    for (const dx of [-0.55, 0.55]) {
-      const p = M.pot(flowers[(k * 2 + (dx > 0 ? 1 : 0)) % flowers.length]).mesh(Cell, [0, 0, 0]);
-      p.position.set(x + dx, 0, bp.d / 2 + 0.5);
-      g.add(p);
-    }
-  });
-  if (x0 >= -PATH_HALF - 0.01 && x1 <= PATH_HALF + 0.01) return g; // the path's enough
-  const z0 = bp.d / 2 + 0.7, z1 = z0 + 0.55;
+  const PATH_HALF = 0.75; // the path to the gate: three half-tile slabs wide, from -0.75
+  const snapDown = (x: number) => -PATH_HALF + Math.floor((x + PATH_HALF) / 0.5) * 0.5;
+  const snapUp = (x: number) => -PATH_HALF + Math.ceil((x + PATH_HALF) / 0.5) * 0.5;
+  const x0 = Math.min(-PATH_HALF, snapDown(Math.min(...doors) - 0.35));
+  const x1 = Math.max(PATH_HALF, snapUp(Math.max(...doors) + 0.35));
+  if (!doors.length || (x0 >= -PATH_HALF && x1 <= PATH_HALF)) return g; // the path's enough
+  const z0 = bp.d / 2 + 0.5, z1 = z0 + 0.5; // one row of slabs, past the foot of the ramps
   const f = new Faces();
   for (let x = x0; x < x1 - 0.01; x += 0.5) {
-    const w = Math.min(0.5, x1 - x);
-    f.box(x, 0, z0, w, 0.03, z1 - z0, 0x8d939a, (n) => n[1] === 1);
-    f.box(x + 0.03, 0.031, z0 + 0.03, w - 0.06, 0, z1 - z0 - 0.06, 0xc3c7cc, (n) => n[1] === 1);
+    if (x >= -PATH_HALF - 0.01 && x < PATH_HALF - 0.01) continue; // the path's own slabs
+    f.box(x, 0, z0, 0.5, 0.03, 0.5, 0x8d939a, (n) => n[1] === 1);
+    f.box(x + 0.03, 0.031, z0 + 0.03, 0.44, 0, 0.44, 0xc3c7cc, (n) => n[1] === 1);
   }
   const walk = new THREE.Mesh(f.geometry(), voxelMaterial);
   walk.receiveShadow = true;
@@ -716,8 +712,8 @@ export interface Hood {
 
 /** The neighbourhoods, in the order they open: finish one and the gate to the next swings open. */
 export const HOODS: Hood[] = [
-  { theme: "park", lots: HOME_STREET, landmark: HOME_STREET[0] },
-  { theme: "square", lots: MARKET_SQUARE.map((bp) => ({ ...bp, finish: "haul" as const })), landmark: MARKET_SQUARE[7] },
+  { theme: "park", lots: HOME_STREET.map((bp) => ({ ...bp, finish: "haul" as const })), landmark: HOME_STREET[0] },
+  { theme: "square", lots: MARKET_SQUARE, landmark: MARKET_SQUARE[7] },
   { theme: "harbour", lots: HARBOUR.map((bp, i) => ({ ...bp, finish: i % 2 ? ("haul" as const) : ("push" as const), sweep: true })), landmark: HARBOUR[7] },
 ];
 

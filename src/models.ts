@@ -821,10 +821,11 @@ export function flowers(len: number, seed: number): Model {
   const m = new Model();
   const cols = [0xff5d8f, 0xffc93c, 0xffffff, 0xc77dff, 0xff8a1f];
   m.box(0, 0, 0, len, 1, 3, 0x6b4a2b);
+  const mod = (a: number, n: number) => ((a % n) + n) % n; // a negative seed mustn't pick no colour (black)
   for (let x = 0; x < len; x += 2) {
-    const z = (x * 7 + seed) % 3;
+    const z = mod(x * 7 + seed, 3);
     m.box(x, 1, z, 1, 2, 1, 0x3f9440);
-    m.set(x, 3, z, cols[(x + seed) % cols.length]);
+    m.set(x, 3, z, cols[mod(x + seed, cols.length)]);
   }
   return m;
 }

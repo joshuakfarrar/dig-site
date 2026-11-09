@@ -70,12 +70,14 @@ and it remembers the choice on this device. It works on the title screen too.
 The game opens on a picture and one big round Play button over the town. Any key, the pad's A
 button or a tap starts it. In the yard, a little lime forklift loads the truck for you.
 
-Every site has a teal dump truck. Park it near where the excavator's digging, hop into the
-excavator and dig, and the bucket swings over and tips the dirt into the truck instead of onto a
-heap. Drive the loaded truck to the skip by the gate, press Work, and it backs up and tips, at
-any time. At the end, any heaps left are cleared by the bulldozer (pushing them away) or the dump
-truck (stop by a heap and press Work to load it), whichever you're driving. On Home Street the
-arrow suggests the bulldozer, in Market Square the dump truck.
+On Home Street, and on half the Harbour's lots, the dirt goes straight into the teal dump
+truck. You start in the truck, and the arrow shows where to park it in front of the pit. Hop into
+the excavator and dig the two quarters on that side: each bucketful swings over into the truck.
+When it's full, drive it to the skip by the gate and tip it. Then park it behind the pit for the
+other two quarters, and tip again. That's two loads, and no heaps to clear afterwards. In Market
+Square and on the rest of the Harbour, the dirt goes in heaps, and once the slab's poured the
+bulldozer pushes them away before any building starts. Either way the ground's sorted first
+(dig, pour, clear up) so the site's clear for the crane. Each site only parks the machines it uses, and the crane waits by its trailer.
 
 The town has gardens: hedges between and behind them, and trees, sheds, washing lines,
 vegetable patches and trampolines out the back. Behind the first street there's a little farm,

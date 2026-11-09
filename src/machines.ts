@@ -248,6 +248,8 @@ export class Excavator extends Machine {
   private again: (() => void) | null = null;
 
   static readonly REST = { boom: 38 * deg, stick: -112 * deg, bucket: -30 * deg };
+  /** Held out over a dump truck's bed to load it: further out and higher than over a heap. */
+  static LOAD = { boom: 40 * deg, stick: -55 * deg, tip: -40 * deg };
 
   constructor(home: THREE.Vector2) {
     super(
@@ -316,8 +318,8 @@ export class Excavator extends Machine {
       { dur: 0.25, to: (p) => ({ ...p, boom: 0 * deg, stick: -100 * deg, bucket: -75 * deg, dirt: true }) },
       { dur: 0.28, to: (p) => ({ ...p, boom: 40 * deg, stick: -95 * deg, bucket: -80 * deg }) },
       // Over the heap, or held up high over a dump truck's bed.
-      { dur: 0.45, to: (p) => ({ ...p, yaw: toMound, boom: (high ? 60 : 30) * deg, stick: (high ? -95 : -70) * deg }) },
-      { dur: 0.22, to: (p) => ({ ...p, bucket: 50 * deg, stick: (high ? -78 : -50) * deg }), done: () => ev.dump(q) },
+      { dur: 0.45, to: (p) => ({ ...p, yaw: toMound, boom: high ? Excavator.LOAD.boom : 30 * deg, stick: high ? Excavator.LOAD.stick : -70 * deg }) },
+      { dur: 0.22, to: (p) => ({ ...p, bucket: 50 * deg, stick: high ? Excavator.LOAD.tip : -50 * deg }), done: () => ev.dump(q) },
       { dur: 0.1, to: (p) => ({ ...p, dirt: false }) },
       { dur: 0.42, to: (p) => ({ ...p, yaw: toPit, ...Excavator.REST }) },
     ];
