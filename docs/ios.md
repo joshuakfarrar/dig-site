@@ -36,7 +36,18 @@ The same game, wrapped for iPhone and iPad with Capacitor, like the Android app.
    2. Download the `.xip`, about 3 GB. Double-click it to expand it, which takes a while, and drag Xcode into Applications.
    3. Open it once to let it install its parts, including an iOS Simulator.
 3. **Install Node.js** (the LTS version from nodejs.org).
-4. **Get the project onto the Mac:** a private GitHub repo and `git clone`, or a copy of the folder.
+4. **Get the project onto the Mac** from GitHub (`joshuakfarrar/dig-site`). The Mac needs to be signed in to GitHub, through an SSH key added to the GitHub account (or the GitHub CLI's `gh auth login`). Then:
+
+   ```bash
+   git clone git@github.com:joshuakfarrar/dig-site.git ~/dig-site
+   ```
+
+   If it was first cloned from a `.bundle` file, point it at GitHub instead:
+
+   ```bash
+   git remote set-url origin git@github.com:joshuakfarrar/dig-site.git
+   ```
+
 5. **Build the web game and sync it into the iOS project:** in the project folder, run each in turn.
 
    ```bash
