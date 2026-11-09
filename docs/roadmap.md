@@ -66,7 +66,7 @@ Roughly 3 to 5 times today's content.
     - pets
   - [x] **Shared spaces:** the flats have a roof garden, and Market Square has a playground next to its flats.
   - **Same mechanics:** it's the same dig, pour, walls, roof, path and clean-up; a block is just a bigger blueprint with more doors and more people moving in.
-- [ ] **New building kinds** (each one is a blueprint entry):
+- [x] **New building kinds** (each one is a blueprint entry):
   - [x] café, bakery (flats over it), school, library, police station
   - [x] playground (Market Square, lot 6): a soft green surface, a rainbow fence with a way in, then the crane lifts in the whole play set
   - [x] clock tower (the town hall) to finish Market Square; lighthouse to finish the Harbour
@@ -92,7 +92,7 @@ Roughly 3 to 5 times today's content.
 - [x] **Fewer triangles first:** greedy meshing in the voxel builder took a full street from about 490k to about 80k triangles.
 - [x] **Wrap with Capacitor** for Android (`android/`, see `docs/android.md`). Offline, with no permissions at all. [ ] iOS.
 - [ ] **App basics:**
-  - [ ] an icon and splash screen
+  - [x] an icon and splash screen: the game's yellow excavator with a bucketful of dirt, on a hill under a blue sky. Drawn by `tools/make_icons.py`, which writes every Android size plus store masters in `resources/`.
   - [x] keeping the screen awake while playing, full screen, landscape
   - [x] Android's back button never leaves play; it bounces the hold-to-confirm button
   - iOS audio-session handling, so a silent switch or a call is respected
@@ -101,12 +101,16 @@ Roughly 3 to 5 times today's content.
 
 ## Phase 5: Purchase, privacy and store paperwork (1–2 weeks, start early)
 
-- [ ] **Free tier:** the first two lots, celebration included. One unlock opens everything, including future updates.
+- [x] **Free tier:** the first two lots, celebration included. One unlock opens everything, including future updates.
+  - Built (`src/shop.ts`): after two lots, padlocks sit over the materials pile and the empty lots, and Work at the pile just jiggles its padlock and bobs the grown-ups' button. No words, no nagging.
+  - Off until purchases work: `VITE_PAYWALL=on` at build time turns it on (`?paywall` on the dev server).
 - [ ] **Store purchases:**
-  - Use Google Play Billing and Apple StoreKit through a minimal native plugin.
+  - Use Google Play Billing and Apple StoreKit through a minimal native plugin. `src/shop.ts` has the `price`, `buy` and `restore` calls to fill in; for now the dev server just unlocks.
+  - Amazon's Appstore (Fire tablets) needs Amazon's own in-app purchasing, not Google's: a third small plugin.
   - No third-party purchase or analytics SDKs; Apple's Kids category bans them, and they'd collect data.
   - Add a "restore purchase" option, which Apple requires.
-- [ ] **Parent gate:** something an adult can pass and a small child can't, in front of the purchase, restore and any outside link.
+- [x] **Parent gate:** something an adult can pass and a small child can't, in front of the purchase, restore and any outside link.
+  - Built (`src/grownups.ts`): a padlock button top left (only while lots are locked) asks a sum in words ("What is seven plus six?") on a number pad. Three wrong answers close it. Then the unlock card: price, Unlock, Restore purchase.
 - [ ] **Privacy policy:** one static page ("we collect nothing"), hosted free.
   - Google Play's data-safety form says no data collected.
   - Apple's privacy label says "Data Not Collected".

@@ -348,6 +348,7 @@ interface Lot {
   group: THREE.Group;
   ring: THREE.Mesh | null;
   mini: THREE.Group | null;
+  lock: THREE.Object3D | null; // over the little model while the lot needs the unlock
   people: Person[];
   play?: PlayKit; // a built playground's moving parts
 }
@@ -391,6 +392,10 @@ type Kind = "adult" | "child" | "elder" | "wheel" | "dog";
 
 export interface TownHooks {
   build(lot: number): void;
+  /** The free lots are built and the rest need the unlock: padlocks, and nothing to load. */
+  locked(): boolean;
+  /** Work at the locked pile: point the grown-ups' button out. */
+  askGrownUp(): void;
   /** Drove through a gate: off to neighbourhood `to`. */
   travel(to: number): void;
   controls(): Controls;
@@ -757,6 +762,12 @@ export function createTown(
     pile.position.copy(PILE);
     scene.add(pile);
   }
+  const pileLock = M.padlock().mesh(Cell, [0, 0, 0.5]);
+  pileLock.scale.setScalar(2.2);
+  pileLock.position.copy(PILE).setY(1.7);
+  pileLock.visible = false;
+  scene.add(pileLock);
+  let lockJiggle = 0;
   // The yard's forklift, waiting by the pile to load the truck.
   const FORK_HOME = new THREE.Vector3(-20.2, 0, 4.5);
   const fork = new THREE.Group();
@@ -788,7 +799,7 @@ export function createTown(
       : { minX: x - 3.8, maxX: x + 3.8, minZ: ROAD_A + HALF + 1.1, maxZ: fence };
     const group = new THREE.Group();
     scene.add(group);
-    return { i, bp, x, front, fence, walk, roadZ: row1 ? ROAD_A : ROAD_B, zone, built: false, group, ring: null, mini: null, people: [] };
+    return { i, bp, x, front, fence, walk, roadZ: row1 ? ROAD_A : ROAD_B, zone, built: false, group, ring: null, mini: null, lock: null, people: [] };
   });
 
   const ringGeo = new THREE.RingGeometry(0.95, 1.2, 48);
@@ -799,8 +810,11 @@ export function createTown(
     if (l.ring) scene.remove(l.ring);
     l.ring = null;
     l.mini = null;
+    l.lock = null;
     l.group.clear();
   }
+
+  const padlockModel = M.padlock();
 
   /** An empty lot: sand, barriers along the front, and the little model on its stand. */
   function emptyLot(l: Lot): void {
@@ -829,6 +843,12 @@ export function createTown(
     stand.position.set(l.x, 0, l.fence - 1.1);
     l.group.add(stand);
     l.mini = stand;
+    const lock = padlockModel.mesh(Cell, [0, 0, 0.5]);
+    lock.scale.setScalar(1.8);
+    lock.position.set(l.x, 2.1, l.fence - 1.1);
+    lock.visible = false;
+    l.group.add(lock);
+    l.lock = lock;
     const ring = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.75, depthWrite: false }));
     ring.rotation.x = -Math.PI / 2;
     ring.position.set(l.x, 0.03, l.roadZ);
@@ -1547,8 +1567,11 @@ export function createTown(
     const stopped = (x: number, z: number) => Math.hypot(truck.pos.x - x, truck.pos.y - z) < 1.1 && truck.speed < 1.5;
     const busy = flying.length > 0 || leaving || forkT >= 0;
     const anyLeft = lots.some((l) => !l.built);
+    // The free lots are built: padlocks on the pile and the empty lots, and nothing to load.
+    const isLocked = !loaded && anyLeft && hooks.locked();
     // Empty: load up at the yard. Loaded: take it to a lot.
-    const atPile = !loaded && !busy && anyLeft && stopped(LOAD_AT.x, LOAD_AT.y);
+    const atPileSpot = !loaded && !busy && anyLeft && stopped(LOAD_AT.x, LOAD_AT.y);
+    const atPile = atPileSpot && !isLocked;
     let at: Lot | null = null;
     if (loaded && !busy) for (const l of lots) if (!l.built && stopped(l.x, l.roadZ)) at = l;
 
@@ -1564,7 +1587,7 @@ export function createTown(
     const nextGate = gates.find((g) => g.to === nextHood && g.open);
     // The arrow and ring go under the arch, where driving in takes you on (not over the sign on top).
     if (!anyLeft && nextGate && !busy) marker.update(dt, new THREE.Vector3(GATE_X, 1.5, nextGate.z), new THREE.Vector3(GATE_X, 0, nextGate.z), 1.2, from);
-    else if (busy || !anyLeft || at || atPile) marker.update(dt, null, null, 1, null);
+    else if (busy || !anyLeft || at || atPile || isLocked) marker.update(dt, null, null, 1, null);
     else if (!loaded) marker.update(dt, PILE.clone().setY(1.3), null, 1, from);
     else if (next) {
       const top = new THREE.Vector3(next.x, 0.52 + (B.roofAt(next.bp).y + next.bp.roof.height) * 0.3 + 0.2, next.fence - 1.1);
@@ -1586,6 +1609,23 @@ export function createTown(
       Audio.clank();
     }
     updateFork(dt);
+    if (isLocked && atPileSpot && input.workPressed) {
+      // Locked: the padlock gives a little jiggle, and the grown-ups' button bobs.
+      lockJiggle = 0.6;
+      Audio.pop();
+      hooks.askGrownUp();
+    }
+    lockJiggle = Math.max(0, lockJiggle - dt);
+    pileLock.visible = isLocked;
+    pileLock.position.y = 1.7 + 0.08 * Math.sin(clock * 2.2);
+    pileLock.rotation.z = lockJiggle > 0 ? Math.sin(lockJiggle * 40) * 0.25 * lockJiggle : 0;
+    for (const l of lots) {
+      if (l.lock) {
+        l.lock.visible = isLocked;
+        l.lock.position.y = 2.1 + 0.08 * Math.sin(clock * 2.2 + l.i);
+      }
+      if (l.ring) l.ring.visible = !isLocked;
+    }
     if (at && input.workPressed) {
       // Out of the bed and onto the lot, then off to build it.
       const lot = at;
@@ -1606,7 +1646,7 @@ export function createTown(
         });
       });
     }
-    loadRing.visible = !loaded && anyLeft;
+    loadRing.visible = !loaded && anyLeft && !isLocked;
     (loadRing.material as THREE.MeshBasicMaterial).color.setHex(atPile ? 0xff8a1f : 0xffffff);
     loadRing.scale.setScalar(1 + 0.06 * Math.sin(clock * 4));
 

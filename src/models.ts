@@ -529,6 +529,17 @@ export function worker(): Model {
   return m;
 }
 
+/**
+ * A big friendly padlock, over the lots that need the unlock: a golden body with a keyhole on its
+ * front (+z) and a steel shackle. Pivot at the bottom middle.
+ */
+export function padlock(): Model {
+  const m = new Model();
+  m.box(-3, 0, -1, 6, 5, 3, 0xf2b705).box(-3, 4, -1, 6, 1, 3, 0xffd34d);
+  m.set(0, 2, 1, C.Dark).set(0, 1, 1, C.Dark); // the keyhole
+  return m.box(-2, 5, 0, 1, 3, 1, C.Steel).box(1, 5, 0, 1, 3, 1, C.Steel).box(-2, 8, 0, 4, 1, 1, C.Steel);
+}
+
 export function cone(): Model {
   const O = 0xff7a1a;
   return new Model()

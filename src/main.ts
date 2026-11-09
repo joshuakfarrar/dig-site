@@ -5,6 +5,8 @@ import * as Input from "./input";
 import * as B from "./blueprints";
 import * as Save from "./save";
 import * as Quality from "./quality";
+import * as Shop from "./shop";
+import * as Grownups from "./grownups";
 import { createBuild, STAGES, type BuildMode, type Stage } from "./build";
 import { createTown, type TownMode } from "./town";
 import { fitCamera, setViewZoom, type Mode } from "./stage";
@@ -61,6 +63,12 @@ function goTown(arrived: number | null, via: "next" | "back" | null = null): voi
       }),
     controls: Input.controls,
     hints: Input.hints,
+    locked: () => Shop.locked(builtSoFar()),
+    askGrownUp: () => {
+      grownButton.classList.remove("nudge");
+      void grownButton.offsetWidth;
+      grownButton.classList.add("nudge");
+    },
   });
   use(town);
   Hud.corner("fresh", () =>
@@ -93,6 +101,21 @@ function goBuild(i: number, at?: Stage): void {
   Hud.corner("home", () => void switchTo(() => goTown(null)));
 }
 
+/** Every lot built, in every neighbourhood: the free tier counts these. */
+function builtSoFar(): number {
+  return saved.built.reduce((n, lots) => n + lots.length, 0);
+}
+
+// The grown-ups' padlock button, top left: only in town, and only while lots are locked. It opens
+// the parent gate, then the unlock; once bought, the padlocks go and the town carries on.
+const grownButton = document.getElementById("grown") as HTMLButtonElement;
+grownButton.addEventListener("click", () =>
+  Grownups.show(() => {
+    Audio.fanfare();
+    grownButton.classList.remove("nudge");
+  }),
+);
+
 /** Fades out, swaps, fades back in; input's ignored meanwhile. */
 async function switchTo(go: () => void): Promise<void> {
   if (switching) return;
@@ -116,6 +139,9 @@ function tick(dt: number, read: Input.Frame): void {
     if (pressed) Hud.startPlay();
     read = idle;
   }
+  // The grown-ups' screens are up: the game waits.
+  if (Grownups.open()) read = idle;
+  grownButton.hidden = !(town && Shop.locked(builtSoFar()));
   const input = switching ? idle : read;
   mode.tick(dt, input);
   Hud.updateHold(dt, input.restart);
@@ -157,7 +183,8 @@ addEventListener("pointerdown", () => Audio.unlock());
 // child's work away by accident: it just makes the hold-to-confirm corner button bounce, so a
 // grown-up can see how to leave. (In a browser this never fires.)
 void App.addListener("backButton", () => {
-  if (Hud.titleUp()) void App.exitApp();
+  if (Grownups.open()) Grownups.close();
+  else if (Hud.titleUp()) void App.exitApp();
   else Hud.flash();
 });
 
@@ -187,6 +214,7 @@ if (import.meta.env.DEV) Object.assign(window, {
     get town() { return town?.debug; },
     get build() { return build?.debug; },
     renderer,
+    shop: Shop,
     goTown,
     goBuild,
     /** Jumps to neighbourhood `h` (not saved). */

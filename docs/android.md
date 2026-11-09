@@ -42,8 +42,21 @@ The APK lands in `android/app/build/outputs/apk/debug/`.
 
 For the Play Store, build a signed **App Bundle** (`.aab`): **Build > Generate Signed App Bundle**. Keep the signing key safe, because every update has to be signed with it.
 
-## Still to do
+## Icon and splash
 
-- An app icon and splash screen (currently Capacitor's defaults).
+- `python tools/make_icons.py` draws them (Pillow) and writes every size into `res/`:
+  - the adaptive icon's two layers: the sky and hill (`ic_launcher_background`) and the excavator (`ic_launcher_foreground`)
+  - square and round icons for older launchers
+  - every `splash.png`
+- It also writes store masters to `resources/`: `icon-512.png` for Google Play, `icon-1024.png` for Apple, `splash-2732.png`.
+- Android 12 and later show the icon on the sky colour (`windowSplashScreenBackground` in `styles.xml`); older ones, Fire OS 8 included, show the splash picture.
+
+## The free tier
+
+- Off in every build until store purchases work, so nothing a family installs is ever locked without a way to unlock it.
+- `VITE_PAYWALL=on npm run build` turns it on: the first two lots are free, then padlocks.
+- To try it on the dev server, open `?paywall`.
+
+## Still to do
 - Testing on a cheap tablet. The triangle cut in `voxel.ts` (merged faces) took a full street from about 490k to about 80k triangles.
 - The Play Console listing, the data-safety form (no data collected) and the Families policy. See `roadmap.md`, Phase 5.

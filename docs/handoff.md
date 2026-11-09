@@ -249,6 +249,22 @@ Estimated at adult pace from distances, speeds and animation times, about 1 s of
   - `YARD` in `town.ts` sets its size; the trees and flora keep clear of it.
 - **Fix:** `.corner[hidden]` really hides now; `display: grid` was overriding `hidden`.
 
+## Free tier, parent gate, icon (2026-11-09)
+
+- **`src/shop.ts`:**
+  - `FREE_LOTS` is 2, counted across every neighbourhood.
+  - `locked(builtSoFar)` asks `paywallOn()` (off unless `VITE_PAYWALL=on`, or `?paywall` in dev) and `owned()` (kept on the device under `dig-site/unlocked/v1`).
+  - `price`, `buy` and `restore` are stubs: dev unlocks, a release build says the store isn't available. Fill them in with the billing plugins.
+- **In town while locked:**
+  - Padlocks bob over the materials pile and every empty lot. The arrow, load ring and lot rings are hidden.
+  - Work at the pile jiggles its padlock (`Audio.pop`) and bobs the grown-ups' button, through `TownHooks.locked` and `askGrownUp`.
+- **`src/grownups.ts`:**
+  - The `#grown` corner button (top left, town only, only while locked) opens the parent gate: a sum in words (answers 11 to 18) on a number pad. A miss gives a new sum, and three misses close it.
+  - Then the unlock card. On a purchase: a fanfare, and the padlocks go on the next frame.
+  - The game's controls are ignored while it's up, and Android's back button closes it.
+- **Icon and splash:** `tools/make_icons.py`; see `docs/android.md`.
+- **Dev:** `game.shop.forget()` un-owns it again; `game.shop.owned()` checks it.
+
 ## Design decisions the user made
 - **Diversity includes ordinary families:** the user wants a mix that reads as real streets, mostly cis/het families with children, plus the other kinds of households, not an unusual mix everywhere.
 
