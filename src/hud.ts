@@ -196,7 +196,7 @@ titleEl.innerHTML = `
     <path d="M98 40l10 6-6 14-12-4z" fill="#3a3f47"/>
     <circle cx="44" cy="40" r="3" fill="#ff8a1f"/>
   </svg>
-  <button class="play" aria-label="Play"><svg viewBox="0 0 64 64"><path d="M24 16l26 16-26 16z" fill="#fff" stroke="#fff" stroke-width="4" stroke-linejoin="round"/></svg></button>`;
+  <button class="play" aria-label="Play"><svg viewBox="0 0 64 64"><path d="M23 16l28 16-28 16z" fill="#fff" stroke="#fff" stroke-width="4" stroke-linejoin="round"/></svg></button>`;
 document.body.appendChild(titleEl);
 let onStart: (() => void) | null = null;
 titleEl.querySelector(".play")!.addEventListener("click", () => startPlay());
@@ -204,6 +204,7 @@ titleEl.querySelector(".play")!.addEventListener("click", () => startPlay());
 export function title(start: () => void): void {
   onStart = start;
   titleEl.classList.add("on");
+  document.body.classList.add("titling");
 }
 
 export function titleUp(): boolean {
@@ -216,5 +217,6 @@ export function startPlay(): void {
   onStart = null;
   titleEl.classList.remove("on");
   titleEl.classList.add("gone");
+  document.body.classList.remove("titling");
   f();
 }

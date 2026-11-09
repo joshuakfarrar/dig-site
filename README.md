@@ -64,6 +64,9 @@ it fills up with children.
 A gentle tune plays underneath: a soft marimba over a warm pad, made in code like every other
 sound, that wanders a little differently every eight bars and dips when a fanfare plays.
 
+The sound button in the corner steps through loud, medium, quiet and off (its waves show which),
+and it remembers the choice on this device. It works on the title screen too.
+
 The game opens on a picture and one big round Play button over the town. Any key, the pad's A
 button or a tap starts it. In the yard, a little lime forklift loads the truck for you.
 
@@ -75,9 +78,11 @@ blows in from the beach at the end, and the pink street sweeper sweeps it up. Ea
 You drive the crew's orange truck round two streets. Eight empty lots each show a little model of
 what goes there, turning on a stand: a cottage, a two-storey house, a duplex, a row of three
 terraced homes, a three-storey block of flats with balconies and a roof garden, flats over a
-bakery, an ice-cream shop and a fire station. Every front door gets a step-free ramp, and the
-people who move in are all sorts: children, grandparents with walking sticks, wheelchair users,
-headscarves, dogs.
+bakery, an ice-cream shop and a fire station. Every front door gets a step-free ramp, with a paved walk
+joining the ramps to the path and pots of flowers beside them. The people who move in are
+households: mostly a mum and dad with their children, and also grandparents, single parents,
+couples and grandparents living with the family. Now and then someone uses a wheelchair or
+wears a headscarf, and about half the homes have a dog.
 
 1. Stop in the ring by the yard's pile and press Work: a pallet and a crate hop into the truck.
 2. Drive to any empty lot's ring and press Work: they hop off onto the lot, and its site opens.

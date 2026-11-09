@@ -220,6 +220,8 @@ export class Site implements Ground {
   readonly deckTop = 0.6;
   readonly palletAt = new THREE.Vector3(-9, 0, -1.6);
   readonly palletTop = 0.3;
+  /** For a building of more than one storey, its floor decks wait on a second pallet. */
+  readonly floorPalletAt = new THREE.Vector3(-9, 0, -6.45);
 
   private buildProps(): void {
     const office = M.office().mesh(Cell);
@@ -237,6 +239,12 @@ export class Site implements Ground {
     pallet.position.copy(this.palletAt);
     this.root.add(pallet);
     this.boxes.push({ minX: this.palletAt.x - 2.25, maxX: this.palletAt.x + 2.25, minZ: this.palletAt.z - 2.3, maxZ: this.palletAt.z + 2.3 });
+    if (this.bp.storeys > 1) {
+      const p2 = M.pallet().mesh(Cell, [22.5, 0, 23]);
+      p2.position.copy(this.floorPalletAt);
+      this.root.add(p2);
+      this.boxes.push({ minX: this.floorPalletAt.x - 2.25, maxX: this.floorPalletAt.x + 2.25, minZ: this.floorPalletAt.z - 2.3, maxZ: this.floorPalletAt.z + 2.25 });
+    }
 
     const cone = M.cone();
     for (const [x, z] of [[-2.6, 8.3], [1.6, 8.3], [-11.3, -8.3], [11.3, -8.3], [11.3, 8.3], [-6.5, 8.3]]) {

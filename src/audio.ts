@@ -5,7 +5,20 @@
  */
 let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
-let muted = false;
+/**
+ * How loud, picked with the sound button: loud, medium, quiet, off, round again. Kept on this
+ * device so a grown-up's choice sticks.
+ */
+const LEVELS = [0.55, 0.3, 0.13, 0];
+const VOL_KEY = "dig-site/volume/v1";
+let level = (() => {
+  try {
+    const v = Number(localStorage.getItem(VOL_KEY));
+    return Number.isInteger(v) && v >= 0 && v < LEVELS.length ? v : 0;
+  } catch {
+    return 0;
+  }
+})();
 
 export function unlock(): void {
   if (ctx) {
@@ -14,7 +27,7 @@ export function unlock(): void {
   }
   ctx = new AudioContext();
   master = ctx.createGain();
-  master.gain.value = muted ? 0 : 0.55;
+  master.gain.value = LEVELS[level];
   master.connect(ctx.destination);
   startEngine();
   startMusic();
@@ -27,10 +40,23 @@ export function pause(on: boolean): void {
   else if (!on && ctx.state === "suspended") void ctx.resume();
 }
 
-export function toggleMute(): boolean {
-  muted = !muted;
-  if (master && ctx) master.gain.setTargetAtTime(muted ? 0 : 0.55, ctx.currentTime, 0.05);
-  return muted;
+/** The volume step now: 0 loud .. 3 off. */
+export function volume(): number {
+  return level;
+}
+
+/** On to the next volume step (loud, medium, quiet, off, loud...); returns it. */
+export function nextVolume(): number {
+  level = (level + 1) % LEVELS.length;
+  if (master && ctx) master.gain.setTargetAtTime(LEVELS[level], ctx.currentTime, 0.05);
+  try {
+    localStorage.setItem(VOL_KEY, String(level));
+  } catch {
+    // Not kept: fine.
+  }
+  // A little blip at the new loudness, so you can hear what you picked.
+  if (level < LEVELS.length - 1) pop();
+  return level;
 }
 
 const PENTA = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24];

@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import * as M from "./models";
 import { C, Cell } from "./models";
-import type { Model } from "./voxel";
+import { Faces, voxelMaterial, type Model } from "./voxel";
 
 /**
  * What can be built, as data: a footprint, how many storeys, each wall panel's paint and windows,
@@ -105,10 +105,66 @@ export function assemble(bp: Blueprint): THREE.Group {
     m.rotation.y = s.yaw;
     g.add(m);
   }
+  for (let s = 1; s < bp.storeys; s++) {
+    const f = floorMesh(bp);
+    f.position.copy(floorAt(bp, s));
+    g.add(f);
+  }
   const r = roofMesh(bp);
   r.position.copy(roofAt(bp));
   g.add(r);
   g.add(ramps(bp));
+  g.add(frontWalk(bp));
+  return g;
+}
+
+/** Where the floor between storey `s - 1` and storey `s` goes: its bottom, inside the walls. */
+export function floorAt(_bp: Blueprint, s: number): THREE.Vector3 {
+  return new THREE.Vector3(0, SLAB_TOP + WALL_H * s - 0.1, 0);
+}
+
+export function floorMesh(bp: Blueprint): THREE.Mesh {
+  return M.floorDeck(bp.w, bp.d).mesh(Cell, [(bp.w * 10 - 4) / 2, 0, (bp.d * 10 - 4) / 2]);
+}
+
+/**
+ * The front walk: when the doors are spread along the front (a terrace, a duplex), a paved walk
+ * runs along the house from the foot of every door's ramp to the path, edged with flowers, with a
+ * pot of flowers either side of each ramp. Laid out from the footprint's middle at ground level.
+ */
+export function frontWalk(bp: Blueprint): THREE.Group {
+  const g = new THREE.Group();
+  const doors = frontDoors(bp);
+  const PATH_HALF = 0.75;
+  const x0 = Math.min(-PATH_HALF, ...doors.map((x) => x - 0.45));
+  const x1 = Math.max(PATH_HALF, ...doors.map((x) => x + 0.45));
+  const flowers = [0xff5d8f, 0xffc93c, 0xffffff, 0xc77dff];
+  doors.forEach((x, k) => {
+    for (const dx of [-0.55, 0.55]) {
+      const p = M.pot(flowers[(k * 2 + (dx > 0 ? 1 : 0)) % flowers.length]).mesh(Cell, [0, 0, 0]);
+      p.position.set(x + dx, 0, bp.d / 2 + 0.5);
+      g.add(p);
+    }
+  });
+  if (x0 >= -PATH_HALF - 0.01 && x1 <= PATH_HALF + 0.01) return g; // the path's enough
+  const z0 = bp.d / 2 + 0.7, z1 = z0 + 0.55;
+  const f = new Faces();
+  for (let x = x0; x < x1 - 0.01; x += 0.5) {
+    const w = Math.min(0.5, x1 - x);
+    f.box(x, 0, z0, w, 0.03, z1 - z0, 0x8d939a, (n) => n[1] === 1);
+    f.box(x + 0.03, 0.031, z0 + 0.03, w - 0.06, 0, z1 - z0 - 0.06, 0xc3c7cc, (n) => n[1] === 1);
+  }
+  const walk = new THREE.Mesh(f.geometry(), voxelMaterial);
+  walk.receiveShadow = true;
+  g.add(walk);
+  // Flowers along its outer edge, leaving the path to the gate open.
+  for (const [a, b] of [[x0, -PATH_HALF], [PATH_HALF, x1]]) {
+    const n = Math.round((b - a) * 10);
+    if (n < 4) continue;
+    const fl = M.flowers(n, Math.round(a * 7)).mesh(Cell, [0, 0, 0]);
+    fl.position.set(a, 0, z1);
+    g.add(fl);
+  }
   return g;
 }
 

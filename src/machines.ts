@@ -408,6 +408,12 @@ export interface Load {
   top: number; // the load's pivot to where the slings meet it
   rest: THREE.Quaternion; // how it lies before it's lifted
   carryYaw: number; // turned this much from the boom, while carried
+  /**
+   * A big flat load (a roof, a floor): half its size along the boom while carried, and how tall it
+   * is at that edge (a gable's eaves are low even though its ridge is high).
+   */
+  reach?: number;
+  edge?: number;
 }
 
 const BOOM_ROOT = new THREE.Vector3(-0.3, 0.62, 0.2); // on the top
@@ -553,8 +559,33 @@ export class Crane extends Machine {
         hitched();
       } },
       { dur: 0.45, to: (p) => ({ ...p, cable: 0.6, hold: 1 }) },
-      { dur: 0.55, to: () => ({ ...Crane.CARRY }), done },
+      { dur: 0.55, to: () => this.carryPose(load), done },
     ], mixCrane);
+  }
+
+  /**
+   * How to carry it while driving. A wall panel is thin, so it's carried high and close. A roof or
+   * a floor is big and flat, so it's carried out behind on a long boom with a long cable: clear of
+   * the carrier, clear under the boom, and trailing away from wherever the crane's driving to.
+   */
+  carryPose(load: Load): CranePose {
+    const R = load.reach ?? 0;
+    if (R < 0.5) return { ...Crane.CARRY };
+    const E = load.edge ?? 0;
+    const rootY = this.y + this.top.position.y + BOOM_ROOT.y;
+    for (const deg_ of [60, 55, 50, 45, 40, 35, 30]) {
+      const p = deg_ * deg;
+      // Its near edge past the carrier's back (0.65 behind the boom's foot) with room to spare.
+      const len = Math.max(BASE_TIP, (R + 0.95) / Math.cos(p));
+      if (len > BASE_TIP + MAX_EXT) continue;
+      // The boom over its near edge stays above that edge (it's higher still over the middle, where
+      // the cable comes down past anything tall like a ridge or a cone).
+      const cable = Math.max(0.4, R * Math.tan(p) - (load.hang - E) + 0.25);
+      const bottom = rootY + len * Math.sin(p) - 0.15 - cable - load.hang;
+      if (bottom < 0.4) continue;
+      return { yaw: Math.PI, pitch: p, ext: len - BASE_TIP, cable, hold: 1 };
+    }
+    return { ...Crane.CARRY };
   }
 
   /** Swing the load over its place, turn it to fit, lower it in, let go and fold back down. */

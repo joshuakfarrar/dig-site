@@ -120,7 +120,21 @@ Where Dig Site stands, for whichever session picks it up next. Everything below 
 
 Phase 3 is complete apart from the "about an hour of play" check, which needs a real playtest.
 
+## Playtest fixes (2026-11-09)
+
+- **Floors between storeys:** the crane lifts a floor deck (`M.floorDeck`, `B.floorAt`) after each storey but the top one. Floor decks wait on a second pallet (`site.floorPalletAt`), and `assemble` includes them.
+- **Carrying big loads:** `Crane.carryPose(load)` carries roofs and floors out behind the crane on a long boom and cable, side-on (`carryYaw` pi/2). Clearance comes from the load's `reach` and its `edge` height. The fire station roof (tower at its edge) and wall panels keep the old high carry.
+- **Front walk:** `B.frontWalk` paves a walk from every door's ramp to the path, with flowers along it and pots beside each ramp. It's in `assemble`, and on site it appears with the ramps.
+- **Residents are households** (`HOUSEHOLDS` in `town.ts`):
+  - Mostly a mum, a dad and children; sometimes grandparents, a single parent, a couple, or a family with a grandma.
+  - A household shares its skin and hair colour.
+  - About 1 in 8 households has a wheelchair user or a headscarf; about half the homes have a dog.
+  - Women and girls have long hair, and some wear dresses (`Look.long`, `Look.dress`).
+  - Seeded per neighbourhood and lot.
+- **Volume:** the sound button steps loud, medium, quiet, off; it's saved on the device and works on the title.
+
 ## Design decisions the user made
+- **Diversity includes ordinary families:** the user wants a mix that reads as real streets, mostly cis/het families with children, plus the other kinds of households, not an unusual mix everywhere.
 
 - **Stack:** TS + Vite + three.js (they picked it); newest dependency versions.
 - **Simple mechanics:** keep them exactly as simple as they are. Drive, one Work button, Hop; nothing to read, no timers, scores or fail states.

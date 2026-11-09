@@ -44,8 +44,13 @@
       #hold[data-kind="home"] .fresh, #hold[data-kind="fresh"] .home { display: none; }
       #hold.nudge { animation: bob 1s ease-in-out infinite; box-shadow: 0 0 0 3px #3fb950; background: #fff; }
       #mute { right: calc(72px + var(--sr)); }
-      #mute.off .wave { display: none; }
-      #mute:not(.off) .cross { display: none; }
+      /* Loud shows three waves, medium two, quiet one, off a red cross. */
+      #mute .cross, #mute[data-level="1"] .w3, #mute[data-level="2"] .w3, #mute[data-level="2"] .w2,
+      #mute[data-level="3"] .w1, #mute[data-level="3"] .w2, #mute[data-level="3"] .w3 { display: none; }
+      #mute[data-level="3"] .cross { display: inline; }
+      /* On the title the sound button stays usable above it; the new-town button stays out of the way. */
+      body.titling #mute { z-index: 5; right: calc(14px + var(--sr)); }
+      body.titling #hold { display: none; }
       #fade { position: fixed; inset: 0; z-index: 4; background: #a9dcff; opacity: 0; pointer-events: none; transition: opacity .35s; }
       #fade.on { opacity: 1; }
       /* Touch controls: only while touch is what's being used. */
@@ -80,8 +85,9 @@
       #title.on { display: flex; }
       #title .art { width: min(70vw, 460px); height: auto; filter: drop-shadow(0 6px 10px rgba(0,0,0,.12)); }
       #title .play { width: min(30vw, 170px); height: min(30vw, 170px); border-radius: 50%; border: 0; padding: 0; cursor: pointer;
+        display: grid; place-items: center; flex: none;
         background: #ff8a1f; box-shadow: 0 0 0 8px #fff, 0 10px 24px rgba(0,0,0,.25); animation: glow 1.2s ease-in-out infinite; }
-      #title .play svg { width: 60%; height: 60%; margin-left: 8%; }
+      #title .play svg { display: block; width: 58%; height: 58%; }
       @media (max-height: 500px) { #title .art { width: min(50vw, 300px); } #title .play { width: 110px; height: 110px; } }
       /* Held upright on a touch screen: a picture asking to turn it on its side. */
       #rotate { display: none; position: fixed; inset: 0; z-index: 5; background: #a9dcff; place-items: center; }
@@ -117,7 +123,7 @@
     <div id="app"></div>
     <div id="progress"></div>
     <button id="mute" class="corner" aria-label="Sound">
-      <svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z" fill="#3a3f47"/><path class="wave" d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="#3a3f47" stroke-width="2" stroke-linecap="round"/><path class="cross" d="M16 9l5 6M21 9l-5 6" stroke="#d8382c" stroke-width="2.4" stroke-linecap="round"/></svg>
+      <svg viewBox="0 0 24 24"><path d="M3 9h4l5-4v14l-5-4H3z" fill="#3a3f47"/><path class="w1" d="M15 9.5a3.6 3.6 0 0 1 0 5" fill="none" stroke="#3a3f47" stroke-width="2" stroke-linecap="round"/><path class="w2" d="M17.5 7.2a7 7 0 0 1 0 9.6" fill="none" stroke="#3a3f47" stroke-width="2" stroke-linecap="round"/><path class="w3" d="M20 5a10.4 10.4 0 0 1 0 14" fill="none" stroke="#3a3f47" stroke-width="2" stroke-linecap="round"/><path class="cross" d="M15.5 9l5 6M20.5 9l-5 6" stroke="#d8382c" stroke-width="2.4" stroke-linecap="round"/></svg>
     </button>
     <button id="hold" class="corner" aria-label="Hold to go back to town" hidden>
       <svg class="home" viewBox="0 0 24 24"><path d="M3.5 11.5L12 4l8.5 7.5" fill="none" stroke="#3a3f47" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 10.5V20h12v-9.5" fill="none" stroke="#3a3f47" stroke-width="2.4" stroke-linejoin="round"/><rect x="10" y="14" width="4" height="6" fill="#3a3f47"/></svg>

@@ -704,16 +704,19 @@ export interface Look {
   skin: number;
   hat?: number;
   scarf?: number; // a headscarf over the hair
+  long?: boolean; // long hair, down to the shoulders
+  dress?: boolean; // a dress (the shirt colour carries on as a skirt) instead of trousers
 }
 
 /** A person, in 1/20-tile cells like the worker: about 0.8 tile tall (a child's 0.6). */
 export function person(l: Look, child = false): Model {
   const m = new Model();
   const legs = child ? 3 : 4;
-  for (const z of [-2, 1]) m.box(-1, 0, z, 2, legs, 2, l.pants).box(-1, 0, z, 2, 1, 2, 0x3b2a20);
+  for (const z of [-2, 1]) m.box(-1, 0, z, 2, legs, 2, l.dress ? l.skin : l.pants).box(-1, 0, z, 2, 1, 2, 0x3b2a20);
   const b = legs;
   const bodyH = child ? 4 : 5;
   m.box(-2, b, -3, 4, bodyH, 6, l.shirt);
+  if (l.dress) m.box(-2, b - 2, -3, 4, 2, 6, l.shirt).box(-3, b - 2, -3, 1, 1, 6, l.shirt); // the skirt, a little flared
   for (const z of [-4, 3]) m.box(-1, b, z, 2, bodyH, 1, l.shirt).box(-1, b, z, 2, 1, 1, l.skin);
   head(m, l, b + bodyH);
   return m;
@@ -733,6 +736,7 @@ function head(m: Model, l: Look, h: number): void {
     return;
   }
   m.box(-2, h + 4, -2, 5, 2, 5, l.hair).box(-2, h + 1, -2, 1, 4, 5, l.hair);
+  if (l.long) m.box(-3, h - 2, -2, 1, 7, 5, l.hair).box(-2, h, -3, 2, 5, 1, l.hair).box(-2, h, 3, 2, 5, 1, l.hair);
   if (l.hat !== undefined) m.box(-3, h + 5, -3, 7, 1, 7, l.hat).box(-2, h + 6, -2, 5, 1, 5, l.hat);
 }
 
@@ -1249,5 +1253,30 @@ export function forkliftForks(): Model {
   const m = new Model();
   m.box(0, 0, -3, 1, 4, 6, C.Dark);
   m.box(1, 0, -2, 8, 1, 1, C.Steel).box(1, 0, 1, 8, 1, 1, C.Steel);
+  return m;
+}
+
+// ---------------------------------------------------------------- floors and front gardens
+
+/**
+ * A floor deck between storeys, sitting inside the walls: warm floorboards on top, a concrete
+ * edge. `w` x `d` tiles less the walls; pivot it at its bottom middle.
+ */
+export function floorDeck(w: number, d: number): Model {
+  const m = new Model();
+  const W = w * 10 - 4, D = d * 10 - 4;
+  for (let x = 0; x < W; x++)
+    for (let z = 0; z < D; z++) {
+      const edge = x === 0 || z === 0 || x === W - 1 || z === D - 1;
+      m.set(x, 0, z, edge ? C.Concrete : z % 3 === 0 ? 0xb87a34 : (x + Math.floor(z / 3) * 7) % 11 === 0 ? 0xa86c2e : 0xc98a3e);
+    }
+  return m;
+}
+
+/** A terracotta pot with a little flowering plant. */
+export function pot(flower: number): Model {
+  const m = new Model();
+  m.box(-1, 0, -1, 3, 2, 3, 0xc0573f).box(-1, 2, -1, 3, 1, 3, 0xd8734f);
+  m.box(-1, 3, -1, 3, 1, 3, 0x4fae4a).set(0, 4, 0, flower).set(-1, 4, 1, flower).set(1, 4, -1, flower);
   return m;
 }

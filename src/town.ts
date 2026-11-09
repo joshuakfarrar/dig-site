@@ -332,49 +332,89 @@ export interface TownMode extends Mode {
   readonly debug: Record<string, unknown>;
 }
 
-const LOOKS: M.Look[] = [
-  { shirt: 0x4aa8ff, pants: 0x3c4652, hair: 0x5a3a22, skin: 0xf6d3a6 },
-  { shirt: 0xff5d8f, pants: 0x2f3b52, hair: 0x2b2118, skin: 0xc68a5b },
-  { shirt: 0x3fb950, pants: 0x6b4a2b, hair: 0xe0b040, skin: 0xf6d3a6 },
-  { shirt: 0xffc93c, pants: 0x3c4652, hair: 0x2b2118, skin: 0x8d5a3b, scarf: 0x2ea05a },
-  { shirt: 0xc77dff, pants: 0x2f3b52, hair: 0xb5523b, skin: 0xf1c7a0, hat: 0xff5d5d },
-  { shirt: 0xff8a1f, pants: 0x3c4652, hair: 0x7a7a7a, skin: 0xe0ac7e },
-  { shirt: 0x6fd3b0, pants: 0x3c4652, hair: 0x2b2118, skin: 0x5e3b28 },
-  { shirt: 0xf7b6c8, pants: 0x2f3b52, hair: 0x2b2118, skin: 0xe8b98a, scarf: 0x7a4fd6 },
-];
-const ELDER_LOOKS: M.Look[] = [
-  { shirt: 0x8fc8f0, pants: 0x5a6270, hair: 0xe8e8e8, skin: 0xf1c7a0 },
-  { shirt: 0xd8382c, pants: 0x3c4652, hair: 0xcfcfcf, skin: 0x8d5a3b },
-  { shirt: 0xb9a6e6, pants: 0x4a4f57, hair: 0xf4f4f4, skin: 0xc68a5b, scarf: 0x3a6fb0 },
-];
-const DOGS: [number, number][] = [[0xc98a3e, 0xf3e6c8], [0x3a3f47, 0xffffff], [0xf3e6c8, 0x9a6a3c]];
+// ------------------------------------------------------------------ who lives here
 
 /**
- * Who lives in a building: more people the more homes it has, and all sorts of households (a
- * child, a grandparent, someone in a wheelchair, a dog), mixed so every street has every kind.
- * A shop or a fire station has a couple of people about.
+ * Households, not a random crowd: most homes are a mum and a dad with their children, the way most
+ * children's homes are, and the rest are the other families a street has: grandparents, a single
+ * mum or dad, a couple, a grandparent living with the family. Now and then someone uses a
+ * wheelchair, or wears a headscarf. A family shares a skin tone and hair colour, so it reads as a
+ * family. Picked the same way every time for a lot, so its people don't change between visits.
  */
-function residents(i: number, homes: number, playground = false): Kind[] {
-  // A playground's full of children, with a grown-up or two and a dog.
-  if (playground) return ["child", "adult", "child", "wheel", "child", "elder", "dog"];
-  const count = homes === 0 ? 2 : Math.min(6, homes + 2);
-  const mix: Kind[] = ["adult", "child", "elder", "adult", "wheel", "child", "adult", "elder", "adult", "wheel"];
-  const out: Kind[] = [];
-  for (let k = 0; k < count; k++) out.push(mix[(i * 3 + k) % mix.length]);
-  if (homes > 0 && i % 2 === 0) out.push("dog");
-  return out;
+type Who = "man" | "woman" | "boy" | "girl" | "grandpa" | "grandma";
+const HOUSEHOLDS: Who[][] = [
+  ["man", "woman", "boy", "girl"],
+  ["man", "woman", "girl"],
+  ["man", "woman", "boy"],
+  ["man", "woman", "girl", "boy"],
+  ["man", "woman", "boy", "boy"],
+  ["man", "woman", "girl", "girl"],
+  ["man", "woman", "boy", "girl"],
+  ["man", "woman", "girl", "grandma"],
+  ["grandpa", "grandma"],
+  ["woman", "girl", "boy"],
+  ["man", "boy"],
+  ["man", "woman"],
+];
+const SKINS = [0xf6d3a6, 0xf1c7a0, 0xe8b98a, 0xe0ac7e, 0xc68a5b, 0x8d5a3b, 0x5e3b28];
+const HAIRS = [0x2b2118, 0x5a3a22, 0x8a5a3c, 0xe0b040, 0xb5523b];
+const SHIRTS = [0x4aa8ff, 0xff5d8f, 0x3fb950, 0xffc93c, 0xc77dff, 0xff8a1f, 0x6fd3b0, 0xf7b6c8, 0xd8382c, 0x2f74d0];
+const PANTS = [0x3c4652, 0x2f3b52, 0x6b4a2b, 0x4a4f57];
+const DOGS: [number, number][] = [[0xc98a3e, 0xf3e6c8], [0x3a3f47, 0xffffff], [0xf3e6c8, 0x9a6a3c]];
+
+interface Resident {
+  kind: Kind;
+  model: Model;
 }
 
-function residentMesh(kind: Kind, i: number, k: number): THREE.Mesh {
-  const look = LOOKS[(i * 3 + k) % LOOKS.length];
-  const elder = ELDER_LOOKS[(i + k) % ELDER_LOOKS.length];
-  const model =
-    kind === "child" ? M.person(look, true)
-    : kind === "elder" ? M.elder(elder)
-    : kind === "wheel" ? M.wheelchair(LOOKS[(i * 5 + k + 3) % LOOKS.length])
-    : kind === "dog" ? M.dog(...DOGS[i % DOGS.length])
-    : M.person(look);
-  return model.mesh(M.WorkerCell, [0, 0, 0.5]);
+function rng(seed: number): () => number {
+  let s = (seed * 9301 + 49297) % 233280 || 1;
+  return () => ((s = (s * 16807) % 2147483647) / 2147483647);
+}
+
+function household(who: Who[], r: () => number): Resident[] {
+  const skin = SKINS[Math.floor(r() * SKINS.length)];
+  const hair = HAIRS[Math.floor(r() * HAIRS.length)];
+  const scarf = r() < 0.12; // mum wears a headscarf
+  const wheel = r() < 0.12 ? Math.floor(r() * who.length) : -1; // someone uses a wheelchair
+  return who.map((w, k) => {
+    const look: M.Look = {
+      skin,
+      hair: w === "grandpa" || w === "grandma" ? (r() < 0.5 ? 0xe8e8e8 : 0xcfcfcf) : hair,
+      shirt: SHIRTS[Math.floor(r() * SHIRTS.length)],
+      pants: PANTS[Math.floor(r() * PANTS.length)],
+      long: w === "woman" || w === "girl" || w === "grandma",
+      dress: (w === "girl" && r() < 0.6) || (w === "woman" && r() < 0.4) || (w === "grandma" && r() < 0.6),
+      scarf: w === "woman" && scarf ? SHIRTS[(k + 3) % SHIRTS.length] : undefined,
+    };
+    const grown = w !== "boy" && w !== "girl";
+    if (k === wheel && grown) return { kind: "wheel", model: M.wheelchair({ ...look, dress: false }) };
+    if (w === "grandpa" || w === "grandma") return { kind: "elder", model: M.elder(look) };
+    if (!grown) return { kind: "child", model: M.person(look, true) };
+    return { kind: "adult", model: M.person(look) };
+  });
+}
+
+/** Who lives in (or is about) a building: its households, up to about seven people, and maybe a dog. */
+function residents(hood: number, i: number, homes: number, playground = false): Resident[] {
+  const r = rng(hood * 100 + i * 7 + 3);
+  const pick = () => HOUSEHOLDS[Math.floor(r() * HOUSEHOLDS.length)];
+  let people: Resident[] = [];
+  if (playground) {
+    // Two families out to play.
+    people = [...household(["man", "woman", "girl", "boy"], r), ...household(["woman", "boy", "girl"], r)];
+  } else if (homes === 0) {
+    // A shop or a station: a couple of grown-ups about.
+    people = household(["man", "woman"], r);
+  } else {
+    for (let h = 0; h < homes; h++) {
+      const next = household(h === 0 ? pick() : pick(), r);
+      if (h > 0 && people.length + next.length > 7) break;
+      people.push(...next);
+    }
+  }
+  if (homes > 0 && r() < 0.5) people.push({ kind: "dog", model: M.dog(...DOGS[Math.floor(r() * DOGS.length)]) });
+  return people;
 }
 
 const SPEED: Record<Kind, number> = { adult: 0.8, child: 1.1, elder: 0.45, wheel: 0.9, dog: 1.4 };
@@ -705,9 +745,9 @@ export function createTown(
     }
 
     // Who lives here.
-    residents(l.i, bp.homes, bp.kind === "playground").forEach((kind, k) => {
-      const mesh = residentMesh(kind, l.i, k);
-      const pos = new THREE.Vector2(l.x - 1.2 + k * 0.45, l.front + 0.45);
+    residents(hood, l.i, bp.homes, bp.kind === "playground").forEach(({ kind, model }, k) => {
+      const mesh = model.mesh(M.WorkerCell, [0, 0, 0.5]);
+      const pos = new THREE.Vector2(l.x - 1.6 + k * 0.45, l.front + 1.0 + (k % 2) * 0.3);
       mesh.position.set(pos.x, 0, pos.y);
       scene.add(mesh);
       l.people.push({ mesh, pos, route: [], wait: 0.5 + k * 1.1, speed: SPEED[kind], phase: k * 2, wave: 0, waveCooldown: 0, lot: l, inside: true, kind });

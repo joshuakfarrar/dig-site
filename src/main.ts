@@ -143,9 +143,12 @@ document.addEventListener("visibilitychange", () => {
   last = performance.now();
 });
 
-document.getElementById("mute")!.addEventListener("click", (e) => {
+// The sound button steps through loud, medium, quiet and off; its waves show which.
+const soundButton = document.getElementById("mute")!;
+soundButton.dataset.level = String(Audio.volume());
+soundButton.addEventListener("click", () => {
   Audio.unlock();
-  (e.currentTarget as HTMLElement).classList.toggle("off", Audio.toggleMute());
+  soundButton.dataset.level = String(Audio.nextVolume());
 });
 addEventListener("pointerdown", () => Audio.unlock());
 
