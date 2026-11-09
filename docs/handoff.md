@@ -235,6 +235,10 @@ Estimated at adult pace from distances, speeds and animation times, about 1 s of
   - When you drive to a playground that's already built, everyone is already playing. When it's just been built, they run in through the gate.
   - Children swing, go down the slide two or three times in a row, ride the roundabout or dig in the sandpit; grown-ups sit on the bench or stand watching. Children are on the equipment about 70% of the time.
   - One child per swing, one on the slide at a time, and one grown-up at each end of the bench.
+  - **The swings and roundabout move.** In town the play set is built `bare` (`M.playSet(w, d, true)`), and the swings and roundabout disc are added as separate pieces (`M.playSwing`, `M.playRoundabout`, placed by `M.playParts`). `updatePlay` moves them:
+    - A ridden swing works up to about 24 degrees and settles before the child gets off; an empty one swings on a little and comes to rest.
+    - The roundabout gets going when someone's on it and slows to a stop when they're not. Riders sit between the handlebars and go round with it.
+  - The crane still lifts in the whole play set as one piece.
   - It has no picket fence, mailbox, hedges, trees or garden things (its rainbow fence is the fence). Trees either side looked crowded next to the neighbours' garden trees.
 - **One hedge between neighbouring gardens**, on the boundary, planted by whichever lot is built first. Before, each lot planted its own, so there were two rows.
 - **No garden sheds:** squeezed in beside a house they read as an odd box. `M.shed` has been removed.

@@ -1261,10 +1261,39 @@ function playFence(len: number, gate: boolean): Model {
 }
 
 /**
+ * One swing: its two chains and the seat, hanging from the bar. The pivot (cell 0, 0, 0, built with
+ * pivot [0.5, 0, 0.5]) is where the chains meet the bar, so it swings by turning about z.
+ */
+export function playSwing(): Model {
+  const m = new Model();
+  for (let y = -10; y < 0; y++) m.set(0, y, -1, C.Steel).set(0, y, 1, C.Steel);
+  return m.box(-1, -11, -1, 3, 1, 3, 0x3a3f47);
+}
+
+/** The roundabout's turning part: the rainbow disc, its post and the handlebars. Turns about y. */
+export function playRoundabout(): Model {
+  const m = new Model();
+  for (let x = -5; x <= 5; x++)
+    for (let z = -5; z <= 5; z++) {
+      const dd = Math.hypot(x, z);
+      if (dd <= 5) m.set(x, 1, z, Rainbow[(Math.floor((Math.atan2(z, x) + Math.PI) / (Math.PI / 2.5))) % Rainbow.length]);
+    }
+  return m.box(0, 2, 0, 1, 4, 1, C.Steel).box(-3, 5, 0, 7, 1, 1, C.Steel).box(0, 5, -3, 1, 1, 7, C.Steel);
+}
+
+/** Where the moving parts go on a `w` x `d` play set, in cells: each swing's pivot, and the roundabout's middle. */
+export function playParts(w: number, d: number): { swings: [number, number, number][]; roundabout: [number, number, number] } {
+  const W = w * 10, D = d * 10;
+  const cz = Math.round(D / 2) - 4;
+  return { swings: [[8, 15, cz - 3], [8, 15, cz + 3]], roundabout: [W - 9, 0, cz] };
+}
+
+/**
  * Everything to play on, as one piece the crane lifts in: a slide tower with a little roof and a
  * yellow slide, swings, a roundabout and a sandpit. Pivot it at [W/2, 0, D/2] for a `w` x `d` lot.
+ * `bare` leaves out the swings' seats and the roundabout's disc, for the town to add as moving parts.
  */
-export function playSet(w: number, d: number): Model {
+export function playSet(w: number, d: number, bare = false): Model {
   const m = new Model();
   const W = w * 10, D = d * 10;
   const cx = Math.round(W / 2), cz = Math.round(D / 2) - 4;
@@ -1283,18 +1312,12 @@ export function playSet(w: number, d: number): Model {
   const sx = 4;
   for (const z of [cz - 7, cz + 7]) for (let y = 0; y < 15; y++) m.set(sx + Math.floor(y / 5), y, z, 0xff5d8f).set(sx + 8 - Math.floor(y / 5), y, z, 0xff5d8f);
   m.box(sx + 3, 15, cz - 7, 3, 1, 15, 0xff5d8f);
-  for (const z of [cz - 3, cz + 3]) {
-    for (let y = 5; y < 15; y++) m.set(sx + 4, y, z - 1, C.Steel).set(sx + 4, y, z + 1, C.Steel);
-    m.box(sx + 3, 4, z - 1, 3, 1, 3, 0x3a3f47);
-  }
+  const parts = playParts(w, d);
+  if (!bare) for (const [x, y, z] of parts.swings) m.stamp(playSwing(), x, y, z);
   // A roundabout on the right.
-  const rx = W - 9, rz = cz;
-  for (let x = -5; x <= 5; x++)
-    for (let z = -5; z <= 5; z++) {
-      const dd = Math.hypot(x, z);
-      if (dd <= 5) m.set(rx + x, 1, rz + z, Rainbow[(Math.floor((Math.atan2(z, x) + Math.PI) / (Math.PI / 2.5))) % Rainbow.length]);
-    }
-  m.box(rx, 0, rz, 1, 1, 1, C.Steel).box(rx, 2, rz, 1, 4, 1, C.Steel).box(rx - 3, 5, rz, 7, 1, 1, C.Steel).box(rx, 5, rz - 3, 1, 1, 7, C.Steel);
+  const [rx, , rz] = parts.roundabout;
+  m.box(rx, 0, rz, 1, 1, 1, C.Steel);
+  if (!bare) m.stamp(playRoundabout(), rx, 0, rz);
   // A sandpit at the front left, with a bucket and spade.
   const px = 6, pz = D - 12;
   m.box(px, 0, pz, 12, 2, 9, 0x9a6a3c).box(px + 1, 0, pz + 1, 10, 2, 7, 0xf0d9a0);

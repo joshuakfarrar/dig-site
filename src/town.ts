@@ -349,6 +349,17 @@ interface Lot {
   ring: THREE.Mesh | null;
   mini: THREE.Group | null;
   people: Person[];
+  play?: PlayKit; // a built playground's moving parts
+}
+
+/** A playground's swings and roundabout, which move with whoever's on them. */
+interface PlayKit {
+  swings: THREE.Object3D[];
+  swingAngle: number[];
+  swingSpeed: number[];
+  roundabout: THREE.Object3D;
+  turned: number; // how far round the roundabout has gone (radians)
+  spinRate: number;
 }
 
 interface Person {
@@ -842,13 +853,28 @@ export function createTown(
     lawn.receiveShadow = true;
     l.group.add(lawn);
 
-    const house = B.assemble(bp);
+    // A playground's swings and roundabout move, so they're separate pieces here.
+    const play = bp.kind === "playground";
+    const house = B.assemble(play ? { ...bp, roof: { ...bp.roof, model: () => M.playSet(bp.w, bp.d, true) } } : bp);
     house.position.set(l.x, 0, l.front - bp.d / 2);
     l.group.add(house);
+    if (play) {
+      const parts = M.playParts(bp.w, bp.d);
+      const toLot = ([x, y, z]: [number, number, number]) => new THREE.Vector3((x + 0.5 - bp.w * 5) * Cell, B.SLAB_TOP + y * Cell, (z + 0.5 - bp.d * 5) * Cell);
+      const swings = parts.swings.map((p) => {
+        const s = M.playSwing().mesh(Cell, [0.5, 0, 0.5]);
+        s.position.copy(toLot(p));
+        house.add(s);
+        return s;
+      });
+      const roundabout = M.playRoundabout().mesh(Cell, [0.5, 0, 0.5]);
+      roundabout.position.copy(toLot(parts.roundabout));
+      house.add(roundabout);
+      l.play = { swings, swingAngle: swings.map(() => 0), swingSpeed: swings.map(() => 0), roundabout, turned: 0, spinRate: 0 };
+    }
 
     // The fence along the front, with a gap for the path, and a mailbox by the gate. (A playground
     // has its own rainbow fence and no post: it's open to the street.)
-    const play = bp.kind === "playground";
     if (!play) {
       const pick = M.picket();
       for (let x = -3.7; x < 3.7 - 0.01; x += 1) {
@@ -987,9 +1013,11 @@ export function createTown(
     floor: B.SLAB_TOP,
     outside: [-0.5, 2.5], inside: [-0.5, 1.7],
     left: [-0.6, 0.55], right: [[0.5, 1.65], [0.9, 1.0]],
-    swings: [[-1.65, -0.65], [-1.65, -0.05]],
+    swings: [[-1.65, -0.65], [-1.65, -0.05]], // under each swing's pivot, 1.5 up
+    swingLen: 1.15, // pivot to a sitting child's feet
     ladder: [[-0.9, -1.25], [0, -1.2]],
-    spin: [1.6, -0.4],
+    spin: [1.65, -0.35],
+    spinR: 0.36, // how far out a child sits on the roundabout
     sand: [-1.3, 1.25],
     bench: [[1.0, 1.5], [1.6, 1.5]],
     watch: [[-0.9, 0.25], [1.0, 0.65], [0.6, 1.75], [-0.2, -1.55]],
@@ -1028,8 +1056,8 @@ export function createTown(
       } else if (what === "spin") {
         // A second rider gets on across from the first.
         const a0 = l.people.some((o) => o !== p && (o.act?.kind === "spin" || pending.get(o)?.kind === "spin")) ? 0 : Math.PI;
-        p.route.push(at(PLAY.right[0]), at(PLAY.right[1]), at([PLAY.spin[0] + Math.cos(a0) * 0.32, PLAY.spin[1]]));
-        act = { kind: "spin", t: 0, dur: 7 + Math.random() * 4, at: a0 };
+        p.route.push(at(PLAY.right[0]), at(PLAY.right[1]), at([PLAY.spin[0] + Math.cos(a0) * PLAY.spinR, PLAY.spin[1]]));
+        act = { kind: "spin", t: 0, dur: 7 + Math.random() * 4, at: -1 }; // `at`: where on the disc, set on getting on
       } else {
         p.route.push(at(PLAY.left), at(PLAY.sand));
         act = { kind: "sand", t: 0, dur: 9 + Math.random() * 6, at: 0 };
@@ -1075,13 +1103,13 @@ export function createTown(
     const face = (dx: number, dz: number) => (p.mesh.rotation.y = Math.atan2(-dz, dx));
     p.mesh.rotation.z = 0;
     if (a.kind === "swing") {
-      // Hanging from the bar, swinging along x; gently, so they stay with the seat.
+      // On the seat, going with the swing.
       const s = PLAY.swings[a.at];
-      const th = 0.2 * Math.sin(a.t * 2.4) * Math.min(1, a.t);
-      p.pos.set(cx + s[0] + Math.sin(th) * 1.15, cz + s[1]);
+      const th = l.play?.swingAngle[a.at] ?? 0;
+      p.pos.set(cx + s[0] + Math.sin(th) * PLAY.swingLen, cz + s[1]);
       face(1, 0);
       p.mesh.rotation.z = th;
-      return y0 + 1.5 - Math.cos(th) * 1.15;
+      return y0 + 1.5 - Math.cos(th) * PLAY.swingLen;
     }
     if (a.kind === "slide") {
       // Up the ladder at the back, across the deck, down the slide to the front, and off.
@@ -1105,9 +1133,19 @@ export function createTown(
       return y0 + 0.1 * (1 - k);
     }
     if (a.kind === "spin") {
-      // Round and round on the roundabout.
-      const ang = a.at + a.t * 2.2;
-      p.pos.set(cx + PLAY.spin[0] + Math.cos(ang) * 0.32, cz + PLAY.spin[1] + Math.sin(ang) * 0.32);
+      // Sitting on the disc between two handlebars, going round with it.
+      const k = l.play;
+      const turned = k?.turned ?? 0;
+      if (a.at < 0) {
+        // Getting on: the gap between handlebars nearest where they're standing, and not taken.
+        const here = Math.atan2(p.pos.y - (cz + PLAY.spin[1]), p.pos.x - (cx + PLAY.spin[0])) - turned;
+        const gaps = [0, 1, 2, 3].map((g) => Math.PI / 4 + (g * Math.PI) / 2);
+        const free = gaps.filter((g) => !l.people.some((o) => o !== p && o.act?.kind === "spin" && Math.abs(o.act.at - g) < 0.1));
+        const near = (g: number) => Math.abs(wrap(g - here));
+        a.at = (free.length ? free : gaps).reduce((b, g) => (near(g) < near(b) ? g : b));
+      }
+      const ang = a.at + turned;
+      p.pos.set(cx + PLAY.spin[0] + Math.cos(ang) * PLAY.spinR, cz + PLAY.spin[1] + Math.sin(ang) * PLAY.spinR);
       face(-Math.sin(ang), Math.cos(ang));
       return y0 + 0.2;
     }
@@ -1137,8 +1175,38 @@ export function createTown(
     p.inside = !out;
   }
 
+  /**
+   * A playground's swings and roundabout. A swing with a child on it swings up to a good height and
+   * settles before they get off; an empty one swings on a little and comes to rest. The roundabout
+   * gets going when someone's on it and slows to a stop when they're not.
+   */
+  function updatePlay(l: Lot, dt: number): void {
+    const k = l.play;
+    if (!k) return;
+    const w = Math.sqrt(9.8 / PLAY.swingLen);
+    k.swings.forEach((s, i) => {
+      const rider = l.people.find((o) => o.act?.kind === "swing" && o.act.at === i)?.act;
+      if (rider) {
+        const t = rider.t + dt;
+        const amp = 0.42 * Math.max(0, Math.min(1, t / 2, (rider.dur - t) / 1.5));
+        const th = amp * Math.sin(w * t);
+        k.swingSpeed[i] = (th - k.swingAngle[i]) / Math.max(dt, 1e-3);
+        k.swingAngle[i] = th;
+      } else {
+        k.swingSpeed[i] += (-w * w * Math.sin(k.swingAngle[i]) - 0.9 * k.swingSpeed[i]) * dt;
+        k.swingAngle[i] += k.swingSpeed[i] * dt;
+      }
+      s.rotation.z = k.swingAngle[i];
+    });
+    const riding = l.people.some((o) => o.act?.kind === "spin" && o.act.at >= 0);
+    k.spinRate += ((riding ? 2.0 : 0) - k.spinRate) * (1 - Math.exp(-(riding ? 1.2 : 0.6) * dt));
+    k.turned += k.spinRate * dt;
+    k.roundabout.rotation.y = -k.turned;
+  }
+
   let helloStep = 0;
   function updatePeople(dt: number, truck: THREE.Vector2): void {
+    for (const l of lots) updatePlay(l, dt);
     for (const l of lots)
       for (const p of l.people) {
         p.phase += dt;
