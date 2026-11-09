@@ -97,7 +97,7 @@ Roughly 3 to 5 times today's content.
   - [x] keeping the screen awake while playing, full screen, landscape
   - [x] Android's back button never leaves play; it bounces the hold-to-confirm button
   - [x] iOS audio-session handling, so a silent switch or a call is respected ("ambient", natively and through WebKit's Audio Session API)
-- [ ] **iOS builds:** for now, the user's 2018 Intel MacBook Pro (macOS Sequoia, Xcode 26). It can upload until Apple requires Xcode 27, likely around April 2027. After that, an Apple silicon Mac or a cloud macOS build (Codemagic or GitHub Actions) producing signed builds for TestFlight.
+- [ ] **iOS builds:** for now, the user's 2018 Intel MacBook Pro (macOS Sequoia 15.8.3, Xcode 26.3, the last Xcode that runs on Sequoia). It can upload until Apple requires Xcode 27, likely around April 2027. After that, an Apple silicon Mac or a cloud macOS build (Codemagic or GitHub Actions) producing signed builds for TestFlight.
 - [ ] **Test on low-end hardware:** a cheap Android tablet, a Fire tablet and an older iPad.
 
 ## Phase 5: Purchase, privacy and store paperwork (1–2 weeks, start early)

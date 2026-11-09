@@ -23,14 +23,18 @@ The same game, wrapped for iPhone and iPad with Capacitor, like the Android app.
 
 ## The Mac (a 2018 Intel MacBook Pro works for now)
 
-- **Versions:** the 2018 MacBook Pro tops out at **macOS Sequoia 15**. Xcode 26 runs on Sequoia 15.6 or later, and Apple has accepted uploads built with Xcode 26 and the iOS 26 SDK since April 28, 2026.
+- **Versions:** the 2018 MacBook Pro tops out at **macOS Sequoia 15** (it's on 15.8.3). Apple has accepted uploads built with Xcode 26 and the iOS 26 SDK since April 28, 2026.
+- **The last Xcode for this Mac is 26.3.** Xcode 26.0 to 26.3 need Sequoia 15.6 or later. Xcode 26.4 and later need macOS Tahoe 26.2, and Xcode 27 needs Tahoe and Apple silicon. A "requires macOS 26" message means a version that's too new.
 - **The catch:** Xcode 27 needs macOS Tahoe and an Apple silicon Mac. Apple usually raises the upload requirement each spring, so expect this Mac to stop being able to upload around **April 2027**.
 - **After that:** an Apple silicon Mac, or a cloud Mac build (Codemagic or GitHub Actions; see the roadmap).
 
 ## First build, step by step
 
 1. **Update the Mac** to the latest macOS Sequoia (15.6 or later) in System Settings > General > Software Update.
-2. **Install Xcode:** the newest Xcode 26 that installs on Sequoia, from the App Store or developer.apple.com. Open it once to let it install its parts, including an iOS Simulator.
+2. **Install Xcode 26.3:**
+   1. Not from the App Store, which only offers the newest Xcode. Go to developer.apple.com/download/all, sign in with a free Apple ID, and search for "Xcode 26.3".
+   2. Download the `.xip`, about 3 GB. Double-click it to expand it, which takes a while, and drag Xcode into Applications.
+   3. Open it once to let it install its parts, including an iOS Simulator.
 3. **Install Node.js** (the LTS version from nodejs.org).
 4. **Get the project onto the Mac:** a private GitHub repo and `git clone`, or a copy of the folder.
 5. **Build the web game and sync it into the iOS project:** in the project folder, run each in turn.
