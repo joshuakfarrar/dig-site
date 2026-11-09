@@ -555,14 +555,14 @@ export class Crane extends Machine {
     const hookY = at.y + load.hang;
     const aim = this.aimAt(at, hookY + 0.3);
     this.seq = new Sequence(this.pose, [
-      { dur: 0.6, to: (p) => ({ ...p, yaw: aim.yaw, pitch: aim.pitch, ext: aim.ext, cable: 0.5 }) },
-      { dur: 0.45, to: (p) => ({ ...p, cable: Math.max(0.3, aim.tipY - hookY) }), done: () => {
+      { dur: 0.45, to: (p) => ({ ...p, yaw: aim.yaw, pitch: aim.pitch, ext: aim.ext, cable: 0.5 }) },
+      { dur: 0.32, to: (p) => ({ ...p, cable: Math.max(0.3, aim.tipY - hookY) }), done: () => {
         this.load = load;
         this.loadFrom = load.mesh.quaternion.clone();
         hitched();
       } },
-      { dur: 0.45, to: (p) => ({ ...p, cable: 0.6, hold: 1 }) },
-      { dur: 0.55, to: () => this.carryPose(load), done },
+      { dur: 0.32, to: (p) => ({ ...p, cable: 0.6, hold: 1 }) },
+      { dur: 0.42, to: () => this.carryPose(load), done },
     ], mixCrane);
   }
 
@@ -599,17 +599,17 @@ export class Crane extends Machine {
     const aim = this.aimAt(place, hookY + 0.9);
     const start = this.load.mesh.quaternion.clone();
     this.seq = new Sequence(this.pose, [
-      { dur: 0.75, to: (p) => ({ ...p, yaw: aim.yaw, pitch: aim.pitch, ext: aim.ext, cable: Math.max(0.3, aim.tipY - hookY - 0.6) }), done: () => {
+      { dur: 0.55, to: (p) => ({ ...p, yaw: aim.yaw, pitch: aim.pitch, ext: aim.ext, cable: Math.max(0.3, aim.tipY - hookY - 0.6) }), done: () => {
         this.loadAt = place.clone();
       } },
-      { dur: 0.5, to: (p) => ({ ...p, cable: Math.max(0.3, aim.tipY - hookY) }), done: () => {
+      { dur: 0.38, to: (p) => ({ ...p, cable: Math.max(0.3, aim.tipY - hookY) }), done: () => {
         this.load = null;
         this.loadAt = null;
         this.loadTo = null;
         landed();
       } },
-      { dur: 0.3, to: (p) => ({ ...p, cable: 0.4 }) },
-      { dur: 0.55, to: () => ({ ...Crane.REST }), done },
+      { dur: 0.22, to: (p) => ({ ...p, cable: 0.4 }) },
+      { dur: 0.4, to: () => ({ ...Crane.REST }), done },
     ], mixCrane);
     this.loadFrom = start;
     this.loadTo = facing.clone();
@@ -646,7 +646,7 @@ export class Crane extends Machine {
       const from = this.loadFrom ?? L.rest;
       if (this.loadTo) {
         // Turning to fit as it swings over.
-        this.turnT = Math.min(1, this.turnT + dt / 0.75);
+        this.turnT = Math.min(1, this.turnT + dt / 0.55);
         L.mesh.quaternion.copy(from).slerp(this.loadTo, ease(this.turnT));
       } else L.mesh.quaternion.copy(from).slerp(carry, Math.min(1, this.pose.hold));
       // Slings from the hook to two points on the load's top.

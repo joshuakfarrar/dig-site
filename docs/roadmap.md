@@ -70,7 +70,7 @@ Roughly 3 to 5 times today's content.
   - [x] café, bakery (flats over it), school, library, police station
   - [x] playground (Market Square, lot 6): a soft green surface, a rainbow fence with a way in, then the crane lifts in the whole play set
   - [x] clock tower (the town hall) to finish Market Square; lighthouse to finish the Harbour
-  - [x] a tall tower the crane builds floor by floor (the lighthouse: three red and white storeys and a lantern)
+  - [x] a tall tower the crane builds floor by floor (the lighthouse: three red and white storeys and a lantern; storeys above the ground floor arrive as one-lift modules)
 - [x] **New machines that fit the same controls:**
   - [x] **Dump truck** (Market Square, half the Harbour): stop by a heap and press Work to load it (two heaps fill it), then stop by the skip at the gate. It backs up to the skip and tips.
   - [x] **Forklift:** in the yard, it loads the truck. When you press Work at the pile, it picks up the pallet and crate, scoots over and lifts them into the bed (about 1.5 s).

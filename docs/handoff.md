@@ -122,7 +122,7 @@ Phase 3 is complete apart from the "about an hour of play" check, which needs a 
 
 ## Playtest fixes (2026-11-09)
 
-- **Floors between storeys:** the crane lifts a floor deck (`M.floorDeck`, `B.floorAt`) after each storey but the top one. Floor decks wait on a second pallet (`site.floorPalletAt`), and `assemble` includes them.
+- **Floors between storeys:** this has been replaced by storey modules; see "Trimming build time" below. `assemble` still includes the floors.
 - **Carrying big loads:** `Crane.carryPose(load)` carries roofs and floors out behind the crane on a long boom and cable, side-on (`carryYaw` pi/2). Clearance comes from the load's `reach` and its `edge` height. The fire station roof (tower at its edge) and wall panels keep the old high carry.
 - **Front walk:** `B.frontWalk` paves a walk from every door's ramp to the path, with flowers along it and pots beside each ramp. It's in `assemble`, and on site it appears with the ramps.
 - **Residents are households** (`HOUSEHOLDS` in `town.ts`):
@@ -181,6 +181,23 @@ The order is `dig, pour, clean, walls, roof, path, sweep, done`. The user wants 
 
 - **Camera:** near the building it holds back (the focus z stays at most 2.6), and further towards the gate it follows (`2.6 + (z - 4.2)`), so tipping at the skip is framed in the middle.
 - **Off the pad before hopping:** if the machine you're in is on the building's pad and the arrow wants another, `padExit()` puts a ring just off the nearest edge. Hop is disabled until you drive there. This doesn't apply during digging.
+
+## Trimming build time (2026-11-09)
+
+Estimated at adult pace from distances, speeds and animation times, about 1 s of thinking per action. Children are probably 1.5 to 2 times slower.
+
+| Building | Before | After | Change |
+|---|---|---|---|
+| Cottage | ~3.2 min | ~3 min | |
+| Terrace | ~4.5 min | ~3.4 min | 5 lifts, was 9 |
+| Flats / lighthouse | ~5.5–6 min | ~3.8–4.2 min | 6 lifts, was 14 |
+
+- **Storey modules** (`buildModule` in `build.ts`):
+  - Every storey above the ground floor is one lift: its floor deck plus its four wall panels, already joined, with the pivot at the middle of the floor's underside.
+  - Modules wait stacked on `site.floorPalletAt`, first on top. They're carried behind the crane (`reach`, `edge: MODULE_H`) and set down facing front (identity).
+  - Only the ground floor's four panels go on the trailer. `repaintWalls` rebuilds the modules too.
+- **Crane:** pick-up takes about 1.5 s (was 2.05) and set-down about 1.55 s (was 2.1).
+- **Sweeping:** six sand drifts, two of them on the path by the gate.
 
 ## Design decisions the user made
 - **Diversity includes ordinary families:** the user wants a mix that reads as real streets, mostly cis/het families with children, plus the other kinds of households, not an unusual mix everywhere.

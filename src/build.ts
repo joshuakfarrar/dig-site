@@ -87,12 +87,13 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
     new THREE.Matrix4().makeBasis(new THREE.Vector3(0, 0, 1), new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 1, 0)),
   );
 
-  // The pile on the trailer: the first panel to go up is on top. An awning sticks up out of its
-  // panel, so that one takes more room in the pile.
-  const wallLoads: Load[] = new Array(site.slots.length);
+  const perStorey = 4; // wall panels to a storey: back, right, left, front
+  // The pile on the trailer: the ground floor's four panels, the first to go up on top. An awning
+  // sticks up out of its panel, so that one takes more room in the pile.
+  const wallLoads: Load[] = new Array(perStorey);
   {
     let y = site.deckTop + 0.1;
-    for (let k = site.slots.length - 1; k >= 0; k--) {
+    for (let k = perStorey - 1; k >= 0; k--) {
       const s = site.slots[k];
       const mesh = B.panelMesh(s);
       mesh.position.set(site.trailerAt.x, y, site.trailerAt.z + (s.side === "back" || s.side === "front" ? 0 : 0.2));
@@ -103,27 +104,52 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
     }
   }
 
-  // The floors between storeys, stacked on their own pallet: the first one to go in on top.
-  const floorCount = bp.storeys - 1;
-  const floorLoads: Load[] = [];
-  for (let s = 1; s <= floorCount; s++) {
-    const mesh = B.floorMesh(bp);
-    mesh.position.set(site.floorPalletAt.x, site.palletTop + (floorCount - s) * 0.12, site.floorPalletAt.z);
-    scene.add(mesh);
-    floorLoads.push({
-      mesh, hang: 1.0, slings: Math.min(1.6, (bp.w - 0.4) * 0.36), top: 0.05, rest: new THREE.Quaternion(),
-      carryYaw: Math.PI / 2, reach: (bp.d - 0.4) / 2, edge: 0.1,
-    });
-  }
-  let floorsUp = 0;
-  const ghostFloors = floorLoads.map((_, i) => {
-    const g = ghost(B.floorMesh(bp));
-    g.position.copy(B.floorAt(bp, i + 1)).add(new THREE.Vector3(F.cx, 0, F.cz));
-    scene.add(g);
+  // Every storey above the ground floor comes as a module: its floor and its four walls already
+  // joined, lifted on in one go (the way modular homes are built). They wait stacked on their own
+  // pallet, the first to go up on top. Far fewer lifts on a tall building, same look.
+  const MODULE_H = 0.1 + B.WALL_H;
+  const moduleCount = bp.storeys - 1;
+  const moduleBase = (s: number) => B.floorAt(bp, s).y;
+  /** Storey `s`'s module: pivot at the middle of its floor's underside. */
+  function buildModule(s: number): THREE.Group {
+    const g = new THREE.Group();
+    g.add(B.floorMesh(bp));
+    for (let k = s * perStorey; k < (s + 1) * perStorey; k++) {
+      const sl = site.slots[k];
+      const m = B.panelMesh(sl);
+      m.position.set(sl.centre.x - F.cx, sl.centre.y - moduleBase(s), sl.centre.z - F.cz);
+      m.rotation.y = sl.yaw;
+      g.add(m);
+    }
     return g;
-  });
-  /** A floor goes in next: this storey's walls are all up and there's another storey to come. */
-  const floorNext = () => stage === "walls" && floorsUp < floorCount && wallsUp === (floorsUp + 1) * perStorey;
+  }
+  const ghostOf = (g: THREE.Group) => {
+    const out = new THREE.Group();
+    for (const c of g.children) {
+      const gh = ghost(c as THREE.Mesh);
+      gh.position.copy(c.position);
+      gh.rotation.copy(c.rotation);
+      out.add(gh);
+    }
+    return out;
+  };
+  const moduleLoads: Load[] = [];
+  const ghostModules: THREE.Group[] = [];
+  for (let s = 1; s <= moduleCount; s++) {
+    const mesh = buildModule(s);
+    mesh.position.set(site.floorPalletAt.x, site.palletTop + (moduleCount - s) * (MODULE_H + 0.03), site.floorPalletAt.z);
+    scene.add(mesh);
+    moduleLoads.push({
+      mesh, hang: MODULE_H + 0.75, slings: Math.min(1.6, bp.w * 0.36), top: MODULE_H, rest: new THREE.Quaternion(),
+      carryYaw: Math.PI / 2, reach: bp.d / 2 + 0.1, edge: MODULE_H,
+    });
+    const gh = ghostOf(mesh);
+    gh.position.set(F.cx, moduleBase(s), F.cz);
+    scene.add(gh);
+    ghostModules.push(gh);
+  }
+  /** Which module goes up next, if the ground floor's walls are all up. */
+  const moduleNext = () => (stage === "walls" && wallsUp >= perStorey ? wallsUp / perStorey - 1 : -1);
 
   let roofMesh = B.roofMesh(bp);
   roofMesh.position.set(site.palletAt.x, site.palletTop, site.palletAt.z);
@@ -151,7 +177,7 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
   scene.add(flagMesh);
 
   // Ghosts: the next part, see-through, where it'll go.
-  const ghostWalls = site.slots.map((s) => {
+  const ghostWalls = site.slots.slice(0, perStorey).map((s) => {
     const g = ghost(B.panelMesh(s));
     g.position.copy(s.centre);
     g.rotation.y = s.yaw;
@@ -174,7 +200,6 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
   let wallsUp = 0;
   let chimeStep = 0;
   let celebrate = -1;
-  const perStorey = 4;
 
   function progress(): void {
     const at = STAGES.indexOf(stage);
@@ -299,8 +324,23 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
   /** The panels on the trailer (and their see-through ghosts) in the picked paint. */
   function repaintWalls(): void {
     const styled = B.slots(B.recolour(bp, looks));
-    for (let k = wallsUp; k < site.slots.length; k++) {
-      site.slots[k].style = styled[k].style;
+    for (let k = 0; k < site.slots.length; k++) site.slots[k].style = styled[k].style;
+    moduleLoads.forEach((l, i) => {
+      if (l.mesh.parent !== scene) return; // already up
+      const old = l.mesh;
+      const mesh = buildModule(i + 1);
+      mesh.position.copy(old.position);
+      scene.remove(old);
+      scene.add(mesh);
+      pops.add(mesh);
+      l.mesh = mesh;
+      const gh = ghostOf(mesh);
+      gh.position.copy(ghostModules[i].position);
+      scene.remove(ghostModules[i]);
+      scene.add(gh);
+      ghostModules[i] = gh;
+    });
+    for (let k = wallsUp; k < perStorey; k++) {
       const old = wallLoads[k].mesh as THREE.Mesh;
       const mesh = B.panelMesh(site.slots[k]);
       mesh.position.copy(old.position);
@@ -312,6 +352,7 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
       wallLoads[k].mesh = mesh;
       ghostWalls[k].geometry = B.panelMesh(site.slots[k]).geometry;
     }
+    fx.confetti(site.floorPalletAt.clone().setY(2), moduleCount ? 20 : 0);
     Audio.sectionDone(3);
     fx.confetti(site.trailerAt.clone().setY(2), 30);
   }
@@ -366,19 +407,22 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
     else progress();
   }
 
-  function floorLanded(i: number): void {
-    const mesh = floorLoads[i].mesh;
-    mesh.position.copy(B.floorAt(bp, i + 1)).add(new THREE.Vector3(F.cx, 0, F.cz));
+  function moduleLanded(i: number): void {
+    const mesh = moduleLoads[i].mesh;
+    mesh.position.set(F.cx, moduleBase(i + 1), F.cz);
     mesh.quaternion.identity();
     scene.remove(mesh);
     building.add(mesh);
     pops.add(mesh);
-    ghostFloors[i].visible = false;
-    floorsUp++;
+    ghostModules[i].visible = false;
+    wallsUp += perStorey;
     Audio.thud();
-    Audio.chime(6);
-    fx.dustRect(F.cx, mesh.position.y + 0.1, F.cz, bp.w, bp.d, 1.5);
-    progress();
+    Audio.sectionDone(5);
+    fx.dustRect(F.cx, mesh.position.y + 0.1, F.cz, bp.w + 0.3, bp.d + 0.3, 2.5);
+    if (wallsUp === site.slots.length) {
+      setStage("roof");
+      pickRoof();
+    } else progress();
   }
 
   function roofLanded(): void {
@@ -796,13 +840,13 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
   function blowSand(): void {
     let seed = 5 + bp.w * 7 + bp.storeys;
     const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-    for (let k = 0; k < 9; k++) {
+    for (let k = 0; k < 6; k++) {
       const w = 10 + Math.floor(rnd() * 6), d = 8 + Math.floor(rnd() * 5);
       // In open ground: in front of the building, short of where the machines park, and a couple
       // on the path by the gate.
-      const byGate = k >= 7;
+      const byGate = k >= 4;
       const x = byGate ? -0.5 + rnd() : -6.5 + rnd() * 13;
-      const z = byGate ? 7.3 + (k - 7) * 0.9 : F.maxZ + 1 + rnd() * (4.3 - F.maxZ - 1);
+      const z = byGate ? 7.3 + (k - 4) * 0.9 : F.maxZ + 1 + rnd() * (4.3 - F.maxZ - 1);
       const mesh = M.sandPatch(w, d, k).mesh(Cell, [w / 2, 0, d / 2]);
       mesh.position.set(x, 0, z);
       mesh.scale.y = 0.5;
@@ -845,11 +889,11 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
 
   function craneJob(): Job {
     const k = wallsUp;
-    const floor = floorNext();
-    const fi = floorsUp;
-    const walls = stage === "walls" && !floor;
-    const load = floor ? floorLoads[fi] : walls ? wallLoads[k] : roofLoad;
-    if (floor) ghostFloors[fi].visible = true;
+    const mi = moduleNext();
+    const module = mi >= 0;
+    const walls = stage === "walls" && !module;
+    const load = module ? moduleLoads[mi] : walls ? wallLoads[k] : roofLoad;
+    if (module) ghostModules[mi].visible = true;
     else if (walls) ghostWalls.forEach((g, i) => (g.visible = i === k));
     else ghostRoof.visible = true;
     if (crane.busy()) return none(crane);
@@ -870,12 +914,14 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
       };
     }
     // Take it to its place.
-    const place = floor ? B.floorAt(bp, fi + 1).add(new THREE.Vector3(F.cx, 0, F.cz)) : walls ? site.slots[k].centre.clone() : ROOF_AT.clone();
+    const place = module ? new THREE.Vector3(F.cx, moduleBase(mi + 1), F.cz) : walls ? site.slots[k].centre.clone() : ROOF_AT.clone();
     const r = crane.reach(place);
     const facing = walls
       ? new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), site.slots[k].yaw)
+      : module
+      ? new THREE.Quaternion() // a module goes on just one way round: front to the front
       : (() => {
-          // A roof or a floor's the same either way round: turn it the shorter way.
+          // A roof's the same either way round: turn it the shorter way.
           const yaw = crane.heading + crane.pose.yaw;
           const q = Math.round(yaw / Math.PI) * Math.PI;
           return new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), q);
@@ -883,14 +929,14 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
     const ok = r <= REACH && outsideFootprint(crane) && crane.canReachOver(place, load.hang);
     return {
       machine: crane,
-      over: ok ? null : place.clone().setY(place.y + (walls ? 1 : floor ? 0.6 : bp.roof.height + 0.5)),
+      over: ok ? null : place.clone().setY(place.y + (walls ? 1 : module ? MODULE_H + 0.5 : bp.roof.height + 0.5)),
       spot: walls ? place.clone().setY(SLAB_TOP) : null,
       ring: 0.9,
       canWork: ok,
       work: () => {
         crane.speed = 0;
         clearArea(crane, nearFootprint);
-        if (floor) crane.setDown(place, facing, () => floorLanded(fi), () => {});
+        if (module) crane.setDown(place, facing, () => moduleLanded(mi), () => {});
         else if (walls) crane.setDown(place, facing, () => wallLanded(k), () => {});
         else crane.setDown(place, facing, () => roofLanded(), () => {});
       },
@@ -937,7 +983,7 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
     ghostDig.visible = false;
     ghostRoof.visible = false;
     ghostWalls.forEach((g) => (g.visible = false));
-    ghostFloors.forEach((g) => (g.visible = false));
+    ghostModules.forEach((g) => (g.visible = false));
     if (stage === "path" && !pathStarted) {
       pathStarted = true;
       clearArea(roller, onPath);
@@ -1046,7 +1092,8 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
     }
 
     pops.update(dt);
-    for (const g of [ghostRoof, ...ghostWalls, ...ghostFloors]) breathe(g, clock);
+    for (const g of [ghostRoof, ...ghostWalls]) breathe(g, clock);
+    for (const gm of ghostModules) for (const g of gm.children) breathe(g, clock);
     (ghostDig.material as THREE.MeshBasicMaterial).opacity = 0.18 + 0.14 * (0.5 + 0.5 * Math.sin(clock * 4));
 
     site.update(dt);
@@ -1097,7 +1144,7 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
       }
     }
     if (past("walls")) {
-      for (let k = 0; k < site.slots.length; k++) {
+      for (let k = 0; k < perStorey; k++) {
         const st = site.slots[k];
         const mesh = wallLoads[k].mesh;
         mesh.position.copy(st.centre);
@@ -1106,10 +1153,10 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
         if (st.box) site.boxes.push(st.box);
         wallsUp++;
       }
-      floorLoads.forEach((l, i) => {
-        l.mesh.position.copy(B.floorAt(bp, i + 1)).add(new THREE.Vector3(F.cx, 0, F.cz));
+      moduleLoads.forEach((l, i) => {
+        l.mesh.position.set(F.cx, moduleBase(i + 1), F.cz);
         building.add(l.mesh);
-        floorsUp++;
+        wallsUp += perStorey;
       });
     }
     if (past("roof")) {
