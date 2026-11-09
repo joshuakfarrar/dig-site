@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Dig Site</title>
+    <style>
+      html, body { margin: 0; height: 100%; overflow: hidden; background: #a9dcff; font-family: system-ui, sans-serif; }
+      #app canvas { display: block; }
+      /* The building's four parts, as pictures: done ones get a tick, the one now bounces. */
+      #progress { position: fixed; top: 14px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px;
+        padding: 8px 12px; border-radius: 40px; background: rgba(255,255,255,.72); box-shadow: 0 3px 10px rgba(0,0,0,.12); }
+      .step { position: relative; width: 52px; height: 52px; border-radius: 50%; background: #e9eef3; display: grid; place-items: center;
+        opacity: .55; transition: opacity .3s, background .3s; }
+      .step svg { width: 36px; height: 36px; }
+      .step.now { opacity: 1; background: #fff1d6; animation: bob 1.1s ease-in-out infinite; box-shadow: 0 0 0 3px #ff8a1f; }
+      .step.done { opacity: 1; background: #dff5e3; }
+      .step.done::after { content: ""; position: absolute; right: -4px; bottom: -4px; width: 22px; height: 22px; border-radius: 50%;
+        background: #3fb950 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5' fill='none' stroke='white' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/16px no-repeat;
+        box-shadow: 0 0 0 2px #fff; }
+      @keyframes bob { 50% { transform: translateY(-4px); } }
+      .corner { position: fixed; top: 14px; width: 48px; height: 48px; border-radius: 50%; border: 0; background: rgba(255,255,255,.72);
+        box-shadow: 0 3px 10px rgba(0,0,0,.12); cursor: pointer; display: grid; place-items: center; padding: 0; }
+      .corner svg { width: 26px; height: 26px; }
+      #restart { right: 14px; }
+      #mute { right: 72px; }
+      #mute.off .wave { display: none; }
+      #mute:not(.off) .cross { display: none; }
+      body.finished #restart { animation: bob 1s ease-in-out infinite; box-shadow: 0 0 0 3px #3fb950; background: #fff; }
+      @media (max-width: 560px) {
+        #progress { top: auto; bottom: 14px; }
+        .step { width: 44px; height: 44px; }
+        .step svg { width: 30px; height: 30px; }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <div id="progress">
+      <div class="step" data-stage="dig" title="Dig">
+        <svg viewBox="0 0 36 36"><path d="M3 12h7v12h16V12h7v4h-3v12H6V16H3z" fill="#8c6239"/><rect x="10" y="20" width="16" height="4" fill="#9b9184"/></svg>
+      </div>
+      <div class="step" data-stage="pour" title="Pour">
+        <svg viewBox="0 0 36 36"><rect x="4" y="20" width="28" height="7" rx="1" fill="#9aa0a6"/><rect x="4" y="20" width="28" height="2" fill="#c9cbcc"/><path d="M15 4h6l-1 12h-4z" fill="#f2c200"/><circle cx="18" cy="18" r="1.6" fill="#8f969c"/></svg>
+      </div>
+      <div class="step" data-stage="walls" title="Walls">
+        <svg viewBox="0 0 36 36"><rect x="4" y="27" width="28" height="3" fill="#9aa0a6"/><rect x="6" y="13" width="24" height="14" fill="#8fc8f0"/><rect x="15" y="18" width="6" height="9" fill="#9a6a3c"/><rect x="8" y="16" width="5" height="5" fill="#fff"/><rect x="23" y="16" width="5" height="5" fill="#fff"/></svg>
+      </div>
+      <div class="step" data-stage="roof" title="Roof">
+        <svg viewBox="0 0 36 36"><path d="M2 17L18 5l16 12z" fill="#d2513a"/><rect x="6" y="17" width="24" height="12" fill="#8fc8f0"/><rect x="15" y="20" width="6" height="9" fill="#9a6a3c"/><rect x="24" y="7" width="4" height="6" fill="#a0522d"/></svg>
+      </div>
+    </div>
+    <button id="mute" class="corner" aria-label="Sound">
+      <svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z" fill="#3a3f47"/><path class="wave" d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="#3a3f47" stroke-width="2" stroke-linecap="round"/><path class="cross" d="M16 9l5 6M21 9l-5 6" stroke="#d8382c" stroke-width="2.4" stroke-linecap="round"/></svg>
+    </button>
+    <button id="restart" class="corner" aria-label="Start again">
+      <svg viewBox="0 0 24 24"><path d="M19 12a7 7 0 1 1-2.05-4.95" fill="none" stroke="#3a3f47" stroke-width="2.6" stroke-linecap="round"/><path d="M18.5 3v5h-5" fill="none" stroke="#3a3f47" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
