@@ -1309,7 +1309,8 @@ export function createTown(
     }
     const from = new THREE.Vector3(truck.pos.x, 0, truck.pos.y);
     const nextGate = gates.find((g) => g.to === nextHood && g.open);
-    if (!anyLeft && nextGate && !busy) marker.update(dt, new THREE.Vector3(GATE_X, 3.1, nextGate.z), new THREE.Vector3(GATE_X - 1.5, 0, nextGate.z), 1.2, from);
+    // The arrow and ring go under the arch, where driving in takes you on (not over the sign on top).
+    if (!anyLeft && nextGate && !busy) marker.update(dt, new THREE.Vector3(GATE_X, 1.5, nextGate.z), new THREE.Vector3(GATE_X, 0, nextGate.z), 1.2, from);
     else if (busy || !anyLeft || at || atPile) marker.update(dt, null, null, 1, null);
     else if (!loaded) marker.update(dt, PILE.clone().setY(1.3), null, 1, from);
     else if (next) {

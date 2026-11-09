@@ -262,13 +262,22 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
   const nearFootprint = (x: number, z: number) => x > F.minX - 0.7 && x < F.maxX + 0.7 && z > F.minZ - 0.7 && z < F.maxZ + 0.7;
   const onPath = (x: number, z: number) => x > PATH.minX - 0.7 && x < PATH.maxX + 0.7 && z > F.maxZ - 0.2;
 
+  /**
+   * The marking-out strings come up with the first bite: they've shown where to dig, and they sit at
+   * the height of the excavator's body, so it would swing through them.
+   */
+  function dropStrings(): void {
+    if (!site.strings.visible) return;
+    for (const c of site.strings.children) fx.dust(c.getWorldPosition(new THREE.Vector3()), 0.2, 3, 0xffffff);
+    site.strings.visible = false;
+  }
+
   function digDone(): void {
     site.layBed();
     Audio.sectionDone(4);
     fx.dustRect(F.cx, -0.3, F.cz, bp.w, bp.d, 2);
     fx.ring(new THREE.Vector3(F.cx, 0, F.cz), 4, 0xffe3a0);
-    for (const c of site.strings.children) fx.dust(c.getWorldPosition(new THREE.Vector3()), 0.2, 3, 0xffffff);
-    site.strings.visible = false;
+    dropStrings();
     chimeStep = 0;
     setStage("pour");
   }
@@ -573,6 +582,7 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
         const intoTruck = haul && bedInReach(excavator.pos);
         excavator.dig(idx, q.centre, intoTruck ? toBed : q.moundAt, {
           bite: (i) => {
+            dropStrings();
             const qq = site.quadrants[i];
             const finished = site.scoop(qq);
             const b = excavator.bucketWorld();
@@ -897,7 +907,12 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
     if (module) ghostModules[mi].visible = true;
     else if (walls) ghostWalls.forEach((g, i) => (g.visible = i === k));
     else ghostRoof.visible = true;
-    if (crane.busy()) return none(crane);
+    if (crane.busy()) {
+      // Lowering the load into its place: its ghost goes, so the two don't flicker through each other.
+      const ghostNow = module ? ghostModules[mi] : walls ? ghostWalls[k] : ghostRoof;
+      if (crane.load === load && load.mesh.getWorldPosition(new THREE.Vector3()).distanceTo(ghostNow.position) < 2) ghostNow.visible = false;
+      return none(crane);
+    }
     if (crane.load !== load) {
       // Go and get it.
       const at = load.mesh.position.clone();

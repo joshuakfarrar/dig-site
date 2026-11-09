@@ -227,6 +227,10 @@ Estimated at adult pace from distances, speeds and animation times, about 1 s of
   - **Faces:** some dads are bald (15%) or bearded (25%), and grandpas more so. About 20% of mums have short hair.
   - **Clothes:** 20% of grown-ups wear an open jacket; some people have short sleeves, shorts or white trainers.
   - Shown on the lineup's people row.
+- **Playtest fixes:**
+  - A wall, floor or roof's white ghost now hides while the real one is lowered into it, so they no longer flicker through each other.
+  - The marking-out strings come up with a dust puff at the first bite; the excavator's body used to swing through them, flashing white.
+  - The finished-town ring and arrow are now under the arch, where driving in takes you on. Before, the ring was in front of the arch, so stopping in it did nothing, and the arrow pointed at the landmark on top.
 - **Dev helpers:** `game.build` now exposes `wallLoads`, `moduleLoads`, `roofLoad` and `wallsUp`, for driving the crane from the console.
 - **Town yard:**
   - Packed gravel with a concrete edge, white parking bays and tyre tracks.
