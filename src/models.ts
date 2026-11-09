@@ -1359,17 +1359,6 @@ export function pot(flower: number): Model {
 
 // ---------------------------------------------------------------- gardens and the edge of town
 
-/** A garden shed: wooden walls, a little window, a dark pitched roof. Faces +z. Pivot at its bottom middle. */
-export function shed(paint: number): Model {
-  const m = new Model();
-  m.box(-6, 0, -5, 12, 10, 10, paint);
-  for (let x = -6; x < 6; x += 2) m.box(x, 0, 4, 1, 10, 1, C.Wood); // boards
-  m.box(-2, 0, 5, 4, 8, 1, C.Wood).set(1, 4, 6, C.Hazard); // the door
-  m.box(3, 5, 5, 2, 2, 1, C.Glass);
-  for (let k = 0; k < 6; k++) m.box(-7, 10 + k, -6 + k, 14, 1, 12 - 2 * k, 0x4a4f57);
-  return m;
-}
-
 /** A washing line between two posts, with bright washing pegged on it. Along x. */
 export function washingLine(seed: number): Model {
   const m = new Model();

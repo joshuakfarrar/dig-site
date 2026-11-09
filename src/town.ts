@@ -363,6 +363,16 @@ interface Person {
   lot: Lot;
   inside: boolean; // in the garden (or on the pavement)
   kind: Kind;
+  inPlay?: boolean; // in through the playground's gate
+  act?: Play | null; // on something in the playground
+}
+
+/** Something to do in the playground, `t` seconds in. */
+interface Play {
+  kind: "swing" | "slide" | "spin" | "sand" | "bench";
+  t: number;
+  dur: number;
+  at: number; // which swing or which end of the bench, or where round the roundabout they start
 }
 
 /** Who lives on the street: all sorts. A wheelchair user waves with a happy wheelie instead of a jump. */
@@ -836,18 +846,28 @@ export function createTown(
     house.position.set(l.x, 0, l.front - bp.d / 2);
     l.group.add(house);
 
-    // The fence along the front, with a gap for the path, and a mailbox by the gate.
-    const pick = M.picket();
-    for (let x = -3.7; x < 3.7 - 0.01; x += 1) {
-      if (x > -1.2 && x < 0.8) continue;
-      const p = pick.mesh(Cell);
-      p.position.set(l.x + x, 0, l.fence - 0.1);
-      l.group.add(p);
-    }
-    const mb = M.mailbox(bp.colour).mesh(Cell, [0.5, 0, 0.5]);
-    mb.position.set(l.x + 1.2, 0, l.fence - 0.35);
-    mb.rotation.y = -Math.PI / 2;
-    l.group.add(mb);
+    // The fence along the front, with a gap for the path, and a mailbox by the gate. (A playground
+    // has its own rainbow fence and no post: it's open to the street, with a tree either side.)
+    const play = bp.kind === "playground";
+    if (!play) {
+      const pick = M.picket();
+      for (let x = -3.7; x < 3.7 - 0.01; x += 1) {
+        if (x > -1.2 && x < 0.8) continue;
+        const p = pick.mesh(Cell);
+        p.position.set(l.x + x, 0, l.fence - 0.1);
+        l.group.add(p);
+      }
+      const mb = M.mailbox(bp.colour).mesh(Cell, [0.5, 0, 0.5]);
+      mb.position.set(l.x + 1.2, 0, l.fence - 0.35);
+      mb.rotation.y = -Math.PI / 2;
+      l.group.add(mb);
+    } else
+      for (const [dx, k] of [[-3.1, 0], [3.1, 1]] as const) {
+        const t = M.tree(k).mesh(Cell);
+        t.scale.setScalar(0.8);
+        t.position.set(l.x + dx, 0, l.front - bp.d / 2);
+        l.group.add(t);
+      }
     // Flowers along the front wall, leaving room for the path and every door's ramp, and a bush at each corner.
     const hw = bp.w / 2;
     const gaps = [[-0.85, 0.85], ...B.frontDoors(bp).map((x) => [x - 0.5, x + 0.5])].sort((p, q) => p[0] - q[0]);
@@ -870,7 +890,7 @@ export function createTown(
       b.position.set(l.x + dx, 0, l.fence - 0.6);
       l.group.add(b);
     }
-    gardens(l, bp);
+    if (!play) gardens(l, bp);
 
     // Who lives here.
     residents(hood, l.i, bp.homes, bp.kind === "playground").forEach(({ kind, model }, k) => {
@@ -885,26 +905,33 @@ export function createTown(
 
   /**
    * The rest of a garden: a hedge down each side and along the back, and a couple of the things
-   * families keep in their gardens (a tree, a shed, a washing line, a vegetable patch, a trampoline),
+   * families keep in their gardens (a tree, a washing line, a vegetable patch, a trampoline),
    * out the back if there's room, otherwise down the sides.
    */
   function gardens(l: Lot, bp: B.Blueprint): void {
     const r = rng(hood * 31 + l.i * 17 + 5);
     const seg = M.hedge(10);
     const back = l.zone.minZ + 0.15;
-    for (const side of [-1, 1])
+    // One hedge between neighbours, on the line between the two gardens: whichever is built first
+    // plants it. (A playground plants none, so its neighbours do.)
+    for (const side of [-1, 1]) {
+      const n = lots.find((o) => o !== l && o.roadZ === l.roadZ && Math.abs(o.x - l.x) < 8.5 && Math.sign(o.x - l.x) === side);
+      if (n && n.built && n.bp.kind !== "playground") continue;
+      const x = n ? (side > 0 ? (l.zone.maxX + n.zone.minX) / 2 : (l.zone.minX + n.zone.maxX) / 2) : l.x + side * 3.72;
       for (let z = back + 1; z <= l.fence - 0.25; z += 1) {
         const h = seg.mesh(Cell, [0, 0, 1]);
         h.rotation.y = Math.PI / 2;
-        h.position.set(l.x + side * 3.72, 0, z);
+        h.position.set(x, 0, z);
         l.group.add(h);
       }
+    }
     for (let x = l.x - 3.7; x < l.x + 3.69; x += 1) {
       const h = seg.mesh(Cell, [0, 0, 0]);
       h.position.set(x, 0, back);
       l.group.add(h);
     }
-    const kinds = ["tree", "shed", "line", "veg", "tramp", "tree"];
+    // No sheds: squeezed in beside a house they read as an odd box, not a shed.
+    const kinds = ["tree", "line", "veg", "tramp", "tree"];
     const pickKind = () => kinds[Math.floor(r() * kinds.length)];
     const houseBack = l.front - bp.d;
     const depth = houseBack - back;
@@ -915,15 +942,13 @@ export function createTown(
       const dx = bp.w / 2 + 0.2 + sideW / 2;
       spots.push([l.x - dx, l.front - bp.d / 2, true], [l.x + dx, l.front - bp.d / 2, true]);
     }
-    const shedPaints = [0x9ad9b5, 0x8fc8f0, 0xf6dc7a, 0xb9a6e6];
     for (const [x, z, side] of spots) {
       const kind = pickKind();
       let mesh: THREE.Mesh;
       if (kind === "tree") {
         mesh = M.tree(Math.floor(r() * 2)).mesh(Cell);
         mesh.scale.setScalar(0.75);
-      } else if (kind === "shed") mesh = M.shed(shedPaints[Math.floor(r() * shedPaints.length)]).mesh(Cell, [0, 0, 0]);
-      else if (kind === "line") {
+      } else if (kind === "line") {
         mesh = M.washingLine(l.i).mesh(Cell, [12, 0, 0]);
         if (side) mesh.rotation.y = Math.PI / 2;
       } else if (kind === "veg") mesh = M.vegPatch(14, 10).mesh(Cell, [7, 0, 5]);
@@ -959,9 +984,137 @@ export function createTown(
 
   // ------------------------------------------------------------------ the people
 
+  /**
+   * The playground's places, in tiles from the middle of its lot (+z toward the street): the way in,
+   * a spot either side of the slide tower to walk round by, and where each thing to play on is.
+   * Matches `M.playSet` on a 5 x 4 lot.
+   */
+  const PLAY = {
+    floor: B.SLAB_TOP,
+    outside: [-0.5, 2.5], inside: [-0.5, 1.7],
+    left: [-0.6, 0.55], right: [[0.5, 1.65], [0.9, 1.0]],
+    swings: [[-1.65, -0.65], [-1.65, -0.05]],
+    ladder: [[-0.9, -1.25], [0, -1.2]],
+    spin: [1.6, -0.4],
+    sand: [-1.3, 1.25],
+    bench: [[1.0, 1.5], [1.6, 1.5]],
+    watch: [[-0.9, 0.25], [1.0, 0.65], [0.6, 1.75], [-0.2, -1.55]],
+  } as const;
+
+  /** What each person in the playground does when they get where they're going. */
+  const pending = new Map<Person, Play>();
+
+  /** Children go and play; grown-ups watch, or sit on the bench; the dog potters about. */
+  function playRoute(p: Person): void {
+    const l = p.lot;
+    const at = (q: readonly number[]) => new THREE.Vector2(l.x + q[0], l.front - l.bp.d / 2 + q[1]);
+    const pickOf = <T,>(xs: readonly T[]): T => xs[Math.floor(Math.random() * xs.length)];
+    p.route = [];
+    if (!p.inPlay) {
+      p.route.push(at(PLAY.outside), at(PLAY.inside));
+      p.inPlay = true;
+    }
+    // One to a swing, one to each end of the bench.
+    const taken = (kind: Play["kind"], k: number) =>
+      l.people.some((o) => o !== p && ((o.act?.kind === kind && o.act.at === k) || (pending.get(o)?.kind === kind && pending.get(o)?.at === k)));
+    const free = (kind: Play["kind"]) => [0, 1].filter((k) => !taken(kind, k));
+    let act: Play | null = null;
+    if (p.kind === "child") {
+      let what = pickOf(["swing", "swing", "slide", "slide", "spin", "sand"] as const);
+      if (what === "swing" && !free("swing").length) what = "slide";
+      if (what === "slide" && taken("slide", 0)) what = "sand";
+      if (what === "swing") {
+        const k = pickOf(free("swing"));
+        const s = PLAY.swings[k];
+        p.route.push(at(PLAY.left), at([s[0] + 0.6, s[1]]), at(s));
+        act = { kind: "swing", t: 0, dur: 5 + Math.random() * 4, at: k };
+      } else if (what === "slide") {
+        p.route.push(at(PLAY.left), at(PLAY.ladder[0]), at(PLAY.ladder[1]));
+        act = { kind: "slide", t: 0, dur: 2.6, at: 0 };
+      } else if (what === "spin") {
+        // A second rider gets on across from the first.
+        const a0 = l.people.some((o) => o !== p && (o.act?.kind === "spin" || pending.get(o)?.kind === "spin")) ? 0 : Math.PI;
+        p.route.push(at(PLAY.right[0]), at(PLAY.right[1]), at([PLAY.spin[0] + Math.cos(a0) * 0.32, PLAY.spin[1]]));
+        act = { kind: "spin", t: 0, dur: 4 + Math.random() * 3, at: a0 };
+      } else {
+        p.route.push(at(PLAY.left), at(PLAY.sand));
+        act = { kind: "sand", t: 0, dur: 5 + Math.random() * 4, at: 0 };
+      }
+    } else if ((p.kind === "adult" || p.kind === "elder") && free("bench").length && Math.random() < (p.kind === "elder" ? 0.7 : 0.4)) {
+      const k = pickOf(free("bench"));
+      const b = PLAY.bench[k];
+      p.route.push(at(PLAY.right[0]), at([b[0], b[1] - 0.3]), at(b));
+      act = { kind: "bench", t: 0, dur: 8 + Math.random() * 8, at: k };
+    } else {
+      const w = pickOf(PLAY.watch);
+      p.route.push(at(w[0] > 0 ? PLAY.right[0] : PLAY.left));
+      if (w[1] < -1) p.route.push(at(PLAY.ladder[0]));
+      p.route.push(at(w));
+    }
+    p.act = null;
+    if (act) pending.set(p, act);
+    else pending.delete(p);
+  }
+
+  /** One step of a playground activity: moves them, turns them, and says how high they are. */
+  function playStep(p: Person, a: Play, dt: number): number {
+    const l = p.lot;
+    const cx = l.x, cz = l.front - l.bp.d / 2;
+    a.t += dt;
+    const y0 = PLAY.floor;
+    const face = (dx: number, dz: number) => (p.mesh.rotation.y = Math.atan2(-dz, dx));
+    p.mesh.rotation.z = 0;
+    if (a.kind === "swing") {
+      // Hanging from the bar, swinging along x; gently, so they stay with the seat.
+      const s = PLAY.swings[a.at];
+      const th = 0.2 * Math.sin(a.t * 2.4) * Math.min(1, a.t);
+      p.pos.set(cx + s[0] + Math.sin(th) * 1.15, cz + s[1]);
+      face(1, 0);
+      p.mesh.rotation.z = th;
+      return y0 + 1.5 - Math.cos(th) * 1.15;
+    }
+    if (a.kind === "slide") {
+      // Up the ladder at the back, across the deck, down the slide to the front, and off.
+      const t = a.t;
+      face(0, 1);
+      if (t < 1) {
+        p.pos.set(cx, cz - 1.2 + t * 0.2);
+        return y0 + t * 1.0;
+      }
+      if (t < 1.4) {
+        p.pos.set(cx, cz - 1.0 + ((t - 1) / 0.4) * 1.1);
+        return y0 + 1.0;
+      }
+      if (t < 2.2) {
+        const k = (t - 1.4) / 0.8;
+        p.pos.set(cx, cz + 0.1 + k * 1.25);
+        return y0 + 1.0 - k * 0.9;
+      }
+      const k = Math.min(1, (t - 2.2) / 0.4);
+      p.pos.set(cx, cz + 1.35 + k * 0.25);
+      return y0 + 0.1 * (1 - k);
+    }
+    if (a.kind === "spin") {
+      // Round and round on the roundabout.
+      const ang = a.at + a.t * 2.2;
+      p.pos.set(cx + PLAY.spin[0] + Math.cos(ang) * 0.32, cz + PLAY.spin[1] + Math.sin(ang) * 0.32);
+      face(-Math.sin(ang), Math.cos(ang));
+      return y0 + 0.2;
+    }
+    if (a.kind === "sand") {
+      // Sitting in the sandpit, digging away.
+      p.mesh.rotation.z = 0.12 * Math.sin(a.t * 6);
+      return y0 + 0.05 + 0.02 * Math.abs(Math.sin(a.t * 6));
+    }
+    // On the bench, looking out over the playground.
+    face(0, -1);
+    return y0 + 0.12;
+  }
+
   /** Somewhere to wander to: in the front garden, or now and then out along the pavement (via the gate). */
   function nextRoute(p: Person): void {
     const l = p.lot;
+    if (l.bp.kind === "playground") return playRoute(p);
     const gateIn = new THREE.Vector2(l.x - 0.2, l.fence - 0.4);
     const gateOut = new THREE.Vector2(l.x - 0.2, l.walk);
     const out = Math.random() < 0.3;
@@ -981,6 +1134,17 @@ export function createTown(
         p.phase += dt;
         p.waveCooldown -= dt;
         const toTruck = Math.hypot(truck.x - p.pos.x, truck.y - p.pos.y);
+        if (p.act) {
+          // Playing: the activity moves them; then a little rest, and something else.
+          const py = playStep(p, p.act, dt);
+          if (p.act.t >= p.act.dur) {
+            p.act = null;
+            p.mesh.rotation.z = 0;
+            p.wait = 0.4 + Math.random() * 1.2;
+          }
+          p.mesh.position.set(p.pos.x, py, p.pos.y);
+          continue;
+        }
         if (p.wave <= 0 && p.waveCooldown <= 0 && toTruck < 4 && l.built) {
           p.wave = 1.2;
           p.waveCooldown = 8;
@@ -1006,7 +1170,14 @@ export function createTown(
           if (len <= step) {
             p.pos.copy(t);
             p.route.shift();
-            if (!p.route.length) p.wait = 1 + Math.random() * 3;
+            if (!p.route.length) {
+              p.wait = 1 + Math.random() * 3;
+              const a = pending.get(p);
+              if (a) {
+                p.act = a;
+                pending.delete(p);
+              }
+            }
           } else {
             p.pos.addScaledVector(d, step / len);
             p.mesh.rotation.y = Math.atan2(-d.y, d.x);
@@ -1016,7 +1187,7 @@ export function createTown(
           if (p.kind !== "wheel") y = Math.abs(Math.sin(p.phase * (p.kind === "dog" ? 14 : 9))) * (p.kind === "dog" ? 0.03 : 0.05);
         } else p.wait = 1;
         const onWalk = Math.abs(p.pos.y - l.walk) < 0.6;
-        p.mesh.position.set(p.pos.x, y + (onWalk ? 0.07 : 0), p.pos.y);
+        p.mesh.position.set(p.pos.x, y + (onWalk ? 0.07 : 0) + (p.inPlay ? PLAY.floor : 0), p.pos.y);
       }
   }
 

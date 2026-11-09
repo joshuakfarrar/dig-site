@@ -231,6 +231,12 @@ Estimated at adult pace from distances, speeds and animation times, about 1 s of
   - A wall, floor or roof's white ghost now hides while the real one is lowered into it, so they no longer flicker through each other.
   - The marking-out strings come up with a dust puff at the first bite; the excavator's body used to swing through them, flashing white.
   - The finished-town ring and arrow are now under the arch, where driving in takes you on. Before, the ring was in front of the arch, so stopping in it did nothing, and the arrow pointed at the landmark on top.
+- **Playground in use** (`PLAY`, `playRoute` and `playStep` in `town.ts`):
+  - Its families walk in through the gate. Children swing, climb up and go down the slide, ride the roundabout or dig in the sandpit; grown-ups sit on the bench or stand watching.
+  - One child per swing, one on the slide at a time, and one grown-up at each end of the bench.
+  - It has no picket fence, mailbox, hedges or garden things (its rainbow fence is the fence), but there's a tree either side.
+- **One hedge between neighbouring gardens**, on the boundary, planted by whichever lot is built first. Before, each lot planted its own, so there were two rows.
+- **No garden sheds:** squeezed in beside a house they read as an odd box. `M.shed` has been removed.
 - **Dev helpers:** `game.build` now exposes `wallLoads`, `moduleLoads`, `roofLoad` and `wallsUp`, for driving the crane from the console.
 - **Town yard:**
   - Packed gravel with a concrete edge, white parking bays and tyre tracks.
