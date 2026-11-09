@@ -184,6 +184,7 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
   const onPath = (x: number, z: number) => x > PATH.minX - 0.7 && x < PATH.maxX + 0.7 && z > F.maxZ - 0.2;
 
   function digDone(): void {
+    site.layBed();
     Audio.sectionDone(4);
     fx.dustRect(F.cx, -0.3, F.cz, bp.w, bp.d, 2);
     fx.ring(new THREE.Vector3(F.cx, 0, F.cz), 4, 0xffe3a0);
@@ -384,6 +385,21 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
 
   /** How much of each dirt heap is left, 1 to 0, while the dozer pushes them away. */
   const heaps = new Map<Quadrant, number>();
+
+  /** Would a heap of radius `r` at (x, z) be into a wall, the fence, a prop or a machine other than the dozer? */
+  function heapBlocked(x: number, z: number, r: number): boolean {
+    for (const b of site.boxes) {
+      const px = Math.max(b.minX, Math.min(x, b.maxX));
+      const pz = Math.max(b.minZ, Math.min(z, b.maxZ));
+      if (Math.hypot(x - px, z - pz) < r) return true;
+    }
+    for (const c of site.circles) if (Math.hypot(x - c.x, z - c.z) < r + c.r) return true;
+    for (const m of machines) {
+      if (m === dozer) continue;
+      for (const c of m.shape()) if (Math.hypot(x - c.x, z - c.z) < r + c.r) return true;
+    }
+    return false;
+  }
   function cleanJob(dt: number): Job {
     const blade = dozer.bladeWorld();
     const f = dozer.forward;
@@ -395,13 +411,19 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
       const reach = 0.35 + 0.45 * amount;
       const d = Math.hypot(at.x - blade.x, at.y - blade.z);
       if (active === dozer && dozer.speed > 0.25 && d < reach + 0.2) {
-        // Pushed along in front of the blade, getting smaller as it spreads out.
-        amount = Math.max(0, amount - dt / 1.4);
+        // Pushed along in front of the blade, getting smaller as it spreads out. Up against a
+        // wall, the fence or another machine it stays put and flattens out quicker instead.
         const ahead = new THREE.Vector2(blade.x, blade.z).addScaledVector(f, reach * 1.0);
-        q.mound.position.x = ahead.x;
-        q.mound.position.z = ahead.y;
-        if (Math.random() < 0.5) fx.bits(new THREE.Vector3(ahead.x, 0.15, ahead.y), 1, 0x8c6239, 0.8, 0);
-        if (Math.random() < 0.25) fx.dust(new THREE.Vector3(ahead.x, 0.1, ahead.y), 0.3, 1, 0xc9a27a);
+        const r = (3 + SCOOPS_PER_QUADRANT * 2.2) * Cell * (0.2 + 0.8 * amount) * 0.8;
+        const blocked = heapBlocked(ahead.x, ahead.y, r);
+        amount = Math.max(0, amount - dt / (blocked ? 0.6 : 1.4));
+        if (!blocked) {
+          q.mound.position.x = ahead.x;
+          q.mound.position.z = ahead.y;
+        }
+        const at = q.mound.position;
+        if (Math.random() < (blocked ? 0.9 : 0.5)) fx.bits(new THREE.Vector3(at.x, 0.15, at.z), 1, 0x8c6239, 0.8, 0);
+        if (Math.random() < (blocked ? 0.5 : 0.25)) fx.dust(new THREE.Vector3(at.x, 0.1, at.z), 0.3, 1, 0xc9a27a);
         if (Math.floor(amount * 4) !== Math.floor((heaps.get(q) ?? 1) * 4)) Audio.scoop();
       }
       heaps.set(q, amount);

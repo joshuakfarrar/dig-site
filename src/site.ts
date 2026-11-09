@@ -15,6 +15,12 @@ import * as B from "./blueprints";
 export const SITE = { minX: -12, maxX: 12, minZ: -9, maxZ: 9 };
 const CELL = 0.5;
 export const PIT_DEPTH = 0.5;
+/**
+ * Once the pit's dug, a gravel bed goes in and fills most of it, and wet concrete fills to the
+ * ground's level until the slab sets. So the mixer drives over steps no taller than a kerb rather
+ * than tipping down into a half-tile hole and through its walls.
+ */
+const GRAVEL_BED = -0.14;
 export const SLAB_TOP = B.SLAB_TOP;
 export const WALL_H = B.WALL_H;
 export const SCOOPS_PER_QUADRANT = 2;
@@ -357,6 +363,15 @@ export class Site implements Ground {
     return this.quadrants.every((q) => q.scoops >= SCOOPS_PER_QUADRANT);
   }
 
+  /** The gravel bed goes into the dug pit, ready to pour on. */
+  layBed(): void {
+    for (let i = 0; i < this.NX; i++)
+      for (let j = 0; j < this.NZ; j++) {
+        this.kind[i][j] = "gravel";
+        this.target[i][j] = GRAVEL_BED;
+      }
+  }
+
   /** Pours concrete into the cells within `r` of (x, z); returns how many started filling. */
   pour(x: number, z: number, r: number): number {
     let n = 0;
@@ -366,7 +381,7 @@ export class Site implements Ground {
         const cx = this.cellX(i) + CELL / 2, cz = this.cellZ(j) + CELL / 2;
         if (Math.hypot(cx - x, cz - z) > r) continue;
         this.kind[i][j] = "wet";
-        this.target[i][j] = SLAB_TOP;
+        this.target[i][j] = 0;
         n++;
       }
     return n;
@@ -407,6 +422,7 @@ export class Site implements Ground {
         this.growMound(q);
       }
     }
+    this.layBed();
     for (let i = 0; i < this.NX; i++) for (let j = 0; j < this.NZ; j++) this.top[i][j] = this.target[i][j];
     this.strings.visible = false;
     this.dirty = true;

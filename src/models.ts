@@ -383,14 +383,23 @@ export function flatRoof(w: number, d: number, top: number, edge: number): Model
   return m;
 }
 
-/** A giant ice-cream cone for the shop's roof, standing on a flat roof's top (y = 2). */
+/**
+ * A giant ice-cream cone for the shop's roof, standing on a flat roof's top (y = 2). The cone's tall
+ * and flares out as wide as the first scoop, with a criss-cross waffle, so from the high camera it
+ * reads as a cone and not just a blob of scoops.
+ */
 export function iceCream(m: Model, cx: number, cz: number, scoop1: number, scoop2: number): Model {
-  const Cone = 0xe0a85a, Waffle = 0xc98a3e;
-  // The cone: stepping wider as it rises.
-  for (let y = 0; y < 8; y++) {
-    const r = 1 + Math.floor(y / 2.5);
-    for (let x = -r; x < r; x++)
-      for (let z = -r; z < r; z++) m.set(cx + x, 2 + y, cz + z, (x + z + y) % 3 === 0 ? Waffle : Cone);
+  const Cone = 0xe8b465, Waffle = 0xb87a34;
+  const H = 12;
+  for (let y = 0; y < H; y++) {
+    const r = 1 + (3.2 * y) / (H - 1); // 1 at the tip, about 4 at the top
+    const n = Math.ceil(r);
+    for (let x = -n; x < n; x++)
+      for (let z = -n; z < n; z++) {
+        if (Math.hypot(x + 0.5, z + 0.5) > r + 0.25) continue;
+        const grid = ((x + y) % 3 + 3) % 3 === 0 || ((z - y) % 3 + 3) % 3 === 0;
+        m.set(cx + x, 2 + y, cz + z, grid ? Waffle : Cone);
+      }
   }
   // A ball centred on the corner between cells, like the cone.
   const ball = (y0: number, r: number, col: number) => {
@@ -401,10 +410,14 @@ export function iceCream(m: Model, cx: number, cz: number, scoop1: number, scoop
           if (dx * dx + dy * dy + dz * dz <= r * r) m.set(cx + x, y0 + y, cz + z, col);
         }
   };
-  ball(13, 4, scoop1);
-  ball(18, 3, scoop2);
-  m.box(cx - 1, 21, cz - 1, 2, 2, 2, 0xd8263a); // the cherry
-  m.set(cx, 23, cz, 0x3f9440);
+  const top = 2 + H;
+  ball(top + 3, 4, scoop1);
+  // A few drips of the first scoop down over the cone's rim.
+  for (const [x, z, len] of [[-4, 0, 2], [3, -2, 3], [1, 3, 2], [-2, -4, 1]] as const)
+    for (let k = 1; k <= len; k++) m.set(cx + x, top - k, cz + z, scoop1);
+  ball(top + 8, 3, scoop2);
+  m.box(cx - 1, top + 11, cz - 1, 2, 2, 2, 0xd8263a); // the cherry
+  m.set(cx, top + 13, cz, 0x3f9440);
   return m;
 }
 

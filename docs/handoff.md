@@ -60,17 +60,21 @@ Where Dig Site stands, for whichever session picks it up next. Everything below 
 
 ## Known glitches
 
-- **Mixer at the pit edge:** it tips crudely and can clip the pit walls (settling is front/back height only).
-- **Pushed heaps:** they move ahead of the blade and can pass into a wall, fence or machine for a moment before they vanish.
-- **Ice-cream shop roof:** from the normal high camera the cone reads as a pink blob; it reads well from the low camera.
-- **Peach cottage (lot 7):** its walls look brownish in shade; the colour may want lifting.
-- **Lot spacing:** row-one lots' little models sit fairly far back from the road ring; it works, but they're a long way from where you stop.
-- **Arrival pop:** starts on a `setTimeout(0)`. Harmless, but untidy.
-- **Testing in a hidden tab:** the browser throttles requestAnimationFrame there. Use `game.advance(seconds, held)` (dev only) to step the game. Screenshots lag one frame, so advance about 0.02 s first.
+Fixed on 2026-11-08 (after `218c5dd`):
+- **Mixer at the pit edge:** once the pit's dug, a gravel bed fills it to -0.14 and wet concrete pours level with the ground until the slab sets, so the steps are kerb-sized. The mixer tilts about 4° at the edge, down from 15°.
+- **Pushed heaps:** a heap only moves if its new spot is clear of walls, the fence, props and the other machines. When it's blocked it stays put and flattens out faster.
+- **Ice-cream cone:** the cone is taller, flares out as wide as the first scoop, and has a criss-cross waffle and drips (roof height is 2.9).
+- **Peach cottage (lot 7):** the peach is pinker (0xffb4a0) and the roof is slate blue, so it no longer reads as brown in shade.
+- **Lot models:** they now stand just inside the front fence near the road ring, and deliveries land beside the model.
+- **Timers:** the arrival pop and the switch to a building site run off the town's tick clock, not `setTimeout`.
+
+Still open:
+- **Building-site camera:** the finished building sits near the top of the screen, partly under the progress strip.
+- **Testing in a hidden tab:** the browser throttles requestAnimationFrame there. Use `game.advance(seconds, held)` (dev only) to step the game. Screenshots lag a frame or two, so advance about 0.05 s and wait a second before taking one.
 
 ## Uncommitted
 
-Nothing. The working tree was clean after `f816ca8` plus this note.
+Nothing.
 
 ## Dev aids
 

@@ -98,11 +98,10 @@ export function assemble(bp: Blueprint): THREE.Group {
 
 // ------------------------------------------------------------------ the kinds
 
-const Pastel = { mint: 0x9ad9b5, peach: 0xf6b38a, lilac: 0xb9a6e6, sky: 0x8fc8f0, butter: 0xf6dc7a, pink: 0xf7b6c8, cream: 0xf3e6c8 };
+const Pastel = { mint: 0x9ad9b5, peach: 0xffb4a0, lilac: 0xb9a6e6, sky: 0x8fc8f0, butter: 0xf6dc7a, pink: 0xf7b6c8, cream: 0xf3e6c8 };
 const RedTiles: M.RoofColours = { tile: 0xd2513a, tile2: 0xc2462f, under: 0xb84a33, gable: 0xf3e6c8 };
 const SlateTiles: M.RoofColours = { tile: 0x5b7db8, tile2: 0x4e6ea6, under: 0x45608f, gable: 0xf3e6c8 };
 const GreenTiles: M.RoofColours = { tile: 0x4f9d58, tile2: 0x45894d, under: 0x3c7a44, gable: 0xf3e6c8 };
-const BrownTiles: M.RoofColours = { tile: 0xb0703a, tile2: 0x9c6232, under: 0x8a552b, gable: 0xf3e6c8 };
 
 function gable(w: number, d: number, c: M.RoofColours): RoofSpec {
   const W = w * 10 + 4, D = d * 10 + 4;
@@ -159,7 +158,7 @@ export function shop(paint: number, awning: [number, number], scoops: [number, n
     roof: {
       model: () => M.iceCream(M.flatRoof(w, d, Pastel.cream, C.White), Math.round(W / 2), Math.round(D / 2), scoops[0], scoops[1]),
       pivot: [W / 2, 0, D / 2],
-      height: 2.4,
+      height: 2.9,
       slingTop: 0.25,
     },
   };
@@ -195,5 +194,5 @@ export const LOTS: Blueprint[] = [
   cottage([Pastel.sky, Pastel.sky, Pastel.sky, Pastel.sky], GreenTiles),
   tall(Pastel.lilac, RedTiles),
   shop(Pastel.mint, [0xff7aa8, 0xffffff], [0x8a5a3c, 0xfff4d6]),
-  cottage([Pastel.peach, Pastel.peach, Pastel.peach, Pastel.peach], BrownTiles),
+  cottage([Pastel.peach, Pastel.peach, Pastel.peach, Pastel.peach], SlateTiles),
 ];

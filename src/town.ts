@@ -289,7 +289,8 @@ export function createTown(built: Set<number>, arrived: number | null, hooks: To
     mini.scale.setScalar(0.3);
     mini.position.y = 0.52;
     stand.add(mini);
-    stand.position.set(l.x, 0, l.front - 1.2);
+    // Up near the front fence, so the model's close to the ring on the road where you stop.
+    stand.position.set(l.x, 0, l.fence - 1.1);
     l.group.add(stand);
     l.mini = stand;
     const ring = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.75, depthWrite: false }));
@@ -472,17 +473,16 @@ export function createTown(built: Set<number>, arrived: number | null, hooks: To
 
   let party = -1;
   const allBuilt = () => lots.every((l) => l.built);
+  /** The new building, waiting to pop in once the fade has cleared. */
+  let arrivingHouse: THREE.Group | null = null;
   if (arrivedLot) {
-    const house = builtLot(arrivedLot);
-    house.scale.setScalar(0.001);
+    arrivingHouse = builtLot(arrivedLot);
+    arrivingHouse.scale.setScalar(0.001);
     for (const p of arrivedLot.people) p.mesh.visible = false;
     party = 0;
-    // Pops in a beat after the fade clears.
-    setTimeout(() => {
-      house.scale.setScalar(1);
-      pops.add(house, true);
-    }, 0);
   }
+  /** Seconds until we go to the building site, once the truck's unloaded; -1 while not going. */
+  let buildIn = -1;
 
   function progress(): void {
     Hud.steps(lots.map((l) => ({ icon: Hud.Icons.house(l.bp.colour, l.built), state: l.built ? "done" : "todo" })), true);
@@ -494,10 +494,21 @@ export function createTown(built: Set<number>, arrived: number | null, hooks: To
   if (arrivedLot) focus.set(arrivedLot.x, 0, arrivedLot.front - 1.5);
   let clock = 0;
   let leaving = false;
+  let buildLot = 0;
   let debugCam: { pos: THREE.Vector3; at: THREE.Vector3 } | null = null;
 
   function tick(dt: number, input: Input.Frame): void {
     clock += dt;
+    // The fade back in takes about 0.4 s: the new building pops up once it's clear.
+    if (arrivingHouse && clock > 0.45) {
+      arrivingHouse.scale.setScalar(1);
+      pops.add(arrivingHouse, true);
+      arrivingHouse = null;
+    }
+    if (buildIn >= 0) {
+      buildIn -= dt;
+      if (buildIn < 0) hooks.build(buildLot);
+    }
     truck.drive(input, dt, world);
     truck.settle(ground, dt);
     truck.update(dt, world);
@@ -577,14 +588,16 @@ export function createTown(built: Set<number>, arrived: number | null, hooks: To
       truck.speed = 0;
       leaving = true;
       load.forEach((m, k) => {
-        const drop = new THREE.Vector3(lot.x - 0.6 + k * 1.1, 0.02, lot.fence - 1.2);
+        // Beside the lot's little model on its stand, not on it.
+        const drop = new THREE.Vector3(lot.x - 2.5 + k * 1.1, 0.02, lot.fence - 1.2);
         fly(m, bedWorld(k)(), () => drop, k * 0.3, () => {
           pops.add(m);
           Audio.thud();
           fx.dust(drop, 0.4, 6);
           if (k === load.length - 1) {
             Audio.whoosh();
-            setTimeout(() => hooks.build(lot.i), 350);
+            buildIn = 0.35;
+            buildLot = lot.i;
           }
         });
       });
