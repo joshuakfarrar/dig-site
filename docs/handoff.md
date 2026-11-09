@@ -211,7 +211,11 @@ Estimated at adult pace from distances, speeds and animation times, about 1 s of
 
 - **`?lineup`** (dev server only, `src/lineup.ts`): every machine and vehicle side by side, plus people and a cottage for scale.
   - Left and right step between them, up and down zoom, Space toggles the turntable, and E switches between the game's camera and a low close-up.
-  - Use it for the machine art pass: one set of proportions, wheels, cabs and colours, starting with the mixer.
+  - From the console: `lineup.show(index, angle, closeUp, zoom)` holds one still for a screenshot.
+  - Use it for the machine art pass. The rules are in `docs/art.md` ("One fleet").
+- **Cement mixer remodelled:** it now has the dump truck's big wheels, mudguards and cab (shared `bigWheel` and `truckCab` in `models.ts`).
+  - It also has a bigger pear-shaped drum with two spiral bands, tool boxes, a hopper and ladder, and a separate angled chute (`mixerChute`).
+  - It's now 1.4 wide (collision radius 0.7, the same as the dump truck), and the chute tip has moved to (-1.75, 0.68). Pouring has been checked by driving across the pit.
 - **Town yard:**
   - Packed gravel with a concrete edge, white parking bays and tyre tracks.
   - The crew's cabin and a green tool container at the back, plus pipe stacks, brick pallets and cones.

@@ -47,6 +47,30 @@ function cabRoof(m: Model, x0: number, y: number, z0: number, w: number, d: numb
   return m;
 }
 
+/**
+ * A big truck wheel (the dump truck's and the mixer's): 6 cells round with its corners cleared, 2
+ * thick, a steel hub on the outside. `z0` is its low-z side: -7 for the left wheels, 5 for the
+ * right.
+ */
+function bigWheel(m: Model, x0: number, z0: number): Model {
+  m.box(x0, 0, z0, 6, 6, 2, C.Rubber).clear(x0, 0, z0, 1, 1, 2).clear(x0 + 5, 0, z0, 1, 1, 2).clear(x0, 5, z0, 1, 1, 2).clear(x0 + 5, 5, z0, 1, 1, 2);
+  const hub = z0 < 0 ? z0 : z0 + 1;
+  return m.box(x0 + 2, 2, hub, 2, 2, 1, C.Steel).set(x0 + 2, 3, hub, C.Gray);
+}
+
+/**
+ * A big truck's cab, 7 long and 10 wide from (x0, 5, -5), front at +x: a big windscreen, side
+ * windows, a flat roof, a steel bumper with headlights, a dark grille and a step each side.
+ */
+function truckCab(m: Model, x0: number, paint: number): Model {
+  m.box(x0, 5, -5, 7, 7, 10, paint);
+  m.box(x0 + 6, 7, -4, 1, 4, 8, C.Glass).box(x0 + 1, 8, -5, 4, 3, 1, C.Glass).box(x0 + 1, 8, 4, 4, 3, 1, C.Glass);
+  cabRoof(m, x0, 12, -5, 7, 10, paint);
+  m.box(x0 + 7, 3, -5, 1, 3, 10, C.Steel).set(x0 + 7, 5, -5, C.Light).set(x0 + 7, 5, 4, C.Light); // bumper and lights
+  m.box(x0 + 7, 6, -2, 1, 2, 4, C.Dark); // grille
+  return m.box(x0 + 2, 4, -6, 3, 1, 1, C.Steel).box(x0 + 2, 4, 5, 3, 1, 1, C.Steel); // steps
+}
+
 // ---------------------------------------------------------------- excavator (yellow)
 
 /** Tracks and frame: about 1.8 long and 1.4 wide, 0.3 high. The house sits on top and turns. */
@@ -129,59 +153,71 @@ export function bucketDirt(): Model {
 
 // ---------------------------------------------------------------- cement mixer (blue)
 
+/**
+ * The mixer's chassis and cab: the dump truck's big wheels, mudguards and cab, so the two read as
+ * a pair, with a tool box each side, the drum's stands, and at the back a hopper over the drum's
+ * mouth, a ladder up to it and the hazard-yellow chute the concrete runs down. The drum is its own
+ * piece and turns on its own.
+ */
 export function mixerBody(): Model {
   const P = C.Mixer;
   const m = new Model();
-  m.box(-12, 2, -4, 22, 2, 8, C.Dark); // chassis
-  // Wheels: one axle under the cab, two at the back.
-  for (const x0 of [5, -6, -10]) {
-    m.box(x0, 0, -5, 3, 4, 1, C.Rubber).box(x0, 0, 4, 3, 4, 1, C.Rubber);
-    m.box(x0, 0, -4, 3, 1, 8, C.Rubber);
-    m.set(x0 + 1, 1, -5, C.Gray).set(x0 + 1, 1, 4, C.Gray);
+  for (const z of [-7, 5]) {
+    bigWheel(m, 5, z); // front
+    bigWheel(m, -6, z); // back, twice
+    bigWheel(m, -12, z);
   }
-  // Cab.
-  m.box(4, 4, -4, 6, 5, 8, P);
-  m.box(4, 9, -4, 5, 1, 8, P);
-  m.clear(9, 8, -4, 1, 1, 8);
-  bevelTop(m, 4, 9, -4, 5, 8);
-  m.box(9, 6, -3, 1, 2, 6, C.Glass);
-  m.box(5, 6, -4, 3, 2, 1, C.Glass).box(5, 6, 3, 3, 2, 1, C.Glass);
-  m.box(4, 5, -4, 5, 1, 1, C.White).box(4, 5, 3, 5, 1, 1, C.White);
-  m.box(10, 2, -4, 1, 2, 8, C.Steel); // bumper
-  m.set(10, 3, -4, C.Light).set(10, 3, 3, C.Light);
-  m.box(9, 4, -2, 1, 1, 4, C.Gray); // grille
-  // Drum stands: a low pedestal at the front, a tall one at the back.
-  m.box(1, 4, -2, 2, 2, 4, C.Steel);
-  m.box(-10, 4, -2, 2, 5, 4, C.Steel);
-  m.box(-12, 4, -4, 2, 1, 8, P); // rear deck
-  // Hopper over the drum's mouth.
-  m.box(-12, 9, -2, 2, 2, 4, C.Steel).clear(-12, 10, -1, 2, 1, 2);
-  // Chute: hazard yellow, stepping down and back from under the mouth.
-  m.box(-13, 7, -1, 2, 1, 3, C.Hazard);
-  m.box(-15, 6, -1, 2, 1, 3, C.Hazard);
-  m.box(-15, 7, -1, 2, 1, 1, C.Hazard).box(-15, 7, 1, 2, 1, 1, C.Hazard);
+  m.box(-13, 3, -4, 25, 2, 8, C.Dark); // chassis
+  for (const z of [-7, 5]) m.box(4, 6, z, 8, 1, 2, P).box(-13, 6, z, 14, 1, 2, P); // mudguards
+  truckCab(m, 5, P);
+  // Tool boxes between the wheels, so there's blue along the sides as well as on top.
+  for (const z of [-6, 4]) m.box(0, 3, z, 4, 3, 2, P).box(0, 5, z, 4, 1, 2, C.White);
+  m.box(-13, 5, -4, 18, 1, 8, P); // the deck the drum stands on
+  // The drum's stands: a low one behind the cab, a tall frame at the back under the mouth.
+  m.box(1, 6, -2, 3, 2, 4, C.Steel);
+  m.box(-12, 6, -4, 2, 5, 1, C.Steel).box(-12, 6, 3, 2, 5, 1, C.Steel).box(-12, 10, -4, 2, 1, 8, C.Steel);
+  // The hopper over the mouth: a steel funnel, open at the top.
+  m.box(-13, 15, -2, 3, 1, 4, C.Steel);
+  m.box(-14, 16, -3, 5, 2, 6, C.Steel).clear(-13, 17, -2, 3, 1, 4);
+  m.box(-14, 17, -3, 5, 1, 1, C.Hazard).box(-14, 17, 2, 5, 1, 1, C.Hazard);
+  // A ladder up the back left, to look in the hopper.
+  m.box(-14, 5, -5, 1, 12, 1, C.Steel).box(-14, 5, -3, 1, 10, 1, C.Steel);
+  for (let y = 6; y < 15; y += 2) m.set(-14, y, -4, C.Steel);
   return m;
 }
 
 /**
- * The drum, its axis along x through the origin, the narrow mouth at -x. Blue spiral bands on
- * white, so you can see it turn.
+ * The chute the concrete runs down: a hazard-yellow trough, open on top, from its top end (pivot
+ * at cell 0) out along -x, with a dark lip. Hung under the drum's mouth, angled down.
+ */
+export function mixerChute(): Model {
+  const m = new Model();
+  m.box(-6, 0, -2, 7, 1, 4, C.Hazard);
+  m.box(-6, 1, -2, 7, 1, 1, C.Hazard).box(-6, 1, 1, 7, 1, 1, C.Hazard);
+  m.box(1, 0, -1, 1, 2, 2, C.Steel); // hinge
+  return m.box(-6, 0, -1, 1, 1, 2, C.Dark); // the lip
+}
+
+/**
+ * The drum, its axis along x through the origin, the narrow mouth at -x and a round cap at +x,
+ * fattest just behind the cab. Two broad spiral bands, blue on white, so you can see it turn and
+ * it's still the blue one from above.
  */
 export function mixerDrum(): Model {
   const m = new Model();
-  // Smaller than a real one, so the cab and chute still show from above; one wide band, so it
-  // reads as a stripe going round rather than as noise.
   const radius = (x: number) =>
-    x >= 5 ? 2.4 : x >= 3 ? 3.0 : x >= -2 ? 3.4 : x >= -4 ? 3.0 : x >= -5 ? 2.4 : 1.8;
-  for (let x = -6; x <= 5; x++) {
+    x >= 7 ? 2.8 : x >= 6 ? 3.7 : x >= 5 ? 4.3 : x >= -1 ? 4.7 : 4.7 - (-1 - x) * 0.45;
+  for (let x = -8; x <= 7; x++) {
     const r = radius(x);
-    for (let y = -4; y <= 3; y++)
-      for (let z = -4; z <= 3; z++) {
+    for (let y = -5; y <= 4; y++)
+      for (let z = -5; z <= 4; z++) {
         const cy = y + 0.5, cz = z + 0.5;
-        if (cy * cy + cz * cz > r * r) continue;
-        const a = Math.atan2(cy, cz) / (Math.PI * 2);
-        const band = (((a + x / 10) % 1) + 1) % 1;
-        m.set(x, y, z, x === -6 ? C.Dark : band < 0.4 ? C.Mixer : C.White);
+        const d = Math.hypot(cy, cz);
+        if (d > r) continue;
+        if (x === -8 && d < r - 1.2) continue; // the mouth: a ring, open in the middle
+        const a = Math.atan2(cy, cz) / Math.PI; // -1..1: two bands round
+        const band = (((a + x / 12) % 1) + 1) % 1;
+        m.set(x, y, z, x <= -7 ? C.Dark : x === 7 ? C.Steel : band < 0.5 ? C.Mixer : C.White);
       }
   }
   return m;
@@ -1035,29 +1071,14 @@ export const DumpPaint = 0x1fb5a8;
 export function dumpTruckBody(): Model {
   const P = DumpPaint;
   const m = new Model();
-  const wheel = (x0: number, z0: number) => {
-    m.box(x0, 0, z0, 6, 6, 2, C.Rubber).clear(x0, 0, z0, 1, 1, 2).clear(x0 + 5, 0, z0, 1, 1, 2).clear(x0, 5, z0, 1, 1, 2).clear(x0 + 5, 5, z0, 1, 1, 2);
-    const hub = z0 < 0 ? z0 : z0 + 1;
-    m.box(x0 + 2, 2, hub, 2, 2, 1, C.Steel).set(x0 + 2, 3, hub, C.Gray);
-  };
   for (const z of [-7, 5]) {
-    wheel(5, z); // front
-    wheel(-6, z); // back, twice
-    wheel(-12, z);
+    bigWheel(m, 5, z); // front
+    bigWheel(m, -6, z); // back, twice
+    bigWheel(m, -12, z);
   }
   m.box(-13, 3, -4, 25, 2, 8, C.Dark); // chassis
-  for (const z of [-7, 5]) {
-    // Mudguards over the wheels, in the truck's colour.
-    m.box(4, 6, z, 8, 1, 2, P).box(-13, 6, z, 14, 1, 2, P);
-  }
-  // The cab: short and tall, a big windscreen, side windows, a step.
-  m.box(5, 5, -5, 7, 7, 10, P);
-  m.box(11, 7, -4, 1, 4, 8, C.Glass).box(6, 8, -5, 4, 3, 1, C.Glass).box(6, 8, 4, 4, 3, 1, C.Glass);
-  cabRoof(m, 5, 12, -5, 7, 10, P);
-  m.box(12, 3, -5, 1, 3, 10, C.Steel).set(12, 5, -5, C.Light).set(12, 5, 4, C.Light); // bumper and lights
-  m.box(12, 6, -2, 1, 2, 4, C.Dark); // grille
-  m.box(7, 4, -6, 3, 1, 1, C.Steel).box(7, 4, 5, 3, 1, 1, C.Steel); // steps
-  return m;
+  for (const z of [-7, 5]) m.box(4, 6, z, 8, 1, 2, P).box(-13, 6, z, 14, 1, 2, P); // mudguards
+  return truckCab(m, 5, P);
 }
 
 /**

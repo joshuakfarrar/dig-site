@@ -95,6 +95,18 @@ export function createLineup(): Mode {
   const world: World = { site: ground, machines: [] };
   let t = 0;
 
+  // For screenshots from the console: lineup.show(index, angle, close, zoom).
+  (window as unknown as { lineup: unknown }).lineup = {
+    show(i: number, angle = 0.6, c = true, z = 1) {
+      sel = i;
+      spin = false;
+      close = c;
+      zoom = z;
+      items[i].spin = angle;
+      focus.set(items[i].obj.position.x, 0, 0);
+    },
+  };
+
   function tick(dt: number, input: Input.Frame): void {
     t += dt;
     if (Math.abs(input.moveX) > 0.5 && !stick) {

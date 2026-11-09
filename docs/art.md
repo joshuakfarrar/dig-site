@@ -33,6 +33,35 @@ team colour.
 - **Telescoping parts stay sleeved:** each section of the crane's boom keeps a good length inside
   the one before at full stretch, so there's never a gap.
 
+## One fleet
+
+The machines should look like one toy set: same wheels, same cabs, same proportions, different
+paint and a different job on the back. Check them side by side on the lineup page (`?lineup` on
+the dev server: arrows step and zoom, Space spins, E swaps the game camera for a close-up).
+
+- **Two sizes.** Big machines (dump truck, mixer, crane) are about 2.5 long and 1.4 wide across the
+  wheels, with the cab roof at about 1.3. Small ones (crew truck, sweeper, forklift, town cars) are
+  about 2 long and 1 wide. Tracked machines (excavator, bulldozer) sit between, about 1.8 by 1.4.
+- **Wheels are chunky.** Big machines use `bigWheel` in `models.ts`: 6 cells round, 2 thick, corners
+  cleared, a steel hub. Small ones use 3 to 4 cells, with a grey hub. No thin, square-cornered wheels.
+- **Mudguards in the paint** over big wheels, so from above there's colour, not tyres.
+- **Cabs.** Big trucks use `truckCab`: a paint box, a windscreen inset one cell from each edge,
+  side windows, a steel bumper with two headlights, a dark grille and a step. Every cab has the
+  flat `cabRoof`: a paint rim round a white panel. No bevelled or rounded white tops (they read as eggs).
+- **Dark only underneath.** The chassis is dark, but from the game camera you should see paint, glass
+  and the working part, never a black outline more than a cell wide.
+- **The working part is the hero**, and the biggest thing on the back: the drum, the tipper, the
+  boom. It's in the machine's paint (or paint and white), with hazard yellow where the work happens.
+- **The beacon** sits on the cab roof, slightly off centre.
+
+Brought into line so far: the dump truck and the cement mixer, which share their wheels and cab.
+Still to do:
+
+- **Crane:** thin square wheels and a short bevelled cab. It needs big wheels, mudguards and a flat cab roof.
+- **Excavator and roller:** bevelled cab and canopy corners; switch them to the flat roof.
+- **Tractor:** a glass box for a cab; give it a proper cab with a roof.
+- Then check the small ones (crew truck, sweeper, forklift) against each other.
+
 ## Buildings and the town
 
 - **Pastel walls, white trim, one strong roof colour.** Panels are 14 cells high and 2 thick, with a

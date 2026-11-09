@@ -354,17 +354,21 @@ export class Mixer extends Machine {
   constructor(home: THREE.Vector2) {
     super(
       "mixer",
-      { speed: 3.2, accel: 6, turn: 140 * deg, halfLen: 1.25, radius: 0.55, circles: [[-0.75, 0.55], [0, 0.55], [0.75, 0.55]], cab: new THREE.Vector3(0.7, 1.0, 0) },
-      new THREE.Vector3(0.65, 1.0, 0),
+      { speed: 3.2, accel: 6, turn: 140 * deg, halfLen: 1.25, radius: 0.7, circles: [[-0.65, 0.7], [0.55, 0.7]], cab: new THREE.Vector3(0.85, 1.2, 0) },
+      new THREE.Vector3(0.85, 1.36, 0.3),
       home,
     );
     this.tilt.add(M.mixerBody().mesh(Cell));
     const mount = new THREE.Group();
-    mount.position.set(-0.3, 0.9, 0);
+    mount.position.set(-0.4, 1.12, 0);
     mount.rotation.z = -12 * deg; // the mouth end (-x) up
     this.drum.add(M.mixerDrum().mesh(Cell, [0, 0, 0]));
     mount.add(this.drum);
     this.tilt.add(mount);
+    const chute = M.mixerChute().mesh(Cell, [0, 0, 0]);
+    chute.position.set(-1.2, 1.0, 0);
+    chute.rotation.z = 30 * deg; // its far end (-x) down
+    this.tilt.add(chute);
     this.addBeacon(this.tilt);
   }
 
@@ -375,7 +379,7 @@ export class Mixer extends Machine {
   /** The chute's lip, where concrete drops from, in the world. */
   chuteWorld(): THREE.Vector3 {
     this.root.updateMatrixWorld(true);
-    return this.tilt.localToWorld(new THREE.Vector3(-1.5, 0.62, 0.05));
+    return this.tilt.localToWorld(new THREE.Vector3(-1.75, 0.68, 0));
   }
 
   update(dt: number, w: World): void {
