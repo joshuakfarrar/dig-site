@@ -24,12 +24,17 @@ TypeScript, Vite and three.js.
 
 ## Play
 
-| | Keyboard | Gamepad |
-|---|---|---|
-| Drive | WASD or arrows | left stick or d-pad |
-| Work (load, unload, dig, lift, set down) | Space or Enter | A |
-| Hop into the machine you're next to | E | Y or X |
-| Back to town / new town (hold) | hold R, or hold the corner button | hold Start |
+| | Keyboard | Gamepad | Touch |
+|---|---|---|---|
+| Drive | WASD or arrows | left stick or d-pad | drag on the left half of the screen |
+| Work (load, unload, dig, lift, set down) | Space or Enter | A | the orange gear button, or a tap on the right half |
+| Hop into the machine you're next to | E | Y or X | the blue hop button (shown only when there's a machine to hop into) |
+| Back to town / new town (hold) | hold R, or hold the corner button | hold Start | hold the corner button |
+
+The prompts in the scene show whichever was used last. On a touch screen held upright, a picture
+asks for it to be turned on its side. Graphics quality starts from a guess about the device and
+steps down if frames run slow (`?quality=high|medium|low` forces one). In the background the game
+pauses and goes quiet.
 
 ### The town
 

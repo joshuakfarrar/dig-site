@@ -2,15 +2,19 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="referrer" content="no-referrer" />
     <title>Dig Site</title>
     <style>
       html, body { margin: 0; height: 100%; overflow: hidden; background: #a9dcff; font-family: system-ui, sans-serif;
-        -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+        -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: none;
+        -webkit-tap-highlight-color: transparent; overscroll-behavior: none; }
+      /* Room round notches and rounded screen corners. */
+      :root { --st: env(safe-area-inset-top, 0px); --sr: env(safe-area-inset-right, 0px);
+        --sb: env(safe-area-inset-bottom, 0px); --sl: env(safe-area-inset-left, 0px); }
       #app canvas { display: block; }
       /* Progress, as pictures: done ones get a tick, the one now bounces. */
-      #progress { position: fixed; top: 14px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px;
+      #progress { position: fixed; top: calc(14px + var(--st)); left: 50%; transform: translateX(-50%); display: flex; gap: 10px;
         padding: 8px 12px; border-radius: 40px; background: rgba(255,255,255,.72); box-shadow: 0 3px 10px rgba(0,0,0,.12); }
       #progress:empty { display: none; }
       .step { position: relative; width: 52px; height: 52px; border-radius: 50%; background: #e9eef3; display: grid; place-items: center;
@@ -28,10 +32,10 @@
       #progress.small .step.done { background: #fff; }
       #progress.small .step.done::after { display: none; }
       @keyframes bob { 50% { transform: translateY(-4px); } }
-      .corner { position: fixed; top: 14px; width: 48px; height: 48px; border-radius: 50%; border: 0; background: rgba(255,255,255,.72);
+      .corner { position: fixed; top: calc(14px + var(--st)); z-index: 3; width: 48px; height: 48px; border-radius: 50%; border: 0; background: rgba(255,255,255,.72);
         box-shadow: 0 3px 10px rgba(0,0,0,.12); cursor: pointer; display: grid; place-items: center; padding: 0; touch-action: none; }
       .corner svg { width: 26px; height: 26px; }
-      #hold { right: 14px; --p: 0; }
+      #hold { right: calc(14px + var(--sr)); --p: 0; }
       /* A ring fills round it while it's held; let go and it drains. */
       #hold::before { content: ""; position: absolute; inset: -5px; border-radius: 50%; pointer-events: none;
         background: conic-gradient(#ff8a1f calc(var(--p) * 1turn), transparent 0);
@@ -39,13 +43,51 @@
       #hold.holding { transform: scale(.94); }
       #hold[data-kind="home"] .fresh, #hold[data-kind="fresh"] .home { display: none; }
       #hold.nudge { animation: bob 1s ease-in-out infinite; box-shadow: 0 0 0 3px #3fb950; background: #fff; }
-      #mute { right: 72px; }
+      #mute { right: calc(72px + var(--sr)); }
       #mute.off .wave { display: none; }
       #mute:not(.off) .cross { display: none; }
-      #fade { position: fixed; inset: 0; background: #a9dcff; opacity: 0; pointer-events: none; transition: opacity .35s; }
+      #fade { position: fixed; inset: 0; z-index: 4; background: #a9dcff; opacity: 0; pointer-events: none; transition: opacity .35s; }
       #fade.on { opacity: 1; }
+      /* Touch controls: only while touch is what's being used. */
+      #touch { display: none; }
+      body.touch #touch { display: block; }
+      #stick { position: fixed; left: calc(96px + var(--sl)); top: calc(100% - 96px - var(--sb)); width: 132px; height: 132px;
+        margin: -66px 0 0 -66px; border-radius: 50%; background: rgba(255,255,255,.22); box-shadow: inset 0 0 0 4px rgba(255,255,255,.6);
+        opacity: .55; pointer-events: none; z-index: 2; transition: opacity .15s; }
+      #stick.live { opacity: 1; transition: none; }
+      #knob { position: absolute; left: 36px; top: 36px; width: 60px; height: 60px; border-radius: 50%; background: #fff;
+        box-shadow: 0 3px 8px rgba(0,0,0,.25); }
+      .tap { position: fixed; border: 0; padding: 0; border-radius: 50%; background: center/contain no-repeat; z-index: 2;
+        touch-action: none; filter: drop-shadow(0 4px 6px rgba(0,0,0,.2)); }
+      #tapWork { right: calc(26px + var(--sr)); bottom: calc(24px + var(--sb)); width: 116px; height: 116px; opacity: .6;
+        transition: opacity .2s, transform .08s; }
+      #tapWork.ready { opacity: 1; animation: glow 1.1s ease-in-out infinite; }
+      #tapWork.down, #tapHop.down { transform: scale(.9); animation: none; }
+      #tapHop { right: calc(160px + var(--sr)); bottom: calc(30px + var(--sb)); width: 88px; height: 88px; display: none; }
+      #tapHop.shown { display: block; animation: popin .25s ease-out, bob 1s ease-in-out .25s infinite; }
+      /* Held upright on a touch screen: a picture asking to turn it on its side. */
+      #rotate { display: none; position: fixed; inset: 0; z-index: 5; background: #a9dcff; place-items: center; }
+      #rotate svg { width: min(60vw, 260px); height: auto; }
+      #rotate .phone { transform-origin: 60px 60px; animation: turn 2.4s ease-in-out infinite; }
+      @keyframes turn { 0%, 25% { transform: rotate(0); } 55%, 100% { transform: rotate(90deg); } }
+      @media (orientation: portrait) { body.touch #rotate { display: grid; } }
+      @keyframes glow { 50% { transform: scale(1.07); } }
+      @keyframes popin { from { transform: scale(.4); } to { transform: scale(1); } }
+      /* Phones on their side: short screens, so smaller pictures up top. */
+      @media (max-height: 500px) {
+        .step { width: 40px; height: 40px; }
+        .step svg { width: 28px; height: 28px; }
+        #progress { gap: 7px; padding: 6px 10px; top: calc(8px + var(--st)); }
+        .corner { top: calc(8px + var(--st)); width: 42px; height: 42px; }
+        #hold::before { -webkit-mask: radial-gradient(circle, transparent 24px, #000 25px); mask: radial-gradient(circle, transparent 24px, #000 25px); }
+        #mute { right: calc(64px + var(--sr)); }
+        #tapWork { width: 96px; height: 96px; }
+        #tapHop { width: 74px; height: 74px; right: calc(136px + var(--sr)); }
+        #stick { left: calc(84px + var(--sl)); top: calc(100% - 84px - var(--sb)); }
+      }
       @media (max-width: 560px) {
         #progress { top: auto; bottom: 14px; }
+        body.touch #progress { top: calc(8px + var(--st)); bottom: auto; }
         .step { width: 44px; height: 44px; }
         .step svg { width: 30px; height: 30px; }
         #progress.small .step { width: 30px; height: 30px; }
@@ -64,6 +106,9 @@
       <svg class="fresh" viewBox="0 0 24 24"><path d="M19 12a7 7 0 1 1-2.05-4.95" fill="none" stroke="#3a3f47" stroke-width="2.6" stroke-linecap="round"/><path d="M18.5 3v5h-5" fill="none" stroke="#3a3f47" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </button>
     <div id="fade"></div>
+    <div id="rotate" aria-label="Turn the screen on its side">
+      <svg viewBox="0 0 120 120"><path d="M92 30a40 40 0 0 1 8 34" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round"/><path d="M104 58l-4 9-7-7" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><g class="phone"><rect x="42" y="22" width="36" height="76" rx="8" fill="#3a3f47"/><rect x="46" y="30" width="28" height="56" rx="3" fill="#ffd27a"/><rect x="52" y="60" width="16" height="10" rx="2" fill="#f2b705"/><circle cx="60" cy="92" r="2.6" fill="#8b929a"/></g></svg>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

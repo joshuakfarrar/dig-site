@@ -3,6 +3,8 @@
 Where Dig Site stands, for whichever session picks it up next. Everything below is committed to
 `main`; there is no remote (ask the user before creating one; `gh` isn't installed).
 
+**Where it's going:** [roadmap.md](roadmap.md) lays out the plan to ship on Google Play, the App Store and Amazon as a free-to-try game with a single $2.99 unlock. Work through it phase by phase.
+
 ## Done
 
 - **First slice** (`af3e9e4`): one site, where you dig the pit, pour the slab, and lift walls and roof with the crane.
@@ -35,6 +37,19 @@ Where Dig Site stands, for whichever session picks it up next. Everything below 
     - People and the truck can never meet: the truck is boxed onto the roads.
   - README "Made for kids" section; `docs/art.md` updated with the new machine colours and building rules.
 
+## Phase 1 of the roadmap (in progress)
+
+- **Touch controls** (`src/touch.ts`): a floating stick on the left half; an orange gear Work button on the right that glows when it'd do something (any right-half tap counts); a blue Hop button that only appears next to a machine.
+- **Prompts:** in-scene prompts use the same pictures whenever touch was used last (`Controls` in `guide.ts`, `Input.controls()`, `Input.hints()`).
+- **Screen layout:**
+  - Safe-area insets are respected.
+  - Short sideways phones get smaller strip and corner buttons and a closer camera (`setViewZoom`).
+  - An upright touch screen shows a turn-it-sideways picture.
+- **Quality tiers** (`src/quality.ts`): high, medium or low, set by pixel ratio, shadow size and antialiasing. It starts from a guess about the device, steps down when frames are slow, and is remembered on the device.
+- **Pause:** the game stops and goes quiet when the page is hidden.
+- **Camera:** the view's middle is nudged below the progress strip (`fitCamera`), and the site camera's southern limit is 2.6, so the building no longer sits under the strip.
+- **Not yet done from Phase 1:** testing on real devices (a cheap Android tablet and an iPad).
+
 ## Design decisions the user made
 
 - **Stack:** TS + Vite + three.js (they picked it); newest dependency versions.
@@ -42,7 +57,8 @@ Where Dig Site stands, for whichever session picks it up next. Everything below 
 - **Safety first:** "SAFE FOR KIDS" is the top priority.
 - **Grow the idea freely:** scaling up is open ("bigger houses, housing types, commercial buildings" are all welcome). More equipment is welcome too: loading and unloading trucks, clearing and cleaning up the site.
 - **Look:** they and their wife love the voxel style. She doesn't play games and built the first house unaided.
-- **Touch controls:** on hold. The user wanted to see the game with mouse and keyboard first.
+- **Touch controls:** added in Phase 1, after the user had played with mouse and keyboard.
+- **Inclusive housing:** the user wants multi-unit homes (duplexes, terraces, a small apartment block, flats over shops) and households of all kinds, for housing inclusivity. It's in Phase 3 of the roadmap.
 - **Ports:** use our own ports (dev 5288, preview 5289), never 8080, 5173 or 5191.
 
 ## Still open / ideas
@@ -69,7 +85,6 @@ Fixed on 2026-11-08 (after `218c5dd`):
 - **Timers:** the arrival pop and the switch to a building site run off the town's tick clock, not `setTimeout`.
 
 Still open:
-- **Building-site camera:** the finished building sits near the top of the screen, partly under the progress strip.
 - **Testing in a hidden tab:** the browser throttles requestAnimationFrame there. Use `game.advance(seconds, held)` (dev only) to step the game. Screenshots lag a frame or two, so advance about 0.05 s and wait a second before taking one.
 
 ## Uncommitted

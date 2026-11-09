@@ -6,7 +6,7 @@ import * as M from "./models";
 import { Cell } from "./models";
 import * as B from "./blueprints";
 import { Fx } from "./fx";
-import { breathe, ghost, Marker, Prompt, type Glyph } from "./guide";
+import { breathe, ghost, hopGlyph, Marker, Prompt, workGlyph, type Controls } from "./guide";
 import { Crane, Dozer, Excavator, Machine, Mixer, Roller, type Load, type World } from "./machines";
 import { PATH, SCOOPS_PER_QUADRANT, Site, SLAB_TOP, type Quadrant } from "./site";
 import { disposeScene, lit, Pops, type Mode } from "./stage";
@@ -23,8 +23,10 @@ export const STAGES: Stage[] = ["dig", "pour", "walls", "roof", "path", "clean",
 export interface BuildHooks {
   /** It's built and the celebration's had its moment: back to town. */
   finished(): void;
-  /** Usually just `usingPad()`: which button pictures to show. */
-  usingPad(): boolean;
+  /** Which button pictures to show: keys, pad or touch. */
+  controls(): Controls;
+  /** Tells the touch buttons what's possible right now. */
+  hints(work: boolean, hop: boolean): void;
 }
 
 export interface BuildMode extends Mode {
@@ -545,9 +547,7 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
       : null;
     if (stage !== "pour") mixer.pouring = false;
 
-    const pad = hooks.usingPad();
-    const workGlyph: Glyph = pad ? "padA" : "space";
-    const hopGlyph: Glyph = pad ? "padY" : "e";
+    const controls = hooks.controls();
 
     // Which machine you could hop into: the nearest one close by.
     let near: Machine | null = null;
@@ -571,13 +571,15 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
         workPrompt.show(null, null, dt);
       } else {
         marker.update(dt, job.over, job.spot, job.ring, from);
-        workPrompt.show(job.canWork ? workGlyph : null, machineTop(active).add(new THREE.Vector3(0, 0.75, 0)), dt);
+        workPrompt.show(job.canWork ? workGlyph(controls) : null, machineTop(active).add(new THREE.Vector3(0, 0.75, 0)), dt);
         if (job.canWork && (input.workPressed || (job.hold && input.work))) job.work();
       }
     } else marker.update(dt, null, null, 1, null);
     if (!job) workPrompt.show(null, null, dt);
 
-    hopPrompt.show(near ? hopGlyph : null, near ? machineTop(near).add(new THREE.Vector3(0, 0.7, 0)) : null, dt);
+    // Work glows when it'd do something (and once the celebration's had its moment, to head back).
+    hooks.hints((!!job && !hop && job.machine === active && job.canWork) || celebrate > 2, near !== null);
+    hopPrompt.show(near ? hopGlyph(controls) : null, near ? machineTop(near).add(new THREE.Vector3(0, 0.7, 0)) : null, dt);
     if (near && input.hopPressed && !hop) {
       hop = { from: active, to: near, t: 0 };
       active.driven = false;
@@ -629,7 +631,8 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
     const want = hop ? workerMesh.position.clone().setY(0) : new THREE.Vector3(active.pos.x, 0, active.pos.y);
     // Not so far out that the view's half grass: the site fills it.
     want.x = Math.max(-6.5, Math.min(6.5, want.x));
-    want.z = Math.max(-5, Math.min(3.8, want.z));
+    // Not so far south that the building's up under the progress strip: the machines park low on screen instead.
+    want.z = Math.max(-5, Math.min(2.6, want.z));
     if (celebrate >= 0) want.lerp(new THREE.Vector3(F.cx, 0, F.cz), Math.min(1, celebrate));
     focus.lerp(want, 1 - Math.exp(-4 * dt));
     frameCamera(focus, celebrate >= 0 ? Math.min(1, celebrate / 1.5) : 0);

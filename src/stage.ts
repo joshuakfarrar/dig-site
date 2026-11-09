@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import type { Frame } from "./input";
+import * as Quality from "./quality";
 
 /**
  * What the town and a building site have in common: a lit, sunny scene and a camera that follows
@@ -8,6 +9,25 @@ import type { Frame } from "./input";
 export const SKY = 0xa9dcff;
 export const CAM = new THREE.Vector3(0, 10.5, 8.4); // three-quarter top-down, about 51 degrees
 const LOW = new THREE.Vector3(0, 4.8, 9.6); // lower and in front, for a finished building
+
+/** How close the camera sits: nearer on a short screen (a phone on its side), so the machines aren't tiny. */
+let viewZoom = 1;
+export function setViewZoom(z: number): void {
+  viewZoom = z;
+}
+
+/**
+ * Fits a camera to the screen with its middle nudged down by `drop` pixels, so what it follows
+ * sits a little below the progress strip along the top rather than under it. The field of view's
+ * widened to match, so nothing gets bigger or smaller.
+ */
+export function fitCamera(camera: THREE.PerspectiveCamera, w: number, h: number, fov: number, drop: number): void {
+  const full = h + 2 * drop;
+  camera.fov = (2 * Math.atan(Math.tan((fov * Math.PI) / 360) * (full / h)) * 180) / Math.PI;
+  camera.aspect = w / full;
+  camera.setViewOffset(w, full, 0, 0, w, h);
+  camera.updateProjectionMatrix();
+}
 
 export interface Mode {
   scene: THREE.Scene;
@@ -34,7 +54,7 @@ export function lit(): Lit {
   const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 300);
   const sun = new THREE.DirectionalLight(0xfff6e6, 1.7);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(2048, 2048);
+  Quality.useSun(sun);
   Object.assign(sun.shadow.camera, { left: -16, right: 16, top: 16, bottom: -16, near: 1, far: 80 });
   sun.shadow.bias = -0.0005;
   sun.shadow.normalBias = 0.02;
@@ -45,7 +65,7 @@ export function lit(): Lit {
     sun,
     frame(focus, low = 0) {
       // On a tall phone screen, pull back so the scene still fits across.
-      const zoom = camera.aspect < 0.8 ? 1.25 : 1;
+      const zoom = camera.aspect < 0.8 ? 1.25 : viewZoom;
       const k = low * low * (3 - 2 * low);
       const at = focus.clone().setY(k * 1.2);
       camera.position.copy(at).addScaledVector(CAM.clone().lerp(LOW, k), zoom);

@@ -19,6 +19,13 @@ export function unlock(): void {
   startEngine();
 }
 
+/** Hushes everything while the game's in the background (another app, a locked screen). */
+export function pause(on: boolean): void {
+  if (!ctx) return;
+  if (on && ctx.state === "running") void ctx.suspend();
+  else if (!on && ctx.state === "suspended") void ctx.resume();
+}
+
 export function toggleMute(): boolean {
   muted = !muted;
   if (master && ctx) master.gain.setTargetAtTime(muted ? 0 : 0.55, ctx.currentTime, 0.05);

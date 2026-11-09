@@ -1,7 +1,11 @@
+import type { Controls } from "./guide";
+import * as Touch from "./touch";
+
 /**
- * Keyboard and gamepad, read once a frame. The stick (or WASD / arrows) points where to go on
+ * Keyboard, gamepad and touch, read once a frame. The stick (or WASD / arrows) points where to go on
  * screen; Work (Space / Enter / pad A) does the machine's job; Hop (E / pad Y or X) jumps into the
  * machine you're next to; holding R (pad Start) works the corner button. Like Kickstack's Pad, sticks have a radial dead zone.
+ * On a touch screen, `touch.ts` puts a stick and the two buttons on screen.
  */
 export interface Frame {
   moveX: number; // right +
@@ -15,7 +19,13 @@ export interface Frame {
 
 const keys = new Set<string>();
 const pressed = new Set<string>();
-let padWasUsed = false;
+let using: Controls = "keys";
+function use(c: Controls): void {
+  if (using === c) return;
+  using = c;
+  Touch.show(c === "touch");
+}
+Touch.onTouched(() => use("touch"));
 const lastPadButtons: boolean[] = [];
 
 addEventListener("keydown", (e) => {
@@ -23,7 +33,7 @@ addEventListener("keydown", (e) => {
   if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.code)) e.preventDefault();
   keys.add(e.code);
   pressed.add(e.code);
-  padWasUsed = false;
+  use("keys");
 });
 addEventListener("keyup", (e) => keys.delete(e.code));
 addEventListener("blur", () => keys.clear());
@@ -36,9 +46,14 @@ function deadZone(x: number, y: number): [number, number] {
   return [x * s, y * s];
 }
 
-/** The pad was used more lately than the keys: show pad buttons in the prompts. */
-export function usingPad(): boolean {
-  return padWasUsed;
+/** Whichever was used last: keys, pad or touch. The prompts show that one's buttons. */
+export function controls(): Controls {
+  return using;
+}
+
+/** Lets the touch buttons show what's possible right now (Work glows, Hop appears). */
+export function hints(work: boolean, hop: boolean): void {
+  Touch.hints(work, hop);
 }
 
 export function read(): Frame {
@@ -64,7 +79,7 @@ export function read(): Frame {
     const dx = (btn(15) ? 1 : 0) - (btn(14) ? 1 : 0);
     const dy = (btn(12) ? 1 : 0) - (btn(13) ? 1 : 0);
     const any = sx !== 0 || sy !== 0 || dx !== 0 || dy !== 0 || pad.buttons.some((b) => b.pressed);
-    if (any) padWasUsed = true;
+    if (any) use("pad");
     if (sx !== 0 || sy !== 0) {
       mx = sx;
       my = -sy;
@@ -82,5 +97,13 @@ export function read(): Frame {
     break; // the first pad plays
   }
   pressed.clear();
+  const t = Touch.read();
+  if (t.moveX !== 0 || t.moveY !== 0) {
+    mx = t.moveX;
+    my = t.moveY;
+  }
+  work ||= t.work;
+  workPressed ||= t.workPressed;
+  hopPressed ||= t.hopPressed;
   return { moveX: mx, moveY: my, work, workPressed, hopPressed, restartPressed, restart };
 }

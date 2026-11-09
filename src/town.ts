@@ -6,7 +6,7 @@ import * as M from "./models";
 import { C, Cell } from "./models";
 import * as B from "./blueprints";
 import { Fx } from "./fx";
-import { Marker, Prompt, type Glyph } from "./guide";
+import { Marker, Prompt, workGlyph, type Controls } from "./guide";
 import { Crane, Excavator, Mixer, Roller, Truck, type Machine, type World } from "./machines";
 import type { Box, Circle, Ground } from "./site";
 import { disposeScene, lit, Pops, type Mode } from "./stage";
@@ -59,7 +59,8 @@ interface Person {
 
 export interface TownHooks {
   build(lot: number): void;
-  usingPad(): boolean;
+  controls(): Controls;
+  hints(work: boolean, hop: boolean): void;
 }
 
 export interface TownMode extends Mode {
@@ -561,8 +562,8 @@ export function createTown(built: Set<number>, arrived: number | null, hooks: To
       const top = new THREE.Vector3(next.x, 0.52 + (B.roofAt(next.bp).y + next.bp.roof.height) * 0.3 + 0.2, next.front - 1.2);
       marker.update(dt, top, null, 1, from);
     }
-    const glyph: Glyph = hooks.usingPad() ? "padA" : "space";
-    workPrompt.show(at || atPile ? glyph : null, new THREE.Vector3(truck.pos.x, truck.y + 1.75, truck.pos.y), dt);
+    hooks.hints(!!(at || atPile), false);
+    workPrompt.show(at || atPile ? workGlyph(hooks.controls()) : null, new THREE.Vector3(truck.pos.x, truck.y + 1.75, truck.pos.y), dt);
 
     if (atPile && input.workPressed) {
       // Up from the pile and into the bed, one after the other.

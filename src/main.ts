@@ -4,16 +4,17 @@ import * as Hud from "./hud";
 import * as Input from "./input";
 import * as B from "./blueprints";
 import * as Save from "./save";
+import * as Quality from "./quality";
 import { createBuild, STAGES, type BuildMode, type Stage } from "./build";
 import { createTown, type TownMode } from "./town";
-import type { Mode } from "./stage";
+import { fitCamera, setViewZoom, type Mode } from "./stage";
 
 /**
  * The game: the town, and a building site for whichever lot you picked. One renderer and one
  * loop; a quick fade to sky blue between the two.
  */
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+const renderer = new THREE.WebGLRenderer({ antialias: Quality.settings().antialias, powerPreference: "high-performance" });
+Quality.useRenderer(renderer);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFShadowMap;
 document.getElementById("app")!.appendChild(renderer.domElement);
@@ -27,10 +28,11 @@ let saved = Save.load();
 function fit(m: Mode): void {
   const w = innerWidth, h = innerHeight;
   renderer.setSize(w, h);
-  m.camera.aspect = w / h;
-  // On a tall phone screen, widen the view so the scene still fits across.
-  m.camera.fov = w / h < 0.8 ? 62 : 50;
-  m.camera.updateProjectionMatrix();
+  // A phone on its side is short: come in closer so the machines and prompts are a good size.
+  setViewZoom(h < 500 ? 0.8 : 1);
+  // On a tall phone screen, widen the view so the scene still fits across. The middle sits a bit
+  // low, clear of the progress strip along the top.
+  fitCamera(m.camera, w, h, w / h < 0.8 ? 62 : 50, Math.round(Math.min(64, h * 0.12)));
 }
 addEventListener("resize", () => fit(mode));
 
@@ -45,7 +47,8 @@ function goTown(arrived: number | null): void {
   build = null;
   town = createTown(new Set(saved.built), arrived, {
     build: (i) => void switchTo(() => goBuild(i)),
-    usingPad: Input.usingPad,
+    controls: Input.controls,
+    hints: Input.hints,
   });
   use(town);
   Hud.corner("fresh", () =>
@@ -67,7 +70,8 @@ function goBuild(i: number, at?: Stage): void {
         Save.save(saved);
         goTown(i);
       }),
-    usingPad: Input.usingPad,
+    controls: Input.controls,
+    hints: Input.hints,
   });
   if (at) build.skipTo(at);
   use(build);
@@ -97,13 +101,26 @@ function tick(dt: number, read: Input.Frame): void {
 }
 
 let last = performance.now();
+let paused = false;
 function frame(now: number): void {
-  const dt = Math.min(0.05, (now - last) / 1000);
+  const real = (now - last) / 1000;
+  const dt = Math.min(0.05, real);
   last = now;
-  tick(dt, Input.read());
-  renderer.render(mode.scene, mode.camera);
+  if (!paused) {
+    Quality.frame(real);
+    tick(dt, Input.read());
+    renderer.render(mode.scene, mode.camera);
+  }
   requestAnimationFrame(frame);
 }
+
+// In the background (another app, a locked screen): everything stops and goes quiet, and picks
+// up where it was on coming back.
+document.addEventListener("visibilitychange", () => {
+  paused = document.visibilityState === "hidden";
+  Audio.pause(paused);
+  last = performance.now();
+});
 
 document.getElementById("mute")!.addEventListener("click", (e) => {
   Audio.unlock();

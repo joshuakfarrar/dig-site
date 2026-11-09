@@ -6,9 +6,87 @@ import * as THREE from "three";
  * - a pulsing ring on the ground at that spot;
  * - a chevron on the ground by your machine pointing the way, while the spot's far off;
  * - a picture of the button to press, over your machine when it can work, or over the machine
- *   you can hop into. Pictures, not words: a long bar for Space, a green A for a pad.
+ *   you can hop into. Pictures, not words: a long bar for Space, a green A for a pad, and on a
+ *   touch screen the very same picture as the button to tap (an orange gear, a blue hop).
  */
-export type Glyph = "space" | "e" | "padA" | "padY";
+export type Glyph = "space" | "e" | "padA" | "padY" | "tapWork" | "tapHop";
+
+/** Which set of button pictures to show: whatever was used last. */
+export type Controls = "keys" | "pad" | "touch";
+
+export function workGlyph(c: Controls): Glyph {
+  return c === "pad" ? "padA" : c === "touch" ? "tapWork" : "space";
+}
+export function hopGlyph(c: Controls): Glyph {
+  return c === "pad" ? "padY" : c === "touch" ? "tapHop" : "e";
+}
+
+export const TouchColour = { work: "#ff8a1f", workDark: "#c95f00", hop: "#4aa8ff", hopDark: "#1f6fc4" };
+
+/**
+ * The touch buttons' faces, drawn round (cx, cy) with radius r: a white gear on orange for Work, a
+ * white jump-arc on blue for Hop. The same drawing goes on the on-screen buttons and in the scene.
+ */
+export function drawTouchIcon(x: CanvasRenderingContext2D, cx: number, cy: number, r: number, kind: "work" | "hop"): void {
+  const fill = kind === "work" ? TouchColour.work : TouchColour.hop;
+  const dark = kind === "work" ? TouchColour.workDark : TouchColour.hopDark;
+  x.beginPath();
+  x.arc(cx, cy + r * 0.08, r, 0, Math.PI * 2);
+  x.fillStyle = dark;
+  x.fill();
+  x.beginPath();
+  x.arc(cx, cy, r * 0.94, 0, Math.PI * 2);
+  x.fillStyle = fill;
+  x.fill();
+  x.lineWidth = r * 0.08;
+  x.strokeStyle = "#ffffff";
+  x.stroke();
+  x.fillStyle = "#ffffff";
+  x.strokeStyle = "#ffffff";
+  x.lineCap = "round";
+  x.lineJoin = "round";
+  if (kind === "work") {
+    // A chunky gear: eight teeth round a ring with a hole.
+    const teeth = 8, ro = r * 0.6, ri = r * 0.45;
+    x.beginPath();
+    for (let k = 0; k < teeth * 2; k++) {
+      const a0 = (k / (teeth * 2)) * Math.PI * 2 - Math.PI / 2;
+      const a1 = ((k + 1) / (teeth * 2)) * Math.PI * 2 - Math.PI / 2;
+      const rr = k % 2 === 0 ? ro : ri;
+      x.lineTo(cx + Math.cos(a0) * rr, cy + Math.sin(a0) * rr);
+      x.lineTo(cx + Math.cos(a1) * rr, cy + Math.sin(a1) * rr);
+    }
+    x.closePath();
+    x.moveTo(cx + r * 0.2, cy);
+    x.arc(cx, cy, r * 0.2, 0, Math.PI * 2, true);
+    x.fill("evenodd");
+  } else {
+    // A hop: an arc up and over, with an arrowhead where it lands, and a dot for the jumper.
+    const l = cx - r * 0.5, rgt = cx + r * 0.46, base = cy + r * 0.38;
+    x.lineWidth = r * 0.16;
+    x.beginPath();
+    x.moveTo(l, base);
+    x.quadraticCurveTo(cx - r * 0.02, cy - r * 0.78, rgt, base - r * 0.05);
+    x.stroke();
+    x.beginPath();
+    x.moveTo(rgt + r * 0.1, base + r * 0.12);
+    x.lineTo(rgt - r * 0.26, base + r * 0.02);
+    x.lineTo(rgt + r * 0.02, base - r * 0.28);
+    x.closePath();
+    x.fill();
+    x.beginPath();
+    x.arc(l, base - r * 0.26, r * 0.12, 0, Math.PI * 2);
+    x.fill();
+  }
+}
+
+/** A touch button's face as an image, for the HTML buttons. */
+export function touchIconURL(kind: "work" | "hop", px = 192): string {
+  const c = document.createElement("canvas");
+  c.width = c.height = px;
+  drawTouchIcon(c.getContext("2d")!, px / 2, px / 2 - px * 0.03, px * 0.45, kind);
+  return c.toDataURL();
+}
 
 function glyphTexture(g: Glyph): THREE.CanvasTexture {
   const c = document.createElement("canvas");
@@ -20,7 +98,9 @@ function glyphTexture(g: Glyph): THREE.CanvasTexture {
     x.roundRect(l, t, w, h, r);
   };
   x.lineJoin = "round";
-  if (g === "space" || g === "e") {
+  if (g === "tapWork" || g === "tapHop") {
+    drawTouchIcon(x, 128, 60, 54, g === "tapWork" ? "work" : "hop");
+  } else if (g === "space" || g === "e") {
     const w = g === "space" ? 220 : 104;
     const l = (256 - w) / 2;
     // A keycap: a darker base under a light top, like a key seen from the front.
