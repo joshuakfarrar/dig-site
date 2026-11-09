@@ -64,6 +64,9 @@ it fills up with children.
 A gentle tune plays underneath: a soft marimba over a warm pad, made in code like every other
 sound, that wanders a little differently every eight bars and dips when a fanfare plays.
 
+The game opens on a picture and one big round Play button over the town. Any key, the pad's A
+button or a tap starts it. In the yard, a little lime forklift loads the truck for you.
+
 Each neighbourhood finishes its sites a little differently. On Home Street the bulldozer pushes
 the dirt heaps away. In Market Square the teal dump truck hauls them: stop by a heap and press
 Work to load it, then stop by the skip at the gate and it backs up and tips. On the Harbour, sand

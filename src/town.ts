@@ -569,6 +569,16 @@ export function createTown(
     pile.position.copy(PILE);
     scene.add(pile);
   }
+  // The yard's forklift, waiting by the pile to load the truck.
+  const FORK_HOME = new THREE.Vector3(-20.2, 0, 4.5);
+  const fork = new THREE.Group();
+  fork.add(M.forkliftBody().mesh(Cell, [0, 0, 0]));
+  const forks = new THREE.Group();
+  forks.add(M.forkliftForks().mesh(Cell, [0, 0, 0]));
+  forks.position.set(0.6, 0.12, 0);
+  fork.add(forks);
+  fork.position.copy(FORK_HOME);
+  scene.add(fork);
   const loadRing = new THREE.Mesh(
     new THREE.RingGeometry(0.95, 1.2, 48),
     new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.75, depthWrite: false }),
@@ -920,6 +930,47 @@ export function createTown(
     for (const p of arrivedLot.people) p.mesh.visible = false;
     party = 0;
   }
+  const ease = (t: number) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
+  /** Seconds into the forklift loading the truck, or -1. */
+  let forkT = -1;
+  let forkFrom: THREE.Vector3[] = [];
+  function updateFork(dt: number): void {
+    if (forkT < 0) return;
+    forkT += dt;
+    const t = forkT;
+    const bed0 = bedWorld(0)();
+    const stand = new THREE.Vector3(bed0.x - 1.15, 0, bed0.z);
+    // On the forks: where each thing sits, in the world.
+    const onForks = (k: number) => {
+      fork.updateMatrixWorld(true);
+      return forks.localToWorld(new THREE.Vector3(0.45 + k * 0.05, 0.08 + k * 0.32, (k - 0.5) * 0.1));
+    };
+    const e = (a: number, b: number) => ease(Math.min(1, Math.max(0, (t - a) / (b - a))));
+    // Out to the truck (0.35-0.8 s) and back (1.05-1.45 s); the forks rise on the way.
+    fork.position.lerpVectors(FORK_HOME, stand, e(0.35, 0.8) * (1 - e(1.05, 1.45)));
+    forks.position.y = 0.12 + 0.42 * e(0.35, 0.8) * (1 - e(1.05, 1.45));
+    load.forEach((m, k) => {
+      if (t < 0.35) {
+        // A little hop from the pile onto the forks.
+        const a = e(0, 0.35);
+        m.position.lerpVectors(forkFrom[k], onForks(k), a).setY(m.position.y + Math.sin(Math.PI * a) * 0.4);
+      } else if (t < 0.8) m.position.copy(onForks(k));
+      else if (t < 1.05) m.position.lerpVectors(onForks(k), bedWorld(k)(), e(0.8, 1.05));
+      else if (m.parent === scene) {
+        truck.tilt.add(m);
+        m.position.copy(BED[k]);
+        m.rotation.set(0, 0, 0);
+        pops.add(m);
+        Audio.thud();
+      }
+    });
+    if (t >= 1.05 && !loaded) {
+      loaded = true;
+      Audio.sectionDone(2);
+    }
+    if (t >= 1.45) forkT = -1;
+  }
+
   /** Seconds until we go to the building site, once the truck's unloaded; -1 while not going. */
   let buildIn = -1;
 
@@ -1004,7 +1055,7 @@ export function createTown(
         }
 
     const stopped = (x: number, z: number) => Math.hypot(truck.pos.x - x, truck.pos.y - z) < 1.1 && truck.speed < 1.5;
-    const busy = flying.length > 0 || leaving;
+    const busy = flying.length > 0 || leaving || forkT >= 0;
     const anyLeft = lots.some((l) => !l.built);
     // Empty: load up at the yard. Loaded: take it to a lot.
     const atPile = !loaded && !busy && anyLeft && stopped(LOAD_AT.x, LOAD_AT.y);
@@ -1032,23 +1083,18 @@ export function createTown(
     workPrompt.show(at || atPile ? workGlyph(hooks.controls()) : null, new THREE.Vector3(truck.pos.x, truck.y + 1.75, truck.pos.y), dt);
 
     if (atPile && input.workPressed) {
-      // Up from the pile and into the bed, one after the other.
-      load.forEach((m, k) =>
-        fly(m, PILE.clone().add(new THREE.Vector3(0, 1, 0)), bedWorld(k), k * 0.3, () => {
-          truck.tilt.add(m);
-          m.position.copy(BED[k]);
-          m.rotation.set(0, 0, 0);
-          pops.add(m);
-          Audio.thud();
-          if (k === load.length - 1) {
-            loaded = true;
-            Audio.sectionDone(2);
-          }
-        }),
-      );
+      // The forklift brings it over: picks up the pallet and crate, scoots to the truck, lifts
+      // them in, and scoots back. Quick, so it's a moment to watch and not a wait.
+      forkT = 0;
+      forkFrom = load.map((m) => {
+        m.removeFromParent();
+        scene.add(m);
+        return PILE.clone().add(new THREE.Vector3(0, 0.6, 0));
+      });
       truck.speed = 0;
       Audio.clank();
     }
+    updateFork(dt);
     if (at && input.workPressed) {
       // Out of the bed and onto the lot, then off to build it.
       const lot = at;

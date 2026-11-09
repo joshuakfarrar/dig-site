@@ -1223,3 +1223,31 @@ export function playSet(w: number, d: number): Model {
   m.box(W - 16, 0, D - 6, 1, 2, 3, C.Dark).box(W - 8, 0, D - 6, 1, 2, 3, C.Dark).box(W - 16, 2, D - 6, 9, 1, 3, C.Wood).box(W - 16, 3, D - 4, 9, 2, 1, C.Wood);
   return m;
 }
+
+// ---------------------------------------------------------------- the yard's forklift (lime)
+
+export const ForkPaint = 0x9bd23a;
+
+/** The forklift without its forks: small, a cage over the seat, a counterweight at the back, the mast at the front (+x). */
+export function forkliftBody(): Model {
+  const P = ForkPaint;
+  const m = new Model();
+  for (const x0 of [2, -5]) for (const z0 of [-4, 3]) m.box(x0, 0, z0, 3, 3, 1, C.Rubber).set(x0 + 1, 1, z0, C.Gray);
+  m.box(-6, 1, -3, 11, 3, 6, P);
+  bevelTop(m, -6, 3, -3, 11, 6);
+  m.box(-7, 1, -3, 2, 5, 6, C.Dark); // counterweight
+  m.box(-3, 4, -1, 3, 1, 3, C.Dark).box(-3, 5, -1, 1, 2, 3, C.Dark); // seat
+  for (const [x, z] of [[-4, -3], [-4, 2], [2, -3], [2, 2]]) m.box(x, 4, z, 1, 7, 1, C.Dark); // the cage
+  m.box(-4, 11, -3, 7, 1, 6, P);
+  // The mast: two uprights at the front.
+  m.box(5, 1, -3, 1, 14, 1, C.Steel).box(5, 1, 2, 1, 14, 1, C.Steel).box(5, 14, -3, 1, 1, 6, C.Steel);
+  return m;
+}
+
+/** The forks on their carriage, which slides up the mast: two prongs out to +x. Pivot at the carriage foot. */
+export function forkliftForks(): Model {
+  const m = new Model();
+  m.box(0, 0, -3, 1, 4, 6, C.Dark);
+  m.box(1, 0, -2, 8, 1, 1, C.Steel).box(1, 0, 1, 8, 1, 1, C.Steel);
+  return m;
+}

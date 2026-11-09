@@ -113,6 +113,13 @@ Where Dig Site stands, for whichever session picks it up next. Everything below 
   - Not yet heard by a person.
 - **Engine:** triangle waves, a lower filter and less gain.
 
+## Phase 3, title and forklift
+
+- **Title** (`Hud.title`, `#title`): it shows over the town on a normal start, and is skipped for `?lot=` and `?hood=` dev links. The first press starts and is swallowed, so it doesn't drive the truck. That press also unlocks audio.
+- **Forklift** (`town.ts`, `updateFork`): a scripted animation, not a `Machine`. Work at the pile hands the load to it, it carries the load to `bedWorld`, and `loaded` turns true at 1.05 s. It counts as `busy` while it runs.
+
+Phase 3 is complete apart from the "about an hour of play" check, which needs a real playtest.
+
 ## Design decisions the user made
 
 - **Stack:** TS + Vite + three.js (they picked it); newest dependency versions.

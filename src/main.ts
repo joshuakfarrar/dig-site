@@ -108,7 +108,13 @@ async function switchTo(go: () => void): Promise<void> {
 const idle: Input.Frame = { moveX: 0, moveY: 0, work: false, workPressed: false, hopPressed: false, restartPressed: false, restart: false };
 
 function tick(dt: number, read: Input.Frame): void {
-  if (read.workPressed || read.hopPressed || read.moveX || read.moveY) Audio.unlock();
+  const pressed = read.workPressed || read.hopPressed || read.moveX !== 0 || read.moveY !== 0;
+  if (pressed) Audio.unlock();
+  // On the title, the first press starts; the town waits behind it.
+  if (Hud.titleUp()) {
+    if (pressed) Hud.startPlay();
+    read = idle;
+  }
   const input = switching ? idle : read;
   mode.tick(dt, input);
   Hud.updateHold(dt, input.restart);
@@ -153,7 +159,11 @@ const lotParam = params.get("lot");
 const stageParam = params.get("stage") as Stage | null;
 if (lotParam !== null && B.HOODS[saved.at].lots[Number(lotParam)])
   goBuild(Number(lotParam), stageParam && STAGES.includes(stageParam) ? stageParam : undefined);
-else goTown(null);
+else {
+  goTown(null);
+  // The title first, unless a dev link asked for somewhere in particular.
+  if (!params.has("hood")) Hud.title(() => Audio.unlock());
+}
 
 // For poking at it from the console (and for checking renders); not in the released game.
 if (import.meta.env.DEV) Object.assign(window, {

@@ -175,3 +175,46 @@ export function cancelChoice(ticket: number): void {
   picked = null;
   picker.classList.remove("on");
 }
+
+// ------------------------------------------------------------------ the title: one big Play button
+
+/**
+ * What's up first: the town behind, a picture of a digger by a little house, and one big round
+ * Play button. Any key, the pad's A, or a tap starts (and that first press is what lets the browser
+ * start the sound). No words.
+ */
+const titleEl = document.createElement("div");
+titleEl.id = "title";
+titleEl.innerHTML = `
+  <svg class="art" viewBox="0 0 200 110" aria-hidden="true">
+    <ellipse cx="100" cy="100" rx="92" ry="8" fill="rgba(0,0,0,.08)"/>
+    <rect x="118" y="52" width="56" height="44" fill="#9ad9b5"/><path d="M110 56l36-30 36 30z" fill="#d2513a"/>
+    <rect x="140" y="72" width="12" height="24" fill="#2f74d0"/><rect x="124" y="62" width="11" height="11" fill="#fff"/><rect x="158" y="62" width="11" height="11" fill="#fff"/>
+    <rect x="14" y="80" width="62" height="14" rx="7" fill="#262626"/><circle cx="22" cy="87" r="4" fill="#8b929a"/><circle cx="68" cy="87" r="4" fill="#8b929a"/>
+    <rect x="20" y="56" width="44" height="24" rx="3" fill="#f2b705"/><rect x="46" y="44" width="18" height="18" rx="2" fill="#f2b705"/><rect x="50" y="48" width="11" height="9" fill="#9fd3ff"/>
+    <path d="M60 58l26-28 16 14" fill="none" stroke="#f2b705" stroke-width="7" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M98 40l10 6-6 14-12-4z" fill="#3a3f47"/>
+    <circle cx="44" cy="40" r="3" fill="#ff8a1f"/>
+  </svg>
+  <button class="play" aria-label="Play"><svg viewBox="0 0 64 64"><path d="M24 16l26 16-26 16z" fill="#fff" stroke="#fff" stroke-width="4" stroke-linejoin="round"/></svg></button>`;
+document.body.appendChild(titleEl);
+let onStart: (() => void) | null = null;
+titleEl.querySelector(".play")!.addEventListener("click", () => startPlay());
+
+export function title(start: () => void): void {
+  onStart = start;
+  titleEl.classList.add("on");
+}
+
+export function titleUp(): boolean {
+  return onStart !== null;
+}
+
+export function startPlay(): void {
+  const f = onStart;
+  if (!f) return;
+  onStart = null;
+  titleEl.classList.remove("on");
+  titleEl.classList.add("gone");
+  f();
+}

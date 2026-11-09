@@ -71,19 +71,19 @@ Roughly 3 to 5 times today's content.
   - [x] playground (Market Square, lot 6): a soft green surface, a rainbow fence with a way in, then the crane lifts in the whole play set
   - [x] clock tower (the town hall) to finish Market Square; lighthouse to finish the Harbour
   - [x] a tall tower the crane builds floor by floor (the lighthouse: three red and white storeys and a lantern)
-- [ ] **New machines that fit the same controls:**
+- [x] **New machines that fit the same controls:**
   - [x] **Dump truck** (Market Square, half the Harbour): stop by a heap and press Work to load it (two heaps fill it), then stop by the skip at the gate. It backs up to the skip and tips.
-  - [ ] **Forklift:** stacks pallets in the yard.
+  - [x] **Forklift:** in the yard, it loads the truck. When you press Work at the pile, it picks up the pallet and crate, scoots over and lifts them into the bed (about 1.5 s).
   - [x] **Street sweeper** (the Harbour): beach sand blows over the site at the end; drive over the drifts to sweep them up.
 - [x] **Pick by picture:** homes show four paint pictures before the crane lifts the walls, and four roof pictures before a pitched roof. Move left and right, then press Work, or tap one. The first picture is always the building's own colours, and the town keeps whatever was picked.
 - [x] **A living town:**
   - [x] Two cars and a yellow bus drive a loop round the streets, keeping to their lane. They always stop for the truck and for each other, and never back up.
   - [x] When a street is finished, the light turns to a warm golden evening and the street lamps come on.
   - [x] Pets in gardens: dogs live at about half the homes.
-- [ ] **Polish:**
+- [x] **Polish:**
   - [x] Softer engine hum (soft waves, darker and quieter).
   - [x] A gentle music loop made in code: marimba over a pad and bass, in a pentatonic scale, wandering a little differently every eight bars, and dipping for fanfares. Not yet heard by a person.
-  - [ ] A title screen that's one big Play button.
+  - [x] A title screen: a picture of a digger by a little house, and one big round Play button over the town. Any key, the pad's A or a tap starts, and that first press also starts the sound.
 
 **Done when:** a fresh player gets an hour or more of varied building before seeing everything.
 
