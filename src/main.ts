@@ -35,7 +35,7 @@ function fit(m: Mode): void {
   // low, clear of the progress strip along the top.
   fitCamera(m.camera, w, h, w / h < 0.8 ? 62 : 50, Math.round(Math.min(64, h * 0.12)));
 }
-addEventListener("resize", () => fit(mode));
+addEventListener("resize", () => mode && fit(mode));
 
 function use(m: Mode): void {
   const old = mode;
@@ -128,7 +128,7 @@ function frame(now: number): void {
   const real = (now - last) / 1000;
   const dt = Math.min(0.05, real);
   last = now;
-  if (!paused) {
+  if (!paused && mode) {
     Quality.frame(real);
     tick(dt, Input.read());
     renderer.render(mode.scene, mode.camera);
@@ -169,7 +169,10 @@ if (import.meta.env.DEV && Number.isInteger(hoodParam) && B.HOODS[hoodParam]) sa
 if (saved.at >= B.HOODS.length) saved.at = 0;
 const lotParam = params.get("lot");
 const stageParam = params.get("stage") as Stage | null;
-if (lotParam !== null && B.HOODS[saved.at].lots[Number(lotParam)])
+if (import.meta.env.DEV && params.has("lineup")) {
+  // The art review page: every machine side by side (dev server only; not in the released game).
+  void import("./lineup").then((m) => use(m.createLineup()));
+} else if (lotParam !== null && B.HOODS[saved.at].lots[Number(lotParam)])
   goBuild(Number(lotParam), stageParam && STAGES.includes(stageParam) ? stageParam : undefined);
 else {
   goTown(null);

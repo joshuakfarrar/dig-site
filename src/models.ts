@@ -1402,3 +1402,44 @@ export function tractor(): Model {
   m.box(7, 4, -2, 1, 2, 4, C.Dark).box(4, 8, 1, 1, 3, 1, C.Dark);
   return m;
 }
+
+// ---------------------------------------------------------------- the crew's yard
+
+/** A stack of big pipes, lying along x, orange ends. Pivot at the bottom middle. */
+export function pipeStack(): Model {
+  const m = new Model();
+  const pipe = (y0: number, z0: number) => {
+    for (let y = 0; y < 4; y++)
+      for (let z = 0; z < 4; z++) {
+        if ((y === 0 || y === 3) && (z === 0 || z === 3)) continue;
+        const inner = y > 0 && y < 3 && z > 0 && z < 3;
+        m.box(0, y0 + y, z0 + z, 20, 1, 1, 0x9aa3ad);
+        m.set(-1, y0 + y, z0 + z, inner ? 0x3a3f47 : 0xff8a1f).set(20, y0 + y, z0 + z, inner ? 0x3a3f47 : 0xff8a1f);
+      }
+  };
+  for (const z of [-6, -2, 2]) pipe(0, z);
+  for (const z of [-4, 0]) pipe(4, z);
+  m.box(2, 0, -7, 2, 1, 14, C.Wood).box(16, 0, -7, 2, 1, 14, C.Wood);
+  return m;
+}
+
+/** A pallet of bricks, wrapped neatly. Pivot at the bottom middle. */
+export function bricks(): Model {
+  const m = new Model();
+  m.box(-6, 0, -6, 12, 1, 12, C.Wood);
+  for (let y = 1; y < 7; y++)
+    for (let x = -5; x < 5; x++)
+      for (let z = -5; z < 5; z++) m.set(x, y, z, (x + y * 2 + (y % 2 ? 0 : 1)) % 3 === 0 ? 0xa8442f : 0xc0573f);
+  return m;
+}
+
+/** A shipping container for the crew's tools: ribbed sides, big doors at one end. Along x. */
+export function container(paint: number): Model {
+  const m = new Model();
+  m.box(0, 0, 0, 40, 16, 16, paint);
+  for (let x = 1; x < 40; x += 2) m.box(x, 1, -1, 1, 14, 1, paint).box(x, 1, 16, 1, 14, 1, paint);
+  m.box(0, 15, 0, 40, 1, 16, 0x3a3f47);
+  m.box(40, 1, 1, 1, 14, 14, paint).box(40, 2, 7, 1, 12, 2, 0x3a3f47);
+  for (const z of [3, 12]) m.box(41, 3, z, 1, 10, 1, C.Steel);
+  return m;
+}

@@ -53,6 +53,9 @@ interface Car {
   circles: Circle[]; // what the truck bumps into
 }
 
+/** The crew's yard, west of the side road. */
+const YARD = { minX: -30.5, maxX: -20.4, minZ: -2.2, maxZ: 11.2 };
+
 /** Where the streets end in the east, at the gates to the other neighbourhoods. */
 const GATE_X = 25;
 
@@ -573,7 +576,7 @@ export function createTown(
     for (let k = 0; k < 40; k++) plant(-30 + rnd() * 60, -16 - rnd() * 12); // behind the first street
     buildCountryside(scene);
     for (let k = 0; k < 16; k++) plant(22 + rnd() * 10, -14 + rnd() * 34); // east
-    for (let k = 0; k < 10; k++) plant(-30 - rnd() * 6, -14 + rnd() * 34); // west, beyond the yard
+    for (let k = 0; k < 10; k++) plant(-31.5 - rnd() * 6, -14 + rnd() * 34); // west, beyond the yard
     for (let k = 0; k < 14; k++) plant(-30 + rnd() * 60, 24 + rnd() * 8); // beyond the park
     if (H.theme === "square") {
       buildSquare(scene, plant);
@@ -628,11 +631,42 @@ export function createTown(
     new Crane(new THREE.Vector2(-23.5, 8.4)),
   ];
   {
+    // The yard: packed gravel with a concrete edge, painted bays for the machines, the crew's
+    // cabin and tool container at the back, and stacks of pipes and bricks waiting to go out.
     const f = new Faces();
-    f.box(-27, 0, -1.2, 6.5, 0.008, 11.4, C.Sand, (n) => n[1] === 1);
+    const top = (n: [number, number, number]) => n[1] === 1;
+    const Y = YARD;
+    f.box(Y.minX - 0.25, 0, Y.minZ - 0.25, Y.maxX - Y.minX + 0.5, 0.05, Y.maxZ - Y.minZ + 0.5, 0xc9c5bc, (n) => n[1] !== -1, 0xa8a49b);
+    f.box(Y.minX, 0.05, Y.minZ, Y.maxX - Y.minX, 0.004, Y.maxZ - Y.minZ, 0xb5a283, top);
+    let seed = 41;
+    const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+    for (let k = 0; k < 220; k++) {
+      const x = Y.minX + rnd() * (Y.maxX - Y.minX - 0.12), z = Y.minZ + rnd() * (Y.maxZ - Y.minZ - 0.12);
+      f.box(x, 0.055, z, 0.06 + rnd() * 0.08, 0.003, 0.06 + rnd() * 0.08, rnd() < 0.5 ? 0x9c8a6d : 0xcdbb98, top);
+    }
+    // White bay lines between the parked machines.
+    for (const z of [-0.85, 1.85, 4.5, 7.1, 9.8]) f.box(-25.6, 0.056, z - 0.05, 3.6, 0.003, 0.1, 0xf4f4f4, top);
+    // Tyre tracks out to the road.
+    for (const z of [0.2, 0.8, 8.1, 8.7]) f.box(-22, 0.056, z, 1.5, 0.003, 0.18, 0x8f7d61, top);
     const yard = new THREE.Mesh(f.geometry(), voxelMaterial);
     yard.receiveShadow = true;
     scene.add(yard);
+    const office = M.office().mesh(Cell, [15, 0, 10]);
+    office.position.set(-28.9, 0, 6.2);
+    office.rotation.y = Math.PI / 2;
+    scene.add(office);
+    const box = M.container(0x3f9a45).mesh(Cell, [20, 0, 8]);
+    box.position.set(-28.9, 0, 1.4);
+    box.rotation.y = -Math.PI / 2;
+    scene.add(box);
+    const pipes = M.pipeStack().mesh(Cell, [10, 0, 0]);
+    pipes.position.set(-29, 0, 9.9);
+    scene.add(pipes);
+    for (const [x, z] of [[-26.6, 9.8], [-26.6, -1.2]]) {
+      const b = M.bricks().mesh(Cell, [0, 0, 0]);
+      b.position.set(x, 0.05, z);
+      scene.add(b);
+    }
     const w: World = { site: ground, machines: [] };
     for (const m of yardMachines) {
       scene.add(m.root);
@@ -641,9 +675,9 @@ export function createTown(
       if (m instanceof Crane) m.attachTo(scene);
     }
     const cone = M.cone();
-    for (const z of [-0.8, 9.9]) {
+    for (const [x, z] of [[-20.8, -1.4], [-20.8, 10.4], [-27.6, 4.3], [-27.9, 4.0], [-27.3, 4.0]]) {
       const c = cone.mesh(Cell, [0, 0, 0]);
-      c.position.set(-20.8, 0, z);
+      c.position.set(x, 0.05, z);
       scene.add(c);
     }
   }
@@ -878,7 +912,7 @@ export function createTown(
       { minX: -SIDE_X - HALF - 1.2, maxX: END_B + 1.5, minZ: ROAD_B - HALF - 1.3, maxZ: ROAD_B + HALF + 1.3 },
       { minX: -SIDE_X - HALF - 0.3, maxX: -SIDE_X + HALF + 0.3, minZ: ROAD_A, maxZ: ROAD_B },
       { minX: SIDE_X - HALF - 0.3, maxX: SIDE_X + HALF + 0.3, minZ: ROAD_A, maxZ: ROAD_B },
-      { minX: -27.5, maxX: -20, minZ: -1.8, maxZ: 10.8 }, // the yard
+      { minX: YARD.minX - 0.5, maxX: YARD.maxX + 0.5, minZ: YARD.minZ - 0.5, maxZ: YARD.maxZ + 0.5 }, // the yard
       { minX: 4, maxX: 25, minZ: -28, maxZ: -14 }, // the farm
       { minX: GATE_X - 1, maxX: GATE_X + 1, minZ: ROAD_A - 2.5, maxZ: ROAD_B + 2.5 }, // the gates
       // The park, the square, or the beach and the sea.

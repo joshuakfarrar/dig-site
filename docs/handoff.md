@@ -207,6 +207,17 @@ Estimated at adult pace from distances, speeds and animation times, about 1 s of
   - The back button (`@capacitor/app` in `main.ts`) exits only from the title; in play it calls `Hud.flash()`.
 - **Not done yet:** the Android SDK isn't on this PC, so no APK has been built. Install Android Studio first. The icon and splash are still defaults.
 
+## Art review tools (2026-11-09)
+
+- **`?lineup`** (dev server only, `src/lineup.ts`): every machine and vehicle side by side, plus people and a cottage for scale.
+  - Left and right step between them, up and down zoom, Space toggles the turntable, and E switches between the game's camera and a low close-up.
+  - Use it for the machine art pass: one set of proportions, wheels, cabs and colours, starting with the mixer.
+- **Town yard:**
+  - Packed gravel with a concrete edge, white parking bays and tyre tracks.
+  - The crew's cabin and a green tool container at the back, plus pipe stacks, brick pallets and cones.
+  - `YARD` in `town.ts` sets its size; the trees and flora keep clear of it.
+- **Fix:** `.corner[hidden]` really hides now; `display: grid` was overriding `hidden`.
+
 ## Design decisions the user made
 - **Diversity includes ordinary families:** the user wants a mix that reads as real streets, mostly cis/het families with children, plus the other kinds of households, not an unusual mix everywhere.
 
