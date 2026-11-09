@@ -1300,7 +1300,8 @@ export function playSet(w: number, d: number, bare = false): Model {
   // The tower: four posts, a deck, a little red roof, and a ladder at the back.
   for (const [x, z] of [[cx - 5, cz - 5], [cx + 4, cz - 5], [cx - 5, cz + 4], [cx + 4, cz + 4]]) m.box(x, 0, z, 1, 18, 1, 0x4aa8ff);
   m.box(cx - 5, 9, cz - 5, 10, 1, 10, 0x9a6a3c);
-  for (let x = cx - 5; x < cx + 5; x += 2) m.box(x, 10, cz - 5, 1, 4, 1, C.White).box(x, 10, cz + 4, 1, 4, 1, C.White);
+  // Railings down the two sides of the deck; the back (up the ladder) and the front (onto the slide) stay open.
+  for (let z = cz - 3; z < cz + 3; z += 2) m.box(cx - 5, 10, z, 1, 4, 1, C.White).box(cx + 4, 10, z, 1, 4, 1, C.White);
   for (let k = 0; k < 4; k++) m.box(cx - 6 + k, 18 + k, cz - 6 + k, 12 - 2 * k, 1, 12 - 2 * k, 0xd8382c);
   for (let y = 1; y < 9; y += 2) m.box(cx - 3, y, cz - 6, 6, 1, 1, C.Steel);
   // The slide, down to the front.
