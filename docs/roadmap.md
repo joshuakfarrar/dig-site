@@ -89,6 +89,7 @@ Roughly 3 to 5 times today's content.
 
 ## Phase 4: App packaging (1–2 weeks)
 
+- [ ] **Fewer triangles first:** add greedy meshing to the voxel builder, since a full street is about 490k triangles today (trees are about 12k each).
 - [ ] **Wrap with Capacitor** for Android and iOS. The game ships inside the app and runs fully offline, with no web server.
 - [ ] **App basics:**
   - an icon and splash screen

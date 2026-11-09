@@ -11,6 +11,7 @@ import { Crane, Excavator, Mixer, Roller, Truck, wrap, type Machine, type World 
 import type { Box, Circle, Ground } from "./site";
 import { disposeScene, lit, Pops, type Mode } from "./stage";
 import { Faces, Model, voxelMaterial } from "./voxel";
+import { scatterFlora, type Rect } from "./flora";
 
 /**
  * The town: two streets of lots, a park, and the crew's yard with the machines parked in it. You
@@ -518,12 +519,24 @@ export function createTown(
       for (let x = -SIDE_X + 1; x < SIDE_X - 1; x += 1.4) f.box(x, 0.013, z - 0.06, 0.7, 0, 0.12, Line, top);
     for (const x of [-SIDE_X, SIDE_X])
       for (let z = ROAD_A + HALF + 0.4; z < ROAD_B - HALF - 0.6; z += 1.4) f.box(x - 0.06, 0.013, z, 0.12, 0, 0.7, Line, top);
-    // Pavements, a little raised, along both sides of both streets.
-    const walk = (x0: number, x1: number, z0: number, z1: number) => f.box(x0, 0, z0, x1 - x0, 0.07, z1 - z0, Walk, (n) => n[1] !== -1, Curb);
-    walk(-SIDE_X + HALF, SIDE_X - HALF, ROAD_A - HALF - 1, ROAD_A - HALF);
-    walk(-SIDE_X + HALF, SIDE_X - HALF, ROAD_A + HALF, ROAD_A + HALF + 1);
-    walk(-SIDE_X + HALF, SIDE_X - HALF, ROAD_B - HALF - 1, ROAD_B - HALF);
-    walk(-SIDE_X - HALF, SIDE_X + HALF, ROAD_B + HALF, ROAD_B + HALF + 1);
+    // Pavements, a little raised, along both sides of both streets: square paving slabs with
+    // joints between them (a few a shade different), and a row of kerb stones along the road edge.
+    const Joint = 0xb9b2a6, Walk2 = 0xd3ccbf, Kerb = 0xe6e1d8;
+    const walk = (x0: number, x1: number, z0: number, z1: number, roadAtMin: boolean) => {
+      f.box(x0, 0, z0, x1 - x0, 0.06, z1 - z0, Joint, (n) => n[1] !== -1, Curb);
+      const kz = roadAtMin ? z0 : z1 - 0.16;
+      const s0 = roadAtMin ? z0 + 0.16 : z0;
+      for (let x = x0; x < x1 - 0.01; x += 0.5)
+        for (let z = s0; z < s0 + (z1 - z0 - 0.16) - 0.01; z += 0.42) {
+          const odd = (Math.round(x * 2) * 7 + Math.round(z * 3)) % 9 === 0;
+          f.box(x + 0.025, 0.06, z + 0.02, 0.45, 0.012, 0.38, odd ? Walk2 : Walk, (n) => n[1] === 1);
+        }
+      for (let x = x0; x < x1 - 0.01; x += 1) f.box(x + 0.02, 0, kz, 0.96, 0.085, 0.16, Kerb, (n) => n[1] !== -1, 0xc9c3b8);
+    };
+    walk(-SIDE_X + HALF, SIDE_X - HALF, ROAD_A - HALF - 1, ROAD_A - HALF, false);
+    walk(-SIDE_X + HALF, SIDE_X - HALF, ROAD_A + HALF, ROAD_A + HALF + 1, true);
+    walk(-SIDE_X + HALF, SIDE_X - HALF, ROAD_B - HALF - 1, ROAD_B - HALF, false);
+    walk(-SIDE_X - HALF, SIDE_X + HALF, ROAD_B + HALF, ROAD_B + HALF + 1, true);
     const mesh = new THREE.Mesh(f.geometry(), voxelMaterial);
     mesh.receiveShadow = true;
     scene.add(mesh);
@@ -855,6 +868,25 @@ export function createTown(
   for (const l of lots) {
     if (built.has(l.i)) builtLot(l);
     else emptyLot(l);
+  }
+
+  // Grass tufts, wildflowers, bushes and rocks over all the open grass round the town.
+  {
+    const avoid: Rect[] = [
+      ...lots.map((l) => ({ minX: l.zone.minX - 0.2, maxX: l.zone.maxX + 0.2, minZ: l.zone.minZ - 0.3, maxZ: l.zone.maxZ + 0.2 })),
+      { minX: -SIDE_X - HALF - 1.2, maxX: END_A + 1.5, minZ: ROAD_A - HALF - 1.3, maxZ: ROAD_A + HALF + 1.3 },
+      { minX: -SIDE_X - HALF - 1.2, maxX: END_B + 1.5, minZ: ROAD_B - HALF - 1.3, maxZ: ROAD_B + HALF + 1.3 },
+      { minX: -SIDE_X - HALF - 0.3, maxX: -SIDE_X + HALF + 0.3, minZ: ROAD_A, maxZ: ROAD_B },
+      { minX: SIDE_X - HALF - 0.3, maxX: SIDE_X + HALF + 0.3, minZ: ROAD_A, maxZ: ROAD_B },
+      { minX: -27.5, maxX: -20, minZ: -1.8, maxZ: 10.8 }, // the yard
+      { minX: 4, maxX: 25, minZ: -28, maxZ: -14 }, // the farm
+      { minX: GATE_X - 1, maxX: GATE_X + 1, minZ: ROAD_A - 2.5, maxZ: ROAD_B + 2.5 }, // the gates
+      // The park, the square, or the beach and the sea.
+      H.theme === "harbour" ? { minX: -60, maxX: 60, minZ: ROAD_B + HALF + 1, maxZ: 80 }
+      : H.theme === "square" ? { minX: -17, maxX: 17, minZ: 12.5, maxZ: 22.5 }
+      : { minX: -0.8, maxX: 6.8, minZ: 15, maxZ: 20 }, // the pond
+    ];
+    scatterFlora(scene, { minX: -42, maxX: 42, minZ: -38, maxZ: 34 }, avoid, 1600, 7 + hood * 13);
   }
 
   // ------------------------------------------------------------------ the people

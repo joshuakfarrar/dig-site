@@ -163,6 +163,15 @@ The order is `dig, pour, clean, walls, roof, path, sweep, done`. The user wants 
 - `cleanDone` starts the walls; `pathDone` goes to sweep or done.
 - `skipTo` works by stage name (`past()`).
 
+## Pavements and planting (2026-11-09)
+
+- **Pavements** (`walk()` in `town.ts`): half-tile paving slabs over a darker joint colour, a few a shade different, and a row of kerb stones along the road edge.
+- **Planting** (`src/flora.ts`, `scatterFlora`): grass tufts, taller grasses, wildflower clumps, small bushes and rocks.
+  - It's one mesh with no shadows, and avoids rectangles you give it.
+  - The town uses 1,600 items, avoiding lots, roads, the yard, farm, gates and the park, square or sea. The site uses 700, outside its fence.
+  - Count scales with quality: high 100%, medium 60%, low 35%.
+- **Performance note for Phase 4:** a full Home Street view is about 490k triangles across 319 draw calls, about 580k of the scene's triangles cast shadows, and trees are around 12k triangles each. Greedy meshing in `Model.geometry` (merging flat runs of same-colour faces) would cut this a lot, so do it before testing on tablets.
+
 ## Design decisions the user made
 - **Diversity includes ordinary families:** the user wants a mix that reads as real streets, mostly cis/het families with children, plus the other kinds of households, not an unusual mix everywhere.
 

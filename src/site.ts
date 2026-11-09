@@ -3,6 +3,7 @@ import { Faces, Model, voxelMaterial } from "./voxel";
 import * as M from "./models";
 import { C, Cell } from "./models";
 import * as B from "./blueprints";
+import { scatterFlora } from "./flora";
 
 /**
  * The construction site: sand inside a barrier fence, grass and trees outside, a site office, the
@@ -268,6 +269,8 @@ export class Site implements Ground {
       t.scale.setScalar(0.9 + rnd() * 0.5);
       this.root.add(t);
     }
+    // Grass tufts, wildflowers and the odd bush and rock outside the fence.
+    scatterFlora(this.root, { minX: -30, maxX: 30, minZ: -24, maxZ: 24 }, [{ minX: SITE.minX - 0.6, maxX: SITE.maxX + 0.6, minZ: SITE.minZ - 0.6, maxZ: SITE.maxZ + 0.6 }], 700, 31);
   }
 
   private buildStrings(): void {
