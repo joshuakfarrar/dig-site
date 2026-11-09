@@ -22,9 +22,14 @@ let level = (() => {
 
 export function unlock(): void {
   if (ctx) {
-    if (ctx.state === "suspended") void ctx.resume();
+    // Suspended (the browser's rule), or "interrupted" on iOS after a phone call: the next touch starts it again.
+    if (ctx.state === "suspended" || (ctx.state as string) === "interrupted") void ctx.resume();
     return;
   }
+  // On iOS, "ambient": the silent switch silences the game, and it plays alongside other audio
+  // rather than stopping it (WebKit's Audio Session API; nothing happens elsewhere).
+  const nav = navigator as Navigator & { audioSession?: { type: string } };
+  if (nav.audioSession) nav.audioSession.type = "ambient";
   ctx = new AudioContext();
   master = ctx.createGain();
   master.gain.value = LEVELS[level];

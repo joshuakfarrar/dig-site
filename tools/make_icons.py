@@ -4,6 +4,8 @@ masters for the store listings. Run from anywhere:
 
     python tools/make_icons.py
 
+Writes the iOS icon and launch picture too, once the iOS project exists.
+
 The picture is the game's own yellow excavator, arm up with a bucketful of dirt, on a green hill
 under a blue sky. Everything is drawn here with Pillow, at four times the size and then scaled
 down, so there's no art file to keep in step.
@@ -19,6 +21,7 @@ LANCZOS = getattr(Image, "Resampling", Image).LANCZOS
 
 ROOT = Path(__file__).resolve().parent.parent
 RES = ROOT / "android/app/src/main/res"
+IOS = ROOT / "ios/App/App/Assets.xcassets"
 OUT = ROOT / "resources"
 
 SS = 4  # supersampling
@@ -185,6 +188,14 @@ def main():
     flat(1024, 74).convert("RGB").save(OUT / "icon-1024.png")
     flat(512, 74).convert("RGB").save(OUT / "icon-512.png")
     splash(2732, 2732).save(OUT / "splash-2732.png")
+
+    # iOS, if the project's there: one 1024 icon (no transparency; iOS rounds the corners), and
+    # the launch picture Capacitor's launch screen shows, centred and cropped to fit.
+    if IOS.exists():
+        flat(1024, 74).convert("RGB").save(IOS / "AppIcon.appiconset/AppIcon-512@2x.png")
+        big = splash(2732, 2732)
+        for name in ("splash-2732x2732.png", "splash-2732x2732-1.png", "splash-2732x2732-2.png"):
+            big.save(IOS / "Splash.imageset" / name)
     print("icons and splash written")
 
 

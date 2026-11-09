@@ -90,13 +90,14 @@ Roughly 3 to 5 times today's content.
 ## Phase 4: App packaging (1–2 weeks)
 
 - [x] **Fewer triangles first:** greedy meshing in the voxel builder took a full street from about 490k to about 80k triangles.
-- [x] **Wrap with Capacitor** for Android (`android/`, see `docs/android.md`). Offline, with no permissions at all. [ ] iOS.
+- [x] **Wrap with Capacitor** for Android (`android/`, see `docs/android.md`). Offline, with no permissions at all.
+- [x] **Wrap for iOS** (`ios/`, see `docs/ios.md`): landscape, full screen, screen kept awake, the game's icon and launch picture. Made on Windows; it still needs building and testing on a Mac.
 - [ ] **App basics:**
   - [x] an icon and splash screen: the game's yellow excavator with a bucketful of dirt, on a hill under a blue sky. Drawn by `tools/make_icons.py`, which writes every Android size plus store masters in `resources/`.
   - [x] keeping the screen awake while playing, full screen, landscape
   - [x] Android's back button never leaves play; it bounces the hold-to-confirm button
-  - iOS audio-session handling, so a silent switch or a call is respected
-- [ ] **iOS builds without a Mac:** a cloud macOS build (Codemagic or GitHub Actions) producing signed builds for TestFlight.
+  - [x] iOS audio-session handling, so a silent switch or a call is respected ("ambient", natively and through WebKit's Audio Session API)
+- [ ] **iOS builds:** for now, the user's 2018 Intel MacBook Pro (macOS Sequoia, Xcode 26). It can upload until Apple requires Xcode 27, likely around April 2027. After that, an Apple silicon Mac or a cloud macOS build (Codemagic or GitHub Actions) producing signed builds for TestFlight.
 - [ ] **Test on low-end hardware:** a cheap Android tablet, a Fire tablet and an older iPad.
 
 ## Phase 5: Purchase, privacy and store paperwork (1–2 weeks, start early)
