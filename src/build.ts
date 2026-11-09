@@ -1,0 +1,682 @@
+import * as THREE from "three";
+import * as Audio from "./audio";
+import * as Hud from "./hud";
+import type * as Input from "./input";
+import * as M from "./models";
+import { Cell } from "./models";
+import * as B from "./blueprints";
+import { Fx } from "./fx";
+import { breathe, ghost, Marker, Prompt, type Glyph } from "./guide";
+import { Crane, Dozer, Excavator, Machine, Mixer, Roller, type Load, type World } from "./machines";
+import { PATH, SCOOPS_PER_QUADRANT, Site, SLAB_TOP, type Quadrant } from "./site";
+import { disposeScene, lit, Pops, type Mode } from "./stage";
+import { voxelMaterial } from "./voxel";
+
+/**
+ * One building site: dig the pit, pour the slab, lift in the walls (a storey at a time), lift on
+ * the roof, roll the path to the gate, and push the dirt heaps away. Each job's shown at its machine and its spot; nothing's
+ * read, nothing's timed, nothing fails.
+ */
+export type Stage = "dig" | "pour" | "walls" | "roof" | "path" | "clean" | "done";
+export const STAGES: Stage[] = ["dig", "pour", "walls", "roof", "path", "clean", "done"];
+
+export interface BuildHooks {
+  /** It's built and the celebration's had its moment: back to town. */
+  finished(): void;
+  /** Usually just `usingPad()`: which button pictures to show. */
+  usingPad(): boolean;
+}
+
+export interface BuildMode extends Mode {
+  readonly debug: Record<string, unknown>;
+  skipTo(s: Stage): void;
+}
+
+export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
+  const { scene, camera, frame: frameCamera } = lit();
+  const site = new Site(bp);
+  scene.add(site.root);
+  const F = site.foot;
+  const fx = new Fx(scene);
+  const marker = new Marker(scene);
+  const workPrompt = new Prompt(scene, 1.15);
+  const hopPrompt = new Prompt(scene, 0.9);
+  const pops = new Pops();
+
+  const excavator = new Excavator(new THREE.Vector2(-5.2, 5.6));
+  const mixer = new Mixer(new THREE.Vector2(-2.4, 6.3));
+  const roller = new Roller(new THREE.Vector2(2.5, 6.1));
+  const crane = new Crane(new THREE.Vector2(5.4, 5.6));
+  const dozer = new Dozer(new THREE.Vector2(8.3, 5.8));
+  const machines: Machine[] = [excavator, mixer, roller, crane, dozer];
+  for (const m of machines) {
+    scene.add(m.root);
+    m.place(m.home.x, m.home.y, Math.PI / 2, site);
+  }
+  crane.attachTo(scene);
+  const world: World = { site, machines };
+
+  let active: Machine = excavator;
+  active.driven = true;
+
+  // The worker, seen only while hopping from one cab to another.
+  const workerMesh = M.worker().mesh(M.WorkerCell, [0.5, 0, 0.5]);
+  workerMesh.visible = false;
+  scene.add(workerMesh);
+  let hop: { from: Machine; to: Machine; t: number } | null = null;
+
+  // ------------------------------------------------------------------ the building's parts
+
+  const building = new THREE.Group();
+  scene.add(building);
+
+  /** Lying flat on the trailer: its length along z, its height along x, its face up. */
+  const FLAT = new THREE.Quaternion().setFromRotationMatrix(
+    new THREE.Matrix4().makeBasis(new THREE.Vector3(0, 0, 1), new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 1, 0)),
+  );
+
+  // The pile on the trailer: the first panel to go up is on top. An awning sticks up out of its
+  // panel, so that one takes more room in the pile.
+  const wallLoads: Load[] = new Array(site.slots.length);
+  {
+    let y = site.deckTop + 0.1;
+    for (let k = site.slots.length - 1; k >= 0; k--) {
+      const s = site.slots[k];
+      const mesh = B.panelMesh(s);
+      mesh.position.set(site.trailerAt.x, y, site.trailerAt.z + (s.side === "back" || s.side === "front" ? 0 : 0.2));
+      mesh.quaternion.copy(FLAT);
+      scene.add(mesh);
+      y += 0.2 + (s.style.awning ? 0.45 : 0);
+      wallLoads[k] = { mesh, hang: 1.85, slings: s.len * Cell * 0.36, top: 0.7, rest: FLAT.clone(), carryYaw: Math.PI / 2 };
+    }
+  }
+
+  const roofMesh = B.roofMesh(bp);
+  roofMesh.position.set(site.palletAt.x, site.palletTop, site.palletAt.z);
+  scene.add(roofMesh);
+  const roofLoad: Load = {
+    mesh: roofMesh,
+    hang: bp.roof.height + 0.75,
+    slings: Math.min(1.6, bp.w * 0.36),
+    top: bp.roof.slingTop,
+    rest: new THREE.Quaternion(),
+    carryYaw: 0,
+  };
+  const ROOF_AT = site.roofAt.clone();
+
+  const flagMesh = M.flag().mesh(Cell, [0.5, 0, 0.5]);
+  if (bp.kind === "cottage" || bp.kind === "tall") flagMesh.position.set(F.cx - 0.6, ROOF_AT.y + M.gableHeight(bp.d) * Cell, F.cz);
+  else flagMesh.position.set(F.minX + 0.4, ROOF_AT.y + 0.2, F.maxZ - 0.4);
+  flagMesh.scale.set(1, 0.001, 1);
+  flagMesh.visible = false;
+  scene.add(flagMesh);
+
+  // Ghosts: the next part, see-through, where it'll go.
+  const ghostWalls = site.slots.map((s) => {
+    const g = ghost(B.panelMesh(s));
+    g.position.copy(s.centre);
+    g.rotation.y = s.yaw;
+    scene.add(g);
+    return g;
+  });
+  const ghostRoof = ghost(roofMesh);
+  ghostRoof.position.copy(ROOF_AT);
+  scene.add(ghostRoof);
+  const ghostDig = new THREE.Mesh(
+    new THREE.PlaneGeometry(1, 1),
+    new THREE.MeshBasicMaterial({ color: 0xff8a1f, transparent: true, opacity: 0.3, depthWrite: false }),
+  );
+  ghostDig.rotation.x = -Math.PI / 2;
+  scene.add(ghostDig);
+
+  // ------------------------------------------------------------------ progress and moments
+
+  let stage: Stage = "dig";
+  let wallsUp = 0;
+  let chimeStep = 0;
+  let celebrate = -1;
+  const perStorey = 4;
+
+  function progress(): void {
+    const at = STAGES.indexOf(stage);
+    const state = (s: Stage, extra = true): Hud.Step["state"] => {
+      const i = STAGES.indexOf(s);
+      return i < at || (i === at && !extra) ? "done" : i === at ? "now" : "todo";
+    };
+    const front = bp.walls[0][3].paint;
+    const list: Hud.Step[] = [
+      { icon: Hud.Icons.dig, state: state("dig") },
+      { icon: Hud.Icons.pour, state: state("pour") },
+    ];
+    for (let s = 0; s < bp.storeys; s++) {
+      const doneHere = wallsUp >= (s + 1) * perStorey;
+      const started = wallsUp >= s * perStorey;
+      const st: Hud.Step["state"] =
+        at > STAGES.indexOf("walls") || doneHere ? "done" : stage === "walls" && started ? "now" : "todo";
+      list.push({ icon: s === 0 ? Hud.Icons.walls(front) : Hud.Icons.upstairs(front), state: st });
+    }
+    const roofIcon = bp.kind === "shop" ? Hud.Icons.cone(0xff9ec4) : bp.kind === "station" ? Hud.Icons.tower : Hud.Icons.roof(0xd2513a);
+    list.push(
+      { icon: roofIcon, state: state("roof") },
+      { icon: Hud.Icons.path, state: state("path") },
+      { icon: Hud.Icons.clean, state: state("clean") },
+    );
+    Hud.steps(list);
+  }
+
+  function setStage(s: Stage): void {
+    stage = s;
+    progress();
+  }
+
+  /** Moves any machine in the way of what's next back to where it started, in a puff. */
+  function clearArea(except: Machine | null, inside: (x: number, z: number) => boolean): void {
+    for (const m of machines) {
+      if (m === except) continue;
+      if (!m.circleCentres().some((c) => inside(c.x, c.y))) continue;
+      fx.dust(new THREE.Vector3(m.pos.x, m.y, m.pos.y), 1, 18);
+      m.place(m.home.x, m.home.y, Math.PI / 2, site);
+      fx.dust(new THREE.Vector3(m.pos.x, 0, m.pos.y), 1, 18);
+      Audio.pop();
+    }
+  }
+  const nearFootprint = (x: number, z: number) => x > F.minX - 0.7 && x < F.maxX + 0.7 && z > F.minZ - 0.7 && z < F.maxZ + 0.7;
+  const onPath = (x: number, z: number) => x > PATH.minX - 0.7 && x < PATH.maxX + 0.7 && z > F.maxZ - 0.2;
+
+  function digDone(): void {
+    Audio.sectionDone(4);
+    fx.dustRect(F.cx, -0.3, F.cz, bp.w, bp.d, 2);
+    fx.ring(new THREE.Vector3(F.cx, 0, F.cz), 4, 0xffe3a0);
+    for (const c of site.strings.children) fx.dust(c.getWorldPosition(new THREE.Vector3()), 0.2, 3, 0xffffff);
+    site.strings.visible = false;
+    chimeStep = 0;
+    setStage("pour");
+  }
+
+  function slabDone(): void {
+    site.finishSlab();
+    pops.add(site.pitGroup);
+    Audio.sectionDone(5);
+    fx.dustRect(F.cx, SLAB_TOP, F.cz, bp.w, bp.d, 2);
+    fx.ring(new THREE.Vector3(F.cx, SLAB_TOP, F.cz), 4.5, 0xffffff);
+    mixer.pouring = false;
+    setStage("walls");
+  }
+
+  function wallLanded(k: number): void {
+    const s = site.slots[k];
+    const mesh = wallLoads[k].mesh;
+    mesh.position.copy(s.centre);
+    mesh.quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), s.yaw);
+    scene.remove(mesh);
+    building.add(mesh);
+    pops.add(mesh);
+    if (s.box) site.boxes.push(s.box);
+    ghostWalls[k].visible = false;
+    wallsUp++;
+    Audio.thud();
+    Audio.sectionDone(2 + (wallsUp % perStorey || perStorey));
+    const along = s.yaw === 0;
+    fx.dustRect(s.centre.x, s.centre.y - B.WALL_H / 2, s.centre.z, along ? s.len * Cell : 0.3, along ? 0.3 : s.len * Cell, 2.5);
+    if (wallsUp === site.slots.length) setStage("roof");
+    else progress();
+  }
+
+  function roofLanded(): void {
+    roofMesh.position.copy(ROOF_AT);
+    scene.remove(roofMesh);
+    building.add(roofMesh);
+    pops.add(roofMesh);
+    ghostRoof.visible = false;
+    Audio.thud();
+    Audio.sectionDone(6);
+    fx.dustRect(F.cx, ROOF_AT.y, F.cz, bp.w + 0.4, bp.d + 0.4, 2);
+    fx.ring(new THREE.Vector3(F.cx, SLAB_TOP, F.cz), 6, 0xffe3a0);
+    chimeStep = 0;
+    setStage("path");
+  }
+
+  function pathDone(): void {
+    site.finishPath();
+    Audio.sectionDone(5);
+    fx.ring(new THREE.Vector3(0, 0.05, (F.maxZ + 9) / 2), 5, 0xffffff);
+    // The heaps stop being in the way: the dozer's going to push them.
+    for (const q of site.quadrants) {
+      const i = site.circles.findIndex((c) => c.x === q.moundAt.x && c.z === q.moundAt.y);
+      if (i >= 0) site.circles.splice(i, 1);
+    }
+    chimeStep = 0;
+    setStage("clean");
+  }
+
+  function allDone(): void {
+    Audio.fanfare();
+    celebrate = 0;
+    setStage("done");
+  }
+
+  // ------------------------------------------------------------------ per-stage: what to do, and doing it
+
+  interface Job {
+    machine: Machine;
+    over: THREE.Vector3 | null; // the arrow points down here
+    spot: THREE.Vector3 | null; // the ring
+    ring: number;
+    canWork: boolean;
+    hold?: boolean; // keeps working while the button's held (digging); otherwise one press each
+    work: () => void;
+  }
+  const none = (machine: Machine): Job => ({ machine, over: null, spot: null, ring: 1, canWork: false, work: () => {} });
+
+  let input: Input.Frame;
+
+  function nearestQuadrant(): Quadrant | null {
+    let best: Quadrant | null = null;
+    let bd = Infinity;
+    for (const q of site.quadrants) {
+      if (q.scoops >= SCOOPS_PER_QUADRANT) continue;
+      const d = q.spot.distanceTo(excavator.pos);
+      if (d < bd) [best, bd] = [q, d];
+    }
+    return best;
+  }
+
+  function digJob(): Job {
+    const q = nearestQuadrant();
+    if (!q) return none(excavator);
+    const spot = new THREE.Vector3(q.spot.x, 0, q.spot.y);
+    const there = excavator.pos.distanceTo(q.spot) < 1.25;
+    ghostDig.visible = true;
+    ghostDig.scale.set((q.i1 - q.i0) * 0.5 - 0.1, (q.j1 - q.j0) * 0.5 - 0.1, 1);
+    ghostDig.position.set(q.centre.x, site.heightAt(q.centre.x, q.centre.y) + 0.02, q.centre.y);
+    return {
+      machine: excavator,
+      over: there ? null : spot.clone().setY(0.4),
+      spot,
+      ring: 1.15,
+      hold: true,
+      canWork: there && !excavator.busy() && excavator.speed < 0.6,
+      work: () => {
+        const idx = site.quadrants.indexOf(q);
+        excavator.speed = 0;
+        excavator.dig(idx, q.centre, q.moundAt, {
+          bite: (i) => {
+            const qq = site.quadrants[i];
+            const finished = site.scoop(qq);
+            const b = excavator.bucketWorld();
+            fx.bits(b, 10, 0x8c6239, 1.2, site.heightAt(b.x, b.z));
+            fx.dust(new THREE.Vector3(qq.centre.x, -0.2, qq.centre.y), 0.7, 6, 0xc9a27a);
+            Audio.scoop();
+            if (finished) Audio.chime(chimeStep++);
+          },
+          dump: (i) => {
+            const qq = site.quadrants[i];
+            const at = site.growMound(qq);
+            pops.add(qq.mound!);
+            fx.bits(excavator.bucketWorld(), 14, 0x8c6239, 1, 0.1);
+            fx.dust(at, 0.6, 8, 0xc9a27a);
+            Audio.dump();
+            if (site.pitDug()) digDone();
+          },
+        }, () => input.work && site.quadrants[idx].scoops < SCOOPS_PER_QUADRANT);
+      },
+    };
+  }
+
+  let splashCooldown = 0;
+  function pourJob(dt: number): Job {
+    const tip = mixer.chuteWorld();
+    const overPit = tip.x > F.minX - 0.25 && tip.x < F.maxX + 0.25 && tip.z > F.minZ - 0.25 && tip.z < F.maxZ + 0.25;
+    mixer.pouring = active === mixer && overPit;
+    splashCooldown -= dt;
+    if (mixer.pouring) {
+      const n = site.pour(tip.x, tip.z, 0.62);
+      if (Math.random() < 0.7) {
+        const v = new THREE.Vector3(-Math.cos(mixer.heading), 0, Math.sin(mixer.heading)).multiplyScalar(0.6);
+        fx.drip(tip, v, site.heightAt(tip.x, tip.z));
+      }
+      if (n > 0 && splashCooldown <= 0) {
+        Audio.splash();
+        splashCooldown = 0.12;
+      }
+      const step = Math.floor(site.poured() * 8);
+      if (step > chimeStep) {
+        chimeStep = step;
+        Audio.chime(step);
+      }
+      if (site.poured() >= 0.9) slabDone();
+    }
+    return guideTo(mixer, site.unpoured(), tip, 1, 0.7);
+  }
+
+  /** Points the arrow and ring at the nearest of `left` from `from`, unless it's right there. */
+  function guideTo(machine: Machine, left: THREE.Vector2[], from: THREE.Vector3, near: number, ring: number): Job {
+    let best: THREE.Vector2 | null = null;
+    let bd = Infinity;
+    for (const p of left) {
+      const d = Math.hypot(p.x - from.x, p.y - from.z);
+      if (d < bd) [best, bd] = [p, d];
+    }
+    const spot = best ? new THREE.Vector3(best.x, site.heightAt(best.x, best.y), best.y) : null;
+    return { machine, over: spot && bd > near ? spot.clone().setY(0.3) : null, spot: bd > near ? spot : null, ring, canWork: false, work: () => {} };
+  }
+
+  let crunchCooldown = 0;
+  function pathJob(dt: number): Job {
+    const d = roller.drumWorld();
+    crunchCooldown -= dt;
+    if (active === roller && roller.speed > 0.2) {
+      const fresh = site.pave(d.x, d.z, roller.heading, 0.36, Roller.DRUM_HALF);
+      for (const c of fresh) fx.dust(new THREE.Vector3(c.x, 0.05, c.y), 0.2, 2, 0xdedede);
+      if (fresh.length && crunchCooldown <= 0) {
+        Audio.crunch();
+        crunchCooldown = 0.14;
+      }
+      const step = Math.floor(site.paved() * 8);
+      if (step > chimeStep) {
+        chimeStep = step;
+        Audio.chime(step);
+      }
+      if (site.paved() >= 0.92) pathDone();
+    }
+    return guideTo(roller, site.unpaved(), d, 0.9, 0.6);
+  }
+
+  /** How much of each dirt heap is left, 1 to 0, while the dozer pushes them away. */
+  const heaps = new Map<Quadrant, number>();
+  function cleanJob(dt: number): Job {
+    const blade = dozer.bladeWorld();
+    const f = dozer.forward;
+    const left: THREE.Vector2[] = [];
+    for (const q of site.quadrants) {
+      if (!q.mound) continue;
+      let amount = heaps.get(q) ?? 1;
+      const at = new THREE.Vector2(q.mound.position.x, q.mound.position.z);
+      const reach = 0.35 + 0.45 * amount;
+      const d = Math.hypot(at.x - blade.x, at.y - blade.z);
+      if (active === dozer && dozer.speed > 0.25 && d < reach + 0.2) {
+        // Pushed along in front of the blade, getting smaller as it spreads out.
+        amount = Math.max(0, amount - dt / 1.4);
+        const ahead = new THREE.Vector2(blade.x, blade.z).addScaledVector(f, reach * 1.0);
+        q.mound.position.x = ahead.x;
+        q.mound.position.z = ahead.y;
+        if (Math.random() < 0.5) fx.bits(new THREE.Vector3(ahead.x, 0.15, ahead.y), 1, 0x8c6239, 0.8, 0);
+        if (Math.random() < 0.25) fx.dust(new THREE.Vector3(ahead.x, 0.1, ahead.y), 0.3, 1, 0xc9a27a);
+        if (Math.floor(amount * 4) !== Math.floor((heaps.get(q) ?? 1) * 4)) Audio.scoop();
+      }
+      heaps.set(q, amount);
+      q.mound.scale.setScalar(0.2 + 0.8 * amount);
+      if (amount <= 0) {
+        fx.dust(q.mound.position.clone().setY(0.1), 0.6, 12, 0xc9a27a);
+        site.root.remove(q.mound);
+        q.mound.geometry.dispose();
+        q.mound = null;
+        Audio.chime(chimeStep++ + 2);
+        continue;
+      }
+      left.push(new THREE.Vector2(q.mound.position.x, q.mound.position.z));
+    }
+    if (left.length === 0) {
+      allDone();
+      return none(dozer);
+    }
+    const job = guideTo(dozer, left, blade, 1.2, 0.9);
+    if (job.over) job.over.y = 0.9;
+    if (job.spot) job.spot.y = 0;
+    return job;
+  }
+
+  const REACH = 4.6;
+  function outsideFootprint(m: Machine): boolean {
+    const p = m.pos;
+    return p.x < F.minX - 0.3 || p.x > F.maxX + 0.3 || p.y < F.minZ - 0.3 || p.y > F.maxZ + 0.3;
+  }
+
+  function craneJob(): Job {
+    const k = wallsUp;
+    const walls = stage === "walls";
+    const load = walls ? wallLoads[k] : roofLoad;
+    if (walls) ghostWalls.forEach((g, i) => (g.visible = i === k));
+    else ghostRoof.visible = true;
+    if (crane.busy()) return none(crane);
+    if (crane.load !== load) {
+      // Go and get it.
+      const at = load.mesh.position.clone();
+      const r = crane.reach(at);
+      return {
+        machine: crane,
+        over: at.clone().setY(at.y + 0.35),
+        spot: null,
+        ring: 1,
+        canWork: r <= REACH && r >= 0.6,
+        work: () => {
+          crane.speed = 0;
+          crane.pick(load, () => {}, () => Audio.clank());
+        },
+      };
+    }
+    // Take it to its place.
+    const place = walls ? site.slots[k].centre.clone() : ROOF_AT.clone();
+    const r = crane.reach(place);
+    const facing = walls
+      ? new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), site.slots[k].yaw)
+      : (() => {
+          // The roof's the same either way round: turn it the shorter way.
+          const yaw = crane.heading + crane.pose.yaw;
+          const q = Math.round(yaw / Math.PI) * Math.PI;
+          return new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), q);
+        })();
+    const ok = r <= REACH && outsideFootprint(crane);
+    return {
+      machine: crane,
+      over: ok ? null : place.clone().setY(place.y + (walls ? 1 : bp.roof.height + 0.5)),
+      spot: walls ? place.clone().setY(SLAB_TOP) : null,
+      ring: 0.9,
+      canWork: ok,
+      work: () => {
+        crane.speed = 0;
+        clearArea(crane, nearFootprint);
+        if (walls) crane.setDown(place, facing, () => wallLanded(k), () => {});
+        else crane.setDown(place, facing, () => roofLanded(), () => {});
+      },
+    };
+  }
+
+  // ------------------------------------------------------------------ the loop
+
+  const focus = new THREE.Vector3(active.pos.x, 0, active.pos.y);
+  let clock = 0;
+  let debugCam: { pos: THREE.Vector3; at: THREE.Vector3 } | null = null;
+  let left = false;
+
+  function machineTop(m: Machine): THREE.Vector3 {
+    const h = m === crane ? 1.5 : m === excavator ? 1.55 : m === roller || m === dozer ? 1.5 : 1.35;
+    return new THREE.Vector3(m.pos.x, m.y + h, m.pos.y);
+  }
+
+  let pathStarted = false;
+
+  function tick(dt: number, read: Input.Frame): void {
+    clock += dt;
+    input = read;
+
+    // Steer the machine you're in (not while you're mid-hop).
+    for (const m of machines) {
+      m.drive(hop ? { ...input, moveX: 0, moveY: 0 } : input, dt, world);
+      m.settle(site, dt);
+      m.update(dt, world);
+    }
+
+    ghostDig.visible = false;
+    ghostRoof.visible = false;
+    ghostWalls.forEach((g) => (g.visible = false));
+    if (stage === "path" && !pathStarted) {
+      pathStarted = true;
+      clearArea(roller, onPath);
+    }
+    const job: Job | null =
+      stage === "dig" ? digJob()
+      : stage === "pour" ? pourJob(dt)
+      : stage === "walls" || stage === "roof" ? craneJob()
+      : stage === "path" ? pathJob(dt)
+      : stage === "clean" ? cleanJob(dt)
+      : null;
+    if (stage !== "pour") mixer.pouring = false;
+
+    const pad = hooks.usingPad();
+    const workGlyph: Glyph = pad ? "padA" : "space";
+    const hopGlyph: Glyph = pad ? "padY" : "e";
+
+    // Which machine you could hop into: the nearest one close by.
+    let near: Machine | null = null;
+    if (!hop && !active.busy() && stage !== "done") {
+      let bd = Infinity;
+      for (const m of machines) {
+        if (m === active) continue;
+        let d = Infinity;
+        for (const a of active.circleCentres()) for (const b of m.circleCentres()) d = Math.min(d, a.distanceTo(b));
+        d -= active.def.radius + m.def.radius;
+        if (d < 0.9 && d < bd) [near, bd] = [m, d];
+      }
+    }
+
+    const from = new THREE.Vector3(active.pos.x, active.y, active.pos.y);
+    if (job && !hop) {
+      if (job.machine !== active) {
+        // The job needs another machine: point at it, higher still if the hop button's showing there too.
+        const top = machineTop(job.machine).add(new THREE.Vector3(0, near === job.machine ? 0.75 : 0, 0));
+        marker.update(dt, top, null, 1, from);
+        workPrompt.show(null, null, dt);
+      } else {
+        marker.update(dt, job.over, job.spot, job.ring, from);
+        workPrompt.show(job.canWork ? workGlyph : null, machineTop(active).add(new THREE.Vector3(0, 0.75, 0)), dt);
+        if (job.canWork && (input.workPressed || (job.hold && input.work))) job.work();
+      }
+    } else marker.update(dt, null, null, 1, null);
+    if (!job) workPrompt.show(null, null, dt);
+
+    hopPrompt.show(near ? hopGlyph : null, near ? machineTop(near).add(new THREE.Vector3(0, 0.7, 0)) : null, dt);
+    if (near && input.hopPressed && !hop) {
+      hop = { from: active, to: near, t: 0 };
+      active.driven = false;
+      workerMesh.visible = true;
+      Audio.hop();
+    }
+    if (hop) {
+      hop.t += dt / 0.6;
+      const a = hop.from.cabWorld(), b = hop.to.cabWorld();
+      const k = Math.min(1, hop.t);
+      workerMesh.position.lerpVectors(a, b, k).setY(a.y + (b.y - a.y) * k + Math.sin(Math.PI * k) * 1.2 - 0.35);
+      workerMesh.rotation.y = Math.atan2(-(b.z - a.z), b.x - a.x);
+      if (k >= 1) {
+        active = hop.to;
+        active.driven = true;
+        workerMesh.visible = false;
+        fx.dust(b, 0.3, 5, 0xffffff);
+        Audio.pop();
+        hop = null;
+      }
+    }
+
+    // The celebration: confetti for a few seconds, the flag goes up, then back to town.
+    if (celebrate >= 0) {
+      celebrate += dt;
+      if (celebrate < 4 && Math.floor(celebrate * 2.5) !== Math.floor((celebrate - dt) * 2.5)) {
+        fx.confetti(new THREE.Vector3(F.cx + (Math.random() - 0.5) * 3, ROOF_AT.y + 1.8, F.cz + (Math.random() - 0.5) * 3), 40);
+      }
+      if (celebrate > 0.6) {
+        flagMesh.visible = true;
+        const k = Math.min(1, (celebrate - 0.6) / 0.6);
+        flagMesh.scale.set(1, Math.max(0.001, k < 1 ? k * 1.15 : 1), 1);
+      }
+      if (!left && (celebrate > 6 || (celebrate > 2 && input.workPressed))) {
+        left = true;
+        hooks.finished();
+      }
+    }
+
+    pops.update(dt);
+    for (const g of [ghostRoof, ...ghostWalls]) breathe(g, clock);
+    (ghostDig.material as THREE.MeshBasicMaterial).opacity = 0.18 + 0.14 * (0.5 + 0.5 * Math.sin(clock * 4));
+
+    site.update(dt);
+    fx.update(dt);
+    Audio.setEngine(active.speed / active.def.speed, true);
+
+    // The camera: three-quarter top-down, following whoever you drive (and the worker mid-hop).
+    const want = hop ? workerMesh.position.clone().setY(0) : new THREE.Vector3(active.pos.x, 0, active.pos.y);
+    // Not so far out that the view's half grass: the site fills it.
+    want.x = Math.max(-6.5, Math.min(6.5, want.x));
+    want.z = Math.max(-5, Math.min(3.8, want.z));
+    if (celebrate >= 0) want.lerp(new THREE.Vector3(F.cx, 0, F.cz), Math.min(1, celebrate));
+    focus.lerp(want, 1 - Math.exp(-4 * dt));
+    frameCamera(focus, celebrate >= 0 ? Math.min(1, celebrate / 1.5) : 0);
+    if (debugCam) {
+      camera.position.copy(debugCam.pos);
+      camera.lookAt(debugCam.at);
+    }
+  }
+
+  /** `?stage=pour|walls|roof|path|done` starts further on, for trying a later job straight away. */
+  function skipTo(s: Stage): void {
+    const at = STAGES.indexOf(s);
+    if (at > 0) {
+      site.digAll();
+      site.strings.visible = false;
+    }
+    if (at > 1) site.finishSlab();
+    if (at > 2) {
+      for (let k = 0; k < site.slots.length; k++) {
+        const st = site.slots[k];
+        const mesh = wallLoads[k].mesh;
+        mesh.position.copy(st.centre);
+        mesh.quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), st.yaw);
+        building.add(mesh);
+        if (st.box) site.boxes.push(st.box);
+        wallsUp++;
+      }
+    }
+    if (at > 3) {
+      roofMesh.position.copy(ROOF_AT);
+      building.add(roofMesh);
+    }
+    if (at > 4) {
+      site.finishPath();
+      for (const q of site.quadrants) {
+        const i = site.circles.findIndex((c) => c.x === q.moundAt.x && c.z === q.moundAt.y);
+        if (i >= 0) site.circles.splice(i, 1);
+      }
+    }
+    if (at > 5) {
+      for (const q of site.quadrants) if (q.mound) site.root.remove(q.mound);
+      flagMesh.visible = true;
+      flagMesh.scale.set(1, 1, 1);
+    }
+    const drive: Machine = at === 1 ? mixer : at === 4 ? roller : at === 5 ? dozer : at >= 2 ? crane : excavator;
+    active.driven = false;
+    active = drive;
+    active.driven = true;
+    setStage(s);
+    focus.set(active.pos.x, 0, active.pos.y);
+  }
+
+  setStage("dig");
+
+  return {
+    scene,
+    camera,
+    tick,
+    skipTo,
+    dispose() {
+      disposeScene(scene, new Set([voxelMaterial]));
+    },
+    debug: {
+      site, machines, excavator, mixer, roller, crane, dozer, fx,
+      get stage() { return stage; },
+      get active() { return active; },
+      look(x?: number, y = 0, z = 0, ax = 0, ay = 0, az = 0) {
+        debugCam = x === undefined ? null : { pos: new THREE.Vector3(x, y, z), at: new THREE.Vector3(ax, ay, az) };
+      },
+    },
+  };
+}

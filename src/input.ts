@@ -1,7 +1,7 @@
 /**
  * Keyboard and gamepad, read once a frame. The stick (or WASD / arrows) points where to go on
  * screen; Work (Space / Enter / pad A) does the machine's job; Hop (E / pad Y or X) jumps into the
- * machine you're next to. Like Kickstack's Pad, sticks have a radial dead zone.
+ * machine you're next to; holding R (pad Start) works the corner button. Like Kickstack's Pad, sticks have a radial dead zone.
  */
 export interface Frame {
   moveX: number; // right +
@@ -10,6 +10,7 @@ export interface Frame {
   workPressed: boolean; // went down this frame
   hopPressed: boolean;
   restartPressed: boolean;
+  restart: boolean; // held: the corner button's hold-to-confirm
 }
 
 const keys = new Set<string>();
@@ -53,6 +54,7 @@ export function read(): Frame {
   let workPressed = p("Space") || p("Enter");
   let hopPressed = p("KeyE");
   let restartPressed = p("KeyR");
+  let restart = k("KeyR");
 
   for (const pad of navigator.getGamepads?.() ?? []) {
     if (!pad || !pad.connected) continue;
@@ -75,9 +77,10 @@ export function read(): Frame {
     workPressed ||= down(0);
     hopPressed ||= down(3) || down(2);
     restartPressed ||= down(9);
+    restart ||= btn(9);
     for (let i = 0; i < pad.buttons.length; i++) lastPadButtons[i] = btn(i);
     break; // the first pad plays
   }
   pressed.clear();
-  return { moveX: mx, moveY: my, work, workPressed, hopPressed, restartPressed };
+  return { moveX: mx, moveY: my, work, workPressed, hopPressed, restartPressed, restart };
 }

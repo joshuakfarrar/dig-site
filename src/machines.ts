@@ -2,7 +2,7 @@ import * as THREE from "three";
 import * as M from "./models";
 import { C, Cell } from "./models";
 import type { Frame } from "./input";
-import type { Box, Circle, Site } from "./site";
+import type { Box, Circle, Ground } from "./site";
 
 /**
  * The machines and how they drive. Driving is Kickstack's (VehicleOps.steer): the stick points
@@ -25,7 +25,7 @@ export interface Def {
 const deg = Math.PI / 180;
 
 export interface World {
-  site: Site;
+  site: Ground;
   machines: Machine[];
 }
 
@@ -137,7 +137,7 @@ export abstract class Machine {
   }
 
   /** Sits on the ground: height from under its front and back, tipping between them. */
-  settle(site: Site, dt: number, snap = false): void {
+  settle(site: Ground, dt: number, snap = false): void {
     const f = this.forward;
     const k = this.def.halfLen * 0.75;
     const hf = site.heightAt(this.pos.x + f.x * k, this.pos.y + f.y * k);
@@ -161,7 +161,7 @@ export abstract class Machine {
   }
 
   /** Puts it straight down somewhere (a restart, or moving it out of the building's way). */
-  place(x: number, z: number, heading: number, site: Site): void {
+  place(x: number, z: number, heading: number, site: Ground): void {
     this.pos.set(x, z);
     this.heading = heading;
     this.speed = 0;
@@ -310,14 +310,15 @@ export class Excavator extends Machine {
     const toPit = this.yawTo(at.x, at.y);
     const toMound = this.yawTo(mound.x, mound.y);
     const steps: Step<ArmPose>[] = [
-      { dur: 0.5, to: (p) => ({ ...p, yaw: toPit, boom: 6 * deg, stick: -38 * deg, bucket: 45 * deg }) },
-      { dur: 0.45, to: (p) => ({ ...p, boom: -8 * deg, stick: -62 * deg, bucket: 10 * deg }), done: () => ev.bite(q) },
-      { dur: 0.35, to: (p) => ({ ...p, boom: 0 * deg, stick: -100 * deg, bucket: -75 * deg, dirt: true }) },
-      { dur: 0.4, to: (p) => ({ ...p, boom: 40 * deg, stick: -95 * deg, bucket: -80 * deg }) },
-      { dur: 0.65, to: (p) => ({ ...p, yaw: toMound, boom: 30 * deg, stick: -70 * deg }) },
-      { dur: 0.3, to: (p) => ({ ...p, bucket: 50 * deg, stick: -50 * deg }), done: () => ev.dump(q) },
-      { dur: 0.15, to: (p) => ({ ...p, dirt: false }) },
-      { dur: 0.6, to: (p) => ({ ...p, yaw: toPit, ...Excavator.REST }) },
+      // Brisk: about 2.4 s a scoop, so holding the button is digging, not waiting.
+      { dur: 0.35, to: (p) => ({ ...p, yaw: toPit, boom: 6 * deg, stick: -38 * deg, bucket: 45 * deg }) },
+      { dur: 0.32, to: (p) => ({ ...p, boom: -8 * deg, stick: -62 * deg, bucket: 10 * deg }), done: () => ev.bite(q) },
+      { dur: 0.25, to: (p) => ({ ...p, boom: 0 * deg, stick: -100 * deg, bucket: -75 * deg, dirt: true }) },
+      { dur: 0.28, to: (p) => ({ ...p, boom: 40 * deg, stick: -95 * deg, bucket: -80 * deg }) },
+      { dur: 0.45, to: (p) => ({ ...p, yaw: toMound, boom: 30 * deg, stick: -70 * deg }) },
+      { dur: 0.22, to: (p) => ({ ...p, bucket: 50 * deg, stick: -50 * deg }), done: () => ev.dump(q) },
+      { dur: 0.1, to: (p) => ({ ...p, dirt: false }) },
+      { dur: 0.42, to: (p) => ({ ...p, yaw: toPit, ...Excavator.REST }) },
     ];
     this.seq = new Sequence(this.pose, steps, mixArm);
     this.again = () => {
@@ -387,7 +388,7 @@ export class Mixer extends Machine {
 interface CranePose {
   yaw: number; // the top, relative to the carrier
   pitch: number; // boom
-  ext: number; // how far the inner section's slid out
+  ext: number; // how far the boom's telescoped out, all sections together
   cable: number; // tip to hook
   hold: number; // 0..1: how far the load's turned from how it lay to how it goes
 }
@@ -409,28 +410,35 @@ export interface Load {
   carryYaw: number; // turned this much from the boom, while carried
 }
 
-const BOOM_ROOT = new THREE.Vector3(-0.3, 0.55, 0.2); // on the top
-const BASE_TIP = 1.75; // root to tip, retracted
-const MAX_EXT = 3.4;
+const BOOM_ROOT = new THREE.Vector3(-0.3, 0.62, 0.2); // on the top
+const SECTION = M.BOOM_SECTION * Cell;
+const NEST = 0.1; // how far each section sits out of the one before, retracted
+const FLY_TIP = SECTION - 0.05; // along the inner section, to the sheave
+const BASE_TIP = 2 * NEST + FLY_TIP; // root to tip, retracted
+// Each of the two inner sections slides out half of the extension, keeping 0.35 of itself in its sleeve.
+const MAX_EXT = 2 * (SECTION - NEST - 0.35);
 
 export class Crane extends Machine {
   private top = new THREE.Group();
   private boom = new THREE.Group();
+  private mid = new THREE.Group();
   private fly = new THREE.Group();
   private hook: THREE.Mesh;
   private cable: THREE.Mesh;
   private slingA: THREE.Mesh;
   private slingB: THREE.Mesh;
-  pose: CranePose = { yaw: 0, pitch: -5 * deg, ext: 0, cable: 0.25, hold: 0 };
+  pose: CranePose = { yaw: 0, pitch: -7 * deg, ext: 0, cable: 0.25, hold: 0 };
   private seq: Sequence<CranePose> | null = null;
   load: Load | null = null;
   private loadFrom: THREE.Quaternion | null = null;
   private loadTo: THREE.Quaternion | null = null; // set while setting a load down
   private loadAt: THREE.Vector3 | null = null; // where it's being set down
-  private turnT = 0; // how far it's turned to fit, over the swing (1 s)
+  private turnT = 0; // how far it's turned to fit, over the swing
 
-  static readonly REST: CranePose = { yaw: 0, pitch: -5 * deg, ext: 0, cable: 0.25, hold: 0 };
-  static readonly CARRY: CranePose = { yaw: 0, pitch: 52 * deg, ext: 0.5, cable: 0.45, hold: 1 };
+  // At rest the boom lies on its rest over the carrier's front.
+  static readonly REST: CranePose = { yaw: 0, pitch: -7 * deg, ext: 0, cable: 0.25, hold: 0 };
+  // Carried high and close in, so even the roof clears the carrier's cab under it.
+  static readonly CARRY: CranePose = { yaw: 0, pitch: 64 * deg, ext: 1.2, cable: 0.35, hold: 1 };
 
   constructor(home: THREE.Vector2) {
     super(
@@ -445,9 +453,11 @@ export class Crane extends Machine {
     this.tilt.add(this.top);
     this.addBeacon(this.top);
     this.boom.position.copy(BOOM_ROOT);
-    this.boom.add(M.craneBoomBase().mesh(Cell, [0, 0.5, 0.5]));
-    this.fly.add(M.craneBoomFly().mesh(Cell, [0, 0.5, 1]));
-    this.boom.add(this.fly);
+    this.boom.add(M.craneBoomBase().mesh(Cell));
+    this.mid.add(M.craneBoomMid().mesh(Cell, [0, 0.5, 0.5]));
+    this.fly.add(M.craneBoomFly().mesh(Cell));
+    this.mid.add(this.fly);
+    this.boom.add(this.mid);
     this.top.add(this.boom);
 
     this.hook = M.craneHook().mesh(Cell, [0.5, 0, 0.5]);
@@ -472,16 +482,21 @@ export class Crane extends Machine {
   private applyPose(): void {
     this.top.rotation.y = this.pose.yaw;
     this.boom.rotation.z = this.pose.pitch;
-    this.fly.position.x = 0.1 + this.pose.ext;
+    const each = Math.max(0, Math.min(MAX_EXT, this.pose.ext)) / 2;
+    this.mid.position.x = NEST + each;
+    this.fly.position.x = NEST + each;
   }
 
   tipWorld(): THREE.Vector3 {
     this.root.updateMatrixWorld(true);
-    return this.boom.localToWorld(new THREE.Vector3(0.1 + this.pose.ext + 1.65, -0.1, 0));
+    return this.fly.localToWorld(new THREE.Vector3(FLY_TIP, -0.15, 0));
   }
 
-  /** The top's yaw, boom pitch and extension that put the boom tip over a world point. */
-  aimAt(target: THREE.Vector3): { yaw: number; pitch: number; ext: number; tipY: number } {
+  /**
+   * The top's yaw, boom pitch and extension that put the boom tip over a world point, with the
+   * tip at least `minTipY` high if it can (it goes steeper and longer for a tall building).
+   */
+  aimAt(target: THREE.Vector3, minTipY = -Infinity): { yaw: number; pitch: number; ext: number; tipY: number } {
     this.root.updateMatrixWorld(true);
     const local = this.tilt.worldToLocal(target.clone()).sub(this.top.position);
     const R = Math.max(0.3, Math.hypot(local.x, local.z));
@@ -489,17 +504,23 @@ export class Crane extends Machine {
     // Yaw so the target lies on the boom's line (the boom's off to the side by BOOM_ROOT.z).
     const yaw = wrap(beta + Math.asin(Math.max(-1, Math.min(1, BOOM_ROOT.z / R))));
     const along = Math.sqrt(Math.max(0, R * R - BOOM_ROOT.z * BOOM_ROOT.z)) - BOOM_ROOT.x;
-    let pitch = 55 * deg;
-    let len = along / Math.cos(pitch);
-    if (len < BASE_TIP) {
-      len = BASE_TIP;
-      pitch = Math.acos(Math.min(1, along / BASE_TIP));
-    } else if (len > BASE_TIP + MAX_EXT) {
-      len = BASE_TIP + MAX_EXT;
-      pitch = Math.acos(Math.min(1, along / len));
-    }
     const rootY = this.y + this.top.position.y + BOOM_ROOT.y;
-    return { yaw: wrap(yaw), pitch, ext: len - BASE_TIP, tipY: rootY + len * Math.sin(pitch) - 0.1 };
+    let best = { yaw, pitch: 0, ext: 0, tipY: -Infinity };
+    for (let p = 55; p <= 80; p += 2.5) {
+      let pitch = p * deg;
+      let len = along / Math.cos(pitch);
+      if (len < BASE_TIP) {
+        len = BASE_TIP;
+        pitch = Math.acos(Math.min(1, along / len));
+      } else if (len > BASE_TIP + MAX_EXT) {
+        len = BASE_TIP + MAX_EXT;
+        pitch = Math.acos(Math.min(1, along / len));
+      }
+      const tipY = rootY + len * Math.sin(pitch) - 0.15;
+      if (tipY > best.tipY) best = { yaw, pitch, ext: len - BASE_TIP, tipY };
+      if (tipY >= minTipY) return { yaw, pitch, ext: len - BASE_TIP, tipY };
+    }
+    return best;
   }
 
   /** How far a world point is from the turntable, along the ground. */
@@ -513,17 +534,17 @@ export class Crane extends Machine {
   pick(load: Load, done: () => void, hitched: () => void): void {
     if (this.seq) return;
     const at = load.mesh.position.clone();
-    const aim = this.aimAt(at);
     const hookY = at.y + load.hang;
+    const aim = this.aimAt(at, hookY + 0.3);
     this.seq = new Sequence(this.pose, [
-      { dur: 0.9, to: (p) => ({ ...p, yaw: aim.yaw, pitch: aim.pitch, ext: aim.ext, cable: 0.5 }) },
-      { dur: 0.6, to: (p) => ({ ...p, cable: Math.max(0.3, aim.tipY - hookY) }), done: () => {
+      { dur: 0.6, to: (p) => ({ ...p, yaw: aim.yaw, pitch: aim.pitch, ext: aim.ext, cable: 0.5 }) },
+      { dur: 0.45, to: (p) => ({ ...p, cable: Math.max(0.3, aim.tipY - hookY) }), done: () => {
         this.load = load;
         this.loadFrom = load.mesh.quaternion.clone();
         hitched();
       } },
-      { dur: 0.7, to: (p) => ({ ...p, cable: 0.6, hold: 1 }) },
-      { dur: 0.8, to: () => ({ ...Crane.CARRY }), done },
+      { dur: 0.45, to: (p) => ({ ...p, cable: 0.6, hold: 1 }) },
+      { dur: 0.55, to: () => ({ ...Crane.CARRY }), done },
     ], mixCrane);
   }
 
@@ -531,21 +552,21 @@ export class Crane extends Machine {
   setDown(place: THREE.Vector3, facing: THREE.Quaternion, landed: () => void, done: () => void): void {
     if (this.seq || !this.load) return;
     const load = this.load;
-    const aim = this.aimAt(place);
     const hookY = place.y + load.hang;
+    const aim = this.aimAt(place, hookY + 0.9);
     const start = this.load.mesh.quaternion.clone();
     this.seq = new Sequence(this.pose, [
-      { dur: 1.0, to: (p) => ({ ...p, yaw: aim.yaw, pitch: aim.pitch, ext: aim.ext, cable: Math.max(0.3, aim.tipY - hookY - 0.6) }), done: () => {
+      { dur: 0.75, to: (p) => ({ ...p, yaw: aim.yaw, pitch: aim.pitch, ext: aim.ext, cable: Math.max(0.3, aim.tipY - hookY - 0.6) }), done: () => {
         this.loadAt = place.clone();
       } },
-      { dur: 0.7, to: (p) => ({ ...p, cable: Math.max(0.3, aim.tipY - hookY) }), done: () => {
+      { dur: 0.5, to: (p) => ({ ...p, cable: Math.max(0.3, aim.tipY - hookY) }), done: () => {
         this.load = null;
         this.loadAt = null;
         this.loadTo = null;
         landed();
       } },
-      { dur: 0.45, to: (p) => ({ ...p, cable: 0.4 }) },
-      { dur: 0.8, to: () => ({ ...Crane.REST }), done },
+      { dur: 0.3, to: (p) => ({ ...p, cable: 0.4 }) },
+      { dur: 0.55, to: () => ({ ...Crane.REST }), done },
     ], mixCrane);
     this.loadFrom = start;
     this.loadTo = facing.clone();
@@ -582,7 +603,7 @@ export class Crane extends Machine {
       const from = this.loadFrom ?? L.rest;
       if (this.loadTo) {
         // Turning to fit as it swings over.
-        this.turnT = Math.min(1, this.turnT + dt);
+        this.turnT = Math.min(1, this.turnT + dt / 0.75);
         L.mesh.quaternion.copy(from).slerp(this.loadTo, ease(this.turnT));
       } else L.mesh.quaternion.copy(from).slerp(carry, Math.min(1, this.pose.hold));
       // Slings from the hook to two points on the load's top.
@@ -603,6 +624,94 @@ export class Crane extends Machine {
     this.loadAt = null;
     this.loadTo = null;
     this.pose = { ...Crane.REST };
+  }
+}
+
+// ======================================================================== road roller
+
+/** Paves the path to the front door: wherever its big drum rolls, the path's done. */
+export class Roller extends Machine {
+  private drum = new THREE.Group();
+  private roll = 0;
+  static readonly DRUM_X = 0.7;
+  static readonly DRUM_HALF = 0.5; // half its width
+
+  constructor(home: THREE.Vector2) {
+    super(
+      "roller",
+      { speed: 2.6, accel: 5, turn: 130 * deg, halfLen: 1.0, radius: 0.6, circles: [[-0.5, 0.6], [0.55, 0.6]], cab: new THREE.Vector3(-0.25, 0.75, 0) },
+      new THREE.Vector3(-0.15, 1.36, 0),
+      home,
+    );
+    this.tilt.add(M.rollerBody().mesh(Cell));
+    this.drum.position.set(Roller.DRUM_X, 0.36, 0);
+    this.drum.add(M.rollerDrum().mesh(Cell));
+    this.tilt.add(this.drum);
+    this.addBeacon(this.tilt);
+  }
+
+  busy(): boolean {
+    return false;
+  }
+
+  /** Under the middle of the drum, in the world. */
+  drumWorld(): THREE.Vector3 {
+    this.root.updateMatrixWorld(true);
+    return this.tilt.localToWorld(new THREE.Vector3(Roller.DRUM_X, 0, 0));
+  }
+
+  update(dt: number, w: World): void {
+    super.update(dt, w);
+    this.roll -= (this.speed * dt) / 0.36;
+    this.drum.rotation.z = this.roll;
+  }
+}
+
+// ======================================================================== bulldozer
+
+/** Clears up at the end: drive the blade into a dirt mound and push it away. */
+export class Dozer extends Machine {
+  static readonly BLADE_X = 1.15;
+
+  constructor(home: THREE.Vector2) {
+    super(
+      "dozer",
+      { speed: 2.4, accel: 5, turn: 120 * deg, halfLen: 1.0, radius: 0.62, circles: [[-0.35, 0.6], [0.55, 0.62]], cab: new THREE.Vector3(-0.3, 1.0, 0) },
+      new THREE.Vector3(-0.3, 1.36, 0),
+      home,
+    );
+    this.tilt.add(M.dozer().mesh(Cell));
+    this.addBeacon(this.tilt);
+  }
+
+  busy(): boolean {
+    return false;
+  }
+
+  /** The middle of the blade's cutting edge, in the world. */
+  bladeWorld(): THREE.Vector3 {
+    this.root.updateMatrixWorld(true);
+    return this.tilt.localToWorld(new THREE.Vector3(Dozer.BLADE_X, 0, 0));
+  }
+}
+
+// ======================================================================== the crew's truck
+
+/** For getting about town between building sites. */
+export class Truck extends Machine {
+  constructor(home: THREE.Vector2) {
+    super(
+      "truck",
+      { speed: 4.4, accel: 8, turn: 160 * deg, halfLen: 1.05, radius: 0.5, circles: [[-0.5, 0.5], [0.5, 0.5]], cab: new THREE.Vector3(0.25, 0.9, 0) },
+      new THREE.Vector3(0.2, 1.06, 0),
+      home,
+    );
+    this.tilt.add(M.truck().mesh(Cell));
+    this.addBeacon(this.tilt);
+  }
+
+  busy(): boolean {
+    return false;
   }
 }
 

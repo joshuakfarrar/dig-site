@@ -117,6 +117,27 @@ export function splash(): void {
   noise(now(), 0.12, 0.08, 1400, 1.2);
 }
 
+/** The roller pressing a slab of path down: a soft low crunch. */
+export function crunch(): void {
+  const t = now();
+  noise(t, 0.16, 0.12, 260, 0.9);
+  tone(70, t, 0.14, "sine", 0.12, 0.8);
+}
+
+/** A happy two-note "hello" from a townsperson. */
+export function hello(step = 0): void {
+  const t = now();
+  tone(note(5 + (step % 4)), t, 0.22, "sine", 0.1);
+  tone(note(7 + (step % 4)), t + 0.12, 0.3, "sine", 0.1);
+}
+
+/** Opening a building site: a rising sweep. */
+export function whoosh(): void {
+  const t = now();
+  noise(t, 0.45, 0.1, 700, 0.5);
+  tone(260, t, 0.4, "sine", 0.1, 2);
+}
+
 export function fanfare(): void {
   const t = now();
   const seq = [0, 2, 3, 4, 5, 7];
