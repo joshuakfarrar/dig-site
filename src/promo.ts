@@ -14,7 +14,9 @@ type Vec = [number, number, number];
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Any = any;
 
-const W = 1920, H = 1080, FPS = 30;
+const FPS = 30;
+// The size and lens of the cut being filmed (see CUTS).
+let W = 1920, H = 1080, FOV = 42;
 const idle: Frame = { moveX: 0, moveY: 0, work: false, workPressed: false, hopPressed: false, restartPressed: false, restart: false };
 const g = (): Any => (window as Any).game;
 
@@ -22,6 +24,8 @@ interface Shot {
   name: string;
   caption: string;
   seconds: number;
+  /** Frames, when it has to land exactly on the beat (the reel); otherwise `seconds` long. */
+  frames?: number;
   /** Puts the game where the shot starts (not filmed). */
   setup(): void;
   /** Each frame: where the camera is and looks (at progress `k`, 0 to 1), and what's pressed. */
@@ -197,6 +201,249 @@ const SHOTS: Shot[] = [
   },
 ];
 
+// ------------------------------------------------------------------ the reel
+
+/**
+ * The reel: vertical (9:16) for phones, about 28 seconds, every cut on the beat of a 120 bpm tune
+ * (a beat is 15 frames). Close-ups with a big word each (dig, pour, build, welcome home), then
+ * the street filling up one house a beat, the playground, a few plain truths, and the card.
+ * `tools/make_reel.py` adds the words, the tune and the card.
+ */
+const BEAT = 15;
+const POPS = [0, 4, 1, 5, 2, 6, 3, 7]; // the far houses first, so the near ones land last
+// A new building waits about 0.45 s before it pops up (for the fade from its site to clear); run
+// that much first, so the pop lands on the beat.
+const POP_LEAD = 0.43;
+// High over the east end, looking down the street: both rows of lots, every house big enough to see.
+const STREET_EYE: Vec = [15.5, 12.5, -0.6];
+const STREET_AT: Vec = [-3.5, 0, -1.2];
+let popped = -1;
+
+const REEL: Shot[] = [
+  {
+    name: "r_dig",
+    caption: "DIG!",
+    seconds: 0,
+    frames: 4 * BEAT,
+    setup() {
+      g().saved.at = 1;
+      g().goBuild(7);
+      const b = g().build, e = b.excavator;
+      const q = b.site.quadrants.slice().sort((a: Any, c: Any) => a.spot.distanceTo(e.pos) - c.spot.distanceTo(e.pos))[0];
+      driveTo(e, q.spot.x, q.spot.y, 0.4);
+      run(0.4);
+      run(1.0, { work: true, workPressed: true });
+    },
+    frame(t, k) {
+      const e = g().build.excavator.pos;
+      const a = 0.75 + k * 0.45;
+      return { eye: [e.x + Math.cos(a) * 4.4, 3.1, e.y + Math.sin(a) * 4.4], at: [e.x + 0.3, 0.6, e.y - 0.2], input: { work: true, workPressed: t === 0 } };
+    },
+  },
+  {
+    name: "r_pour",
+    caption: "POUR!",
+    seconds: 0,
+    frames: 3 * BEAT,
+    setup() {
+      g().saved.at = 0;
+      g().goBuild(2, "pour");
+      const m = g().build.mixer, F = g().build.site.foot;
+      driveTo(m, m.pos.x, 3.4, 0.3);
+      driveTo(m, F.cx - 0.6, 3.4, 0.3);
+      driveTo(m, F.cx - 0.6, 2.2, 0.3);
+      driveTo(m, F.cx - 0.6, -0.4, 0.3);
+    },
+    frame() {
+      const m = g().build.mixer.pos;
+      return { eye: [m.x + 3.4, 2.9, m.y + 3.2], at: [m.x - 0.2, 0.4, m.y + 0.9], input: { moveY: 0.32 } };
+    },
+  },
+  {
+    name: "r_roof",
+    caption: "BUILD!",
+    seconds: 0,
+    frames: 5 * BEAT,
+    setup() {
+      // Everything up to the moment the roof starts down onto the walls, unfilmed.
+      g().saved.at = 0;
+      g().goBuild(0, "roof");
+      run(1.2);
+      run(0.5, { work: true, workPressed: true });
+      run(0.5);
+      const c = g().build.crane;
+      driveTo(c, 6.4, 2.8, 0.4);
+      driveTo(c, -5.2, 2.8, 0.4);
+      driveTo(c, -5.2, -1.6, 0.25);
+      run(0.4);
+      run(0.1, { work: true, workPressed: true });
+      for (let i = 0; i < 400 && c.busy(); i++) run(1 / 60);
+      driveTo(c, -3.6, -1.6, 0.2);
+      for (let i = 0; i < 120 && Math.abs(c.speed) > 0.05; i++) run(1 / 60);
+    },
+    frame(t) {
+      return { eye: [-0.6, 4.4, 5.6], at: [-1.3, 1.5, -1.6], input: { work: t < 0.05, workPressed: t === 0 } };
+    },
+  },
+  {
+    name: "r_home",
+    caption: "WELCOME HOME!",
+    seconds: 0,
+    frames: 3 * BEAT,
+    setup() {
+      const game = g();
+      game.saved.built = [[0]];
+      game.saved.at = 0;
+      game.goTown(0);
+      game.town.truck.root.visible = false;
+      run(POP_LEAD); // so the house pops up right on the cut
+    },
+    frame(_t, k) {
+      return { eye: mix([-10.9, 3.0, 1.2], [-11.2, 3.4, 1.9], k), at: [-12, 1.5, -5.6] };
+    },
+  },
+  {
+    name: "r_street",
+    caption: "",
+    seconds: 0,
+    frames: 12 * BEAT,
+    setup() {
+      town([[]], 0);
+      g().town.truck.root.visible = false;
+      popped = -1;
+    },
+    frame(t) {
+      // One beat of the empty street, then a house a beat (each its own little party), then the last
+      // one's confetti settling.
+      const f = Math.round(t * FPS);
+      const k = Math.floor(f / BEAT) - 1;
+      if (k >= 0 && k < POPS.length && k !== popped) {
+        popped = k;
+        const game = g();
+        game.saved.built = [POPS.slice(0, k + 1)];
+        game.saved.at = 0;
+        game.goTown(POPS[k]);
+        game.town.truck.root.visible = false;
+        run(POP_LEAD); // the house pops up on this beat, with its chime
+      }
+      return { eye: STREET_EYE, at: STREET_AT };
+    },
+  },
+  {
+    name: "r_dusk",
+    caption: "",
+    seconds: 0,
+    frames: 4 * BEAT,
+    setup() {
+      town([[0, 1, 2, 3, 4, 5, 6, 7]], 0);
+      g().town.truck.root.visible = false;
+      run(2);
+    },
+    frame(_t, k) {
+      return { eye: mix(STREET_EYE, [STREET_EYE[0] - 1.5, STREET_EYE[1] - 0.8, STREET_EYE[2]], k), at: STREET_AT };
+    },
+  },
+  {
+    name: "r_play",
+    caption: "",
+    seconds: 0,
+    frames: 8 * BEAT,
+    setup() {
+      town([[0, 1, 2, 3, 4, 5, 6, 7], [0, 1, 2, 3, 4, 5, 6]], 1);
+      run(6);
+    },
+    frame(_t, k) {
+      const a = 1.25 + k * 0.5;
+      return { eye: [4 + Math.cos(a) * 4.6, 3.3, 3.5 + Math.sin(a) * 4.6], at: [4, 0.8, 3.5] };
+    },
+  },
+  {
+    name: "r_roller",
+    caption: "",
+    seconds: 0,
+    frames: 2 * BEAT,
+    setup() {
+      g().saved.at = 0;
+      g().goBuild(0, "path");
+      run(1.5);
+      const r = g().build.roller, F = g().build.site.foot;
+      driveTo(r, F.cx - 1.6, F.maxZ + 0.8, 0.3);
+      driveTo(r, F.cx, F.maxZ + 0.8, 0.25);
+      run(0.6);
+    },
+    frame() {
+      const r = g().build.roller.pos;
+      return { eye: [r.x + 2.6, 2.0, r.y + 2.6], at: [r.x, 0.4, r.y + 0.6], input: { moveY: -0.45 } };
+    },
+  },
+  {
+    name: "r_fork",
+    caption: "",
+    seconds: 0,
+    frames: 2 * BEAT,
+    setup() {
+      town([[0, 1]], 0);
+      const t = g().town.truck;
+      driveTo(t, t.pos.x, 6.5, 0.3);
+      driveTo(t, -18.75, 4.5, 0.25);
+      run(1);
+      run(0.35, { work: true, workPressed: true });
+    },
+    frame() {
+      return { eye: [-16.6, 2.5, 7.2], at: [-19.9, 0.7, 4.5] };
+    },
+  },
+  {
+    name: "r_sweep",
+    caption: "",
+    seconds: 0,
+    frames: 2 * BEAT,
+    setup() {
+      g().saved.at = 2;
+      g().goBuild(0, "sweep");
+      run(1);
+      // The drift furthest from the parked excavator, so nothing's in the way.
+      const b = g().build, sw = b.sweeper, ex = b.excavator.pos;
+      const near = b.sand.slice().sort((a: Any, c: Any) => Math.hypot(c.x - ex.x, c.z - ex.y) - Math.hypot(a.x - ex.x, a.z - ex.y))[0];
+      const dx = near.x - sw.pos.x, dz = near.z - sw.pos.y, d = Math.hypot(dx, dz);
+      driveTo(sw, near.x - (dx / d) * 1.6, near.z - (dz / d) * 1.6, 0.3);
+      sweepAt = [near.x, near.z];
+    },
+    frame() {
+      const sw = g().build.sweeper.pos;
+      const dx = sweepAt[0] - sw.x, dz = sweepAt[1] - sw.y, d = Math.max(0.01, Math.hypot(dx, dz));
+      return { eye: [sw.x - (dx / d) * 2.2 + 2.6, 3.1, sw.y - (dz / d) * 2.2 + 2.6], at: [sw.x + (dx / d) * 0.8, 0.3, sw.y + (dz / d) * 0.8], input: { moveX: (dx / d) * 0.6, moveY: (-dz / d) * 0.6 } };
+    },
+  },
+  {
+    name: "r_harbour",
+    caption: "",
+    seconds: 0,
+    frames: 4 * BEAT,
+    setup() {
+      town([[0, 1, 2, 3, 4, 5, 6, 7], [0, 1, 2, 3, 4, 5, 6, 7], [0, 1, 2, 3, 4, 5, 6, 7]], 2);
+      run(3);
+    },
+    frame(_t, k) {
+      const e = ease(k);
+      return { eye: mix([8.5, 4.2, 16.5], [14.5, 5.6, 13.5], e), at: mix([11, 1.4, 4], [12, 2.2, 4], e) };
+    },
+  },
+];
+let sweepAt: [number, number] = [0, 0];
+
+/** Each cut: its shots, frame size and lens. */
+const CUTS: Record<string, { shots: Shot[]; w: number; h: number; fov: number }> = {
+  story: { shots: SHOTS, w: 1920, h: 1080, fov: 42 },
+  reel: { shots: REEL, w: 1080, h: 1920, fov: 58 },
+};
+const cutOf = (name: string) => Object.values(CUTS).find((c) => c.shots.some((s) => s.name === name))!;
+function useCut(c: { w: number; h: number; fov: number }): void {
+  W = c.w;
+  H = c.h;
+  FOV = c.fov;
+}
+
 const canvas = (): HTMLCanvasElement => g().renderer.domElement;
 
 /** Draws at video size, through the shot's camera. */
@@ -209,7 +456,7 @@ function draw(eye: Vec, at: Vec): void {
   cam.position.set(...eye);
   cam.lookAt(...at);
   cam.clearViewOffset();
-  cam.fov = 42;
+  cam.fov = FOV;
   cam.aspect = W / H;
   cam.updateProjectionMatrix();
   // No keyboard-key hints floating over the machines in a video.
@@ -238,8 +485,10 @@ async function flush(): Promise<void> {
   sending = [];
 }
 
+const framesOf = (s: Shot) => s.frames ?? Math.round(s.seconds * FPS);
+
 function stepShot(s: Shot, f: number): void {
-  const n = Math.round(s.seconds * FPS);
+  const n = framesOf(s);
   const t = f / FPS;
   const { eye, at, input } = s.frame(t, n > 1 ? f / (n - 1) : 0);
   const i = { ...idle, ...input };
@@ -249,10 +498,12 @@ function stepShot(s: Shot, f: number): void {
 }
 
 const promo = {
-  shots: SHOTS.map((s) => s.name),
+  cuts: Object.fromEntries(Object.entries(CUTS).map(([k, c]) => [k, c.shots.map((s) => s.name)])),
   /** Sets up shot `name` and draws its frame at `t` seconds, to look at. */
   still(name: string, t = 0): void {
-    const s = SHOTS.find((x) => x.name === name)!;
+    const c = cutOf(name);
+    useCut(c);
+    const s = c.shots.find((x) => x.name === name)!;
     s.setup();
     const n = Math.round(t * FPS);
     for (let f = 0; f <= n; f++) stepShot(s, f);
@@ -267,14 +518,16 @@ const promo = {
     frameNo = was;
     dispatchEvent(new Event("resize"));
   },
-  /** Films every shot (or those named) into `capture/`. */
-  async film(names?: string[]): Promise<string> {
+  /** Films every shot of `cut` ("story" or "reel"), or just those named, into `capture/`. */
+  async film(cut = "story", names?: string[]): Promise<string> {
+    const c = CUTS[cut];
+    useCut(c);
     await fetch("/__capture/reset", { method: "POST" });
     frameNo = 0;
     const list: { name: string; caption: string; from: number; frames: number }[] = [];
-    for (const s of SHOTS.filter((x) => !names || names.includes(x.name))) {
+    for (const s of c.shots.filter((x) => !names || names.includes(x.name))) {
       s.setup();
-      const n = Math.round(s.seconds * FPS);
+      const n = framesOf(s);
       list.push({ name: s.name, caption: s.caption, from: frameNo, frames: n });
       for (let f = 0; f < n; f++) {
         stepShot(s, f);
@@ -282,7 +535,7 @@ const promo = {
       }
     }
     await flush();
-    await fetch("/__capture/manifest", { method: "POST", body: JSON.stringify({ fps: FPS, width: W, height: H, shots: list }) });
+    await fetch("/__capture/manifest", { method: "POST", body: JSON.stringify({ cut, fps: FPS, width: W, height: H, shots: list }) });
     dispatchEvent(new Event("resize"));
     return `${frameNo} frames`;
   },
