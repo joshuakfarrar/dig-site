@@ -228,7 +228,7 @@ export function craneTop(): Model {
  * centred too). Each is BOOM_SECTION cells long, and none slides out further than leaves a good
  * length still inside its sleeve, so the boom never shows a gap.
  */
-export const BOOM_SECTION = 22;
+export const BOOM_SECTION = 24;
 
 /** The outer section, from its foot (pivot at cell 0). */
 export function craneBoomBase(): Model {
@@ -284,6 +284,15 @@ export interface PanelStyle {
   shopWindow?: [number, number]; // a big shop window from..to, in cells
   awning?: [number, number]; // a striped awning over the front, sticking out (+z)
   garage?: [number, number]; // a big roller door from..to, in cells
+  garagePaint?: [number, number]; // its two stripes, red by default
+  /** More than one front door (a duplex, a terrace): each one's middle-left cell and its paint. */
+  doors?: { at: number; paint: number }[];
+  /** Stretches painted differently (each home in a row its own colour), from..to in cells. */
+  bands?: { from: number; to: number; paint: number }[];
+  /** Upstairs balconies: each one's middle, in cells, with a glass door behind it. */
+  balconies?: number[];
+  /** White columns standing out in front (a library, a town hall): each one's left cell. */
+  columns?: number[];
 }
 
 /**
@@ -294,6 +303,9 @@ export function wallPanel(len: number, s: PanelStyle): Model {
   const trim = s.trim ?? C.White;
   const m = new Model();
   m.box(0, 0, 0, len, 14, 2, s.paint);
+  for (const b of s.bands ?? []) m.box(b.from, 1, 0, b.to - b.from, 12, 2, b.paint);
+  // A thin white line where two homes in a row meet.
+  for (const b of s.bands ?? []) if (b.from > 0) m.box(b.from, 1, 0, 1, 12, 2, trim);
   m.box(0, 0, 0, len, 1, 2, s.upper ? trim : C.Gray); // plinth, or a floor band upstairs
   m.box(0, 13, 0, len, 1, 2, trim); // top band
   for (const wx of s.windows) {
@@ -311,15 +323,29 @@ export function wallPanel(len: number, s: PanelStyle): Model {
   if (s.garage) {
     const [a, b] = s.garage;
     m.box(a - 1, 1, 0, b - a + 2, 11, 2, C.White);
-    for (let y = 1; y < 11; y++) m.box(a, y, 0, b - a, 1, 2, y % 2 ? 0xe8443a : 0xc9332b);
+    const [g1, g2] = s.garagePaint ?? [0xe8443a, 0xc9332b];
+    for (let y = 1; y < 11; y++) m.box(a, y, 0, b - a, 1, 2, y % 2 ? g1 : g2);
     m.box(a + 2, 7, 0, b - a - 4, 2, 2, C.Glass);
   }
-  if (s.door || s.doorAt !== undefined) {
-    const dx = s.doorAt ?? Math.floor(len / 2) - 3;
+  const door = (dx: number, paint: number) => {
     m.box(dx - 1, 1, 0, 8, 11, 2, C.White);
-    m.box(dx, 1, 0, 6, 10, 2, s.doorPaint ?? C.Wood);
+    m.box(dx, 1, 0, 6, 10, 2, paint);
     m.box(dx + 1, 6, 2, 1, 1, 1, C.Hazard); // knob, on the outside
     m.box(dx + 1, 8, 0, 4, 1, 2, C.Glass);
+  };
+  if (s.door || s.doorAt !== undefined) door(s.doorAt ?? Math.floor(len / 2) - 3, s.doorPaint ?? C.Wood);
+  for (const d of s.doors ?? []) door(d.at, d.paint);
+  for (const cx of s.columns ?? []) m.box(cx, 1, 2, 2, 12, 2, C.White).box(cx - 1, 1, 2, 4, 1, 3, C.White).box(cx - 1, 12, 2, 4, 1, 3, C.White);
+  for (const bx of s.balconies ?? []) {
+    // A glass door, and a little balcony out in front of it with a railing and a pot plant.
+    m.box(bx - 4, 1, 0, 8, 11, 2, C.White);
+    m.box(bx - 3, 1, 0, 6, 10, 2, C.Glass);
+    m.box(bx, 1, 0, 1, 10, 2, C.White);
+    m.box(bx - 5, 0, 2, 10, 1, 4, C.Concrete);
+    for (let x = bx - 5; x < bx + 5; x += 2) m.box(x, 1, 5, 1, 3, 1, C.White);
+    m.box(bx - 5, 1, 2, 1, 3, 4, C.White).box(bx + 4, 1, 2, 1, 3, 4, C.White);
+    m.box(bx - 5, 4, 2, 10, 1, 4, C.White).clear(bx - 4, 4, 2, 8, 1, 3);
+    m.box(bx + 2, 1, 3, 2, 2, 2, 0xc0573f).box(bx + 2, 3, 3, 2, 2, 2, 0x4fae4a);
   }
   if (s.awning) {
     const [c1, c2] = s.awning;
@@ -674,6 +700,7 @@ export interface Look {
   hair: number;
   skin: number;
   hat?: number;
+  scarf?: number; // a headscarf over the hair
 }
 
 /** A person, in 1/20-tile cells like the worker: about 0.8 tile tall (a child's 0.6). */
@@ -685,12 +712,84 @@ export function person(l: Look, child = false): Model {
   const bodyH = child ? 4 : 5;
   m.box(-2, b, -3, 4, bodyH, 6, l.shirt);
   for (const z of [-4, 3]) m.box(-1, b, z, 2, bodyH, 1, l.shirt).box(-1, b, z, 2, 1, 1, l.skin);
-  const h = b + bodyH;
+  head(m, l, b + bodyH);
+  return m;
+}
+
+/** A face and hair (or a headscarf) on a head whose bottom is at `h`, looking along +x. */
+function head(m: Model, l: Look, h: number): void {
   m.box(-2, h, -2, 5, 5, 5, l.skin);
   for (const z of [-1, 1]) m.set(2, h + 2, z, C.Black);
   m.set(2, h + 1, 0, 0xe0866b); // a smile
+  if (l.scarf !== undefined) {
+    // Round the back, both sides and over the top, framing the face.
+    m.box(-3, h - 1, -3, 1, 7, 7, l.scarf);
+    m.box(-3, h - 1, -3, 5, 7, 1, l.scarf).box(-3, h - 1, 3, 5, 7, 1, l.scarf);
+    m.box(-3, h + 5, -3, 5, 1, 7, l.scarf);
+    m.box(2, h + 4, -2, 1, 1, 5, l.scarf);
+    return;
+  }
   m.box(-2, h + 4, -2, 5, 2, 5, l.hair).box(-2, h + 1, -2, 1, 4, 5, l.hair);
   if (l.hat !== undefined) m.box(-3, h + 5, -3, 7, 1, 7, l.hat).box(-2, h + 6, -2, 5, 1, 5, l.hat);
+}
+
+/** An older person with a walking stick (grey or white hair goes in the look). */
+export function elder(l: Look): Model {
+  const m = person(l);
+  m.box(3, 0, 3, 1, 6, 1, 0x8a5a3c).box(2, 6, 3, 2, 1, 1, 0x8a5a3c); // the stick, held out front
+  return m;
+}
+
+/**
+ * Someone in a wheelchair: sitting, big wheels either side, little castors in front. Faces +x like
+ * everyone else; about as tall as a child standing.
+ */
+export function wheelchair(l: Look): Model {
+  const m = new Model();
+  const Frame = 0x3a3f47, Tyre = 0x262626, Seat = 0x2f74d0;
+  // The big wheels, round in the x-y plane, on both sides.
+  for (const z of [-5, 4]) {
+    for (let x = -4; x <= 3; x++)
+      for (let y = 0; y <= 7; y++) {
+        const d = Math.hypot(x + 0.5, y - 3.5);
+        if (d <= 4) m.set(x, y, z, d > 3 ? Tyre : d < 1 ? C.Steel : (x + y) % 3 === 0 ? C.Steel : Frame);
+      }
+  }
+  m.box(4, 0, -3, 1, 1, 1, Tyre).box(4, 0, 2, 1, 1, 1, Tyre).box(4, 1, -3, 1, 2, 1, Frame).box(4, 1, 2, 1, 2, 1, Frame);
+  m.box(-3, 4, -4, 7, 1, 8, Seat); // the seat
+  m.box(-4, 4, -4, 1, 8, 8, Seat); // the back
+  m.box(-5, 10, -4, 1, 1, 1, Frame).box(-5, 10, 3, 1, 1, 1, Frame); // push handles
+  // The person, sitting: legs out along the seat and down, body up the back.
+  for (const z of [-2, 1]) m.box(0, 5, z, 4, 2, 2, l.pants).box(4, 1, z, 2, 5, 2, l.pants).box(4, 0, z, 3, 1, 2, 0x3b2a20);
+  m.box(-3, 5, -3, 4, 5, 6, l.shirt);
+  for (const z of [-4, 3]) m.box(-2, 6, z, 3, 4, 1, l.shirt).box(1, 6, z, 1, 1, 1, l.skin);
+  head(m, l, 10);
+  return m;
+}
+
+/** A small dog with a waggy tail. */
+export function dog(coat: number, patch: number): Model {
+  const m = new Model();
+  for (const [x, z] of [[-2, -1], [-2, 1], [2, -1], [2, 1]]) m.box(x, 0, z, 1, 2, 1, coat);
+  m.box(-3, 2, -1, 7, 3, 3, coat).box(-1, 3, -1, 3, 2, 3, patch);
+  m.box(3, 4, -1, 3, 3, 3, coat).box(6, 4, 0, 1, 1, 1, C.Black); // head and nose
+  m.set(5, 6, -1, C.Black).set(5, 6, 1, C.Black); // eyes
+  m.box(3, 7, -1, 1, 1, 1, patch).box(3, 7, 1, 1, 1, 1, patch); // ears
+  m.box(-4, 4, 0, 1, 2, 1, coat); // tail
+  return m;
+}
+
+/** A rooftop garden for a flat roof: planters round a patch of lawn, a bench and a little tree. */
+export function roofGarden(m: Model, w: number, d: number): Model {
+  const W = w * 10 + 2, D = d * 10 + 2;
+  m.box(4, 2, 4, W - 8, 1, D - 8, 0x7ec850);
+  for (let x = 4; x < W - 4; x += 6) m.box(x, 2, 2, 4, 2, 2, 0xb5523b).box(x, 4, 2, 4, 1, 2, 0x4fae4a);
+  for (let x = 4; x < W - 4; x += 6) m.box(x, 2, D - 4, 4, 2, 2, 0xb5523b).box(x, 4, D - 4, 4, 1, 2, [0xff5d8f, 0xffc93c, 0xc77dff][(x / 6) % 3 | 0]);
+  m.box(W - 12, 3, D / 2 - 1, 1, 2, 4, C.Dark).box(W - 6, 3, D / 2 - 1, 1, 2, 4, C.Dark).box(W - 12, 5, D / 2 - 1, 7, 1, 4, C.Wood); // a bench
+  m.box(9, 3, 9, 2, 5, 2, 0x8a5a3c);
+  for (let x = 6; x < 14; x++) for (let y = 8; y < 13; y++) for (let z = 6; z < 14; z++) {
+    if (Math.hypot(x - 9.5, (y - 10) * 1.3, z - 9.5) <= 3.6) m.set(x, y, z, (x + y + z) % 4 ? 0x3f9a45 : 0x5cbf54);
+  }
   return m;
 }
 
@@ -753,5 +852,273 @@ export function plinth(): Model {
       m.set(x, 0, z, C.Gray).set(x, 1, z, C.Gray);
       if (d <= 4.2) m.set(x, 2, z, C.White);
     }
+  return m;
+}
+
+// ---------------------------------------------------------------- Market Square's rooftops
+
+/** A little white bell cupola for a school roof, standing on the ridge at (cx, top, cz). */
+export function cupola(m: Model, cx: number, top: number, cz: number): Model {
+  m.box(cx - 3, top, cz - 3, 6, 6, 6, C.White);
+  m.box(cx - 2, top + 2, cz - 3, 4, 3, 6, C.Dark).box(cx - 3, top + 2, cz - 2, 6, 3, 4, C.Dark); // open belfry
+  m.box(cx - 1, top + 2, cz - 1, 2, 2, 2, C.Hazard); // the bell
+  for (let k = 0; k < 4; k++) m.box(cx - 4 + k, top + 6 + k, cz - 4 + k, 8 - 2 * k, 1, 8 - 2 * k, 0xd2513a);
+  m.box(cx - 0, top + 10, cz - 0, 1, 2, 1, C.Hazard);
+  return m;
+}
+
+/** A giant coffee cup with a saucer and a curl of steam, on a flat roof's top (y = 2). */
+export function coffeeCup(m: Model, cx: number, cz: number, cup: number): Model {
+  for (let x = -7; x < 7; x++)
+    for (let z = -7; z < 7; z++) if (Math.hypot(x + 0.5, z + 0.5) <= 7) m.set(cx + x, 2, cz + z, C.White); // saucer
+  for (let y = 0; y < 8; y++) {
+    const r = 4 + (y > 1 ? 1 : 0);
+    for (let x = -r; x < r; x++)
+      for (let z = -r; z < r; z++) {
+        const d = Math.hypot(x + 0.5, z + 0.5);
+        if (d > r) continue;
+        const inside = d < r - 1.2 && y > 0;
+        m.set(cx + x, 3 + y, cz + z, inside ? (y === 7 ? 0x6b4226 : 0x5a3a22) : y === 4 || y === 5 ? 0xffffff : cup);
+      }
+  }
+  // The handle, out to +x.
+  m.box(cx + 5, 5, cz - 1, 1, 1, 2, cup).box(cx + 6, 5, cz - 1, 1, 4, 2, cup).box(cx + 5, 8, cz - 1, 1, 1, 2, cup);
+  // Steam: three puffs going up and wiggling.
+  for (const [dx, dy, dz] of [[-1, 12, 0], [0, 14, 1], [1, 16, 0], [0, 18, -1]]) m.box(cx + dx - 1, dy, cz + dz - 1, 2, 2, 2, 0xf4f4f4);
+  return m;
+}
+
+/** A giant open book on a flat roof's top: two pages fanning up from the spine, and its cover. */
+export function openBook(m: Model, cx: number, cz: number, cover: number): Model {
+  for (let side = -1; side <= 1; side += 2)
+    for (let k = 0; k < 12; k++) {
+      const x = cx + side * (k + 1) - (side < 0 ? 1 : 0);
+      const y = 3 + Math.round(k * 0.35);
+      m.box(x, 2, cz - 8, 1, y - 2, 1, cover).box(x, 2, cz + 7, 1, y - 2, 1, cover); // cover edges
+      m.box(x, y, cz - 8, 1, 1, 16, k === 11 ? cover : 0xfaf6ea);
+      // A few lines of "text" (just marks: nothing to read).
+      if (k > 1 && k < 10 && k % 2 === 0) for (let z = -6; z < 6; z += 3) m.box(x, y + 1, cz + z, 1, 0, 2, 0x8b929a).set(x, y + 1, cz + z, 0xb8bec4);
+    }
+  m.box(cx - 1, 2, cz - 8, 2, 2, 16, cover); // the spine
+  m.box(cx - 1, 6, cz - 1, 2, 8, 1, 0xd8263a); // a ribbon bookmark
+  return m;
+}
+
+/** A police station's light bar on its flat roof, blue and red either side of a white middle. */
+export function lightBar(m: Model, cx: number, cz: number): Model {
+  m.box(cx - 8, 2, cz - 2, 16, 1, 4, C.Dark);
+  m.box(cx - 8, 3, cz - 2, 6, 2, 4, 0x2f74d0).box(cx - 2, 3, cz - 2, 4, 2, 4, C.White).box(cx + 2, 3, cz - 2, 6, 2, 4, 0xd8382c);
+  return m;
+}
+
+/**
+ * A clock tower standing up out of a gable roof at cell (cx, cz): a square tower with a white clock
+ * face on all four sides (hands at ten past ten: a smile) and a pointed cap.
+ */
+export function clockTower(m: Model, cx: number, cz: number, base: number, brick: number): Model {
+  const S = 12, H = 24;
+  m.box(cx - S / 2, base, cz - S / 2, S, H, S, brick);
+  m.box(cx - S / 2 - 1, base + H, cz - S / 2 - 1, S + 2, 1, S + 2, C.White);
+  // A clock on each face: a white dial with a dark rim, marks at the quarters, the minute hand up
+  // and the hour hand at three, and a red middle. (a, b) is across and up as you look at that face.
+  const y0 = base + 13;
+  const face = (a: number, b: number, c: number) => {
+    m.set(cx + a, y0 + b, cz + S / 2, c); // south: across is +x
+    m.set(cx - a - 1, y0 + b, cz - S / 2 - 1, c); // north: across is -x
+    m.set(cx + S / 2, y0 + b, cz - a - 1, c); // east: across is -z
+    m.set(cx - S / 2 - 1, y0 + b, cz + a, c); // west: across is +z
+  };
+  for (let a = -5; a < 5; a++)
+    for (let b = -5; b < 5; b++) {
+      const d = Math.hypot(a + 0.5, b + 0.5);
+      if (d <= 5) face(a, b, d > 4.1 ? 0x3a3f47 : C.White);
+    }
+  for (const [a, b] of [[-1, 3], [0, 3], [3, -1], [3, 0], [-1, -4], [0, -4], [-4, -1], [-4, 0]]) face(a, b, 0x8b929a); // quarter marks
+  for (let k = 1; k <= 3; k++) face(0, k, C.Black); // the minute hand, up
+  for (let k = 1; k <= 2; k++) face(k, 0, C.Black); // the hour hand, at three
+  for (const [x, y] of [[-1, -1], [0, -1], [-1, 0], [0, 0]]) face(x, y, 0xd8263a);
+  // The cap: stepping in to a point, with a little gold ball on top.
+  for (let k = 0; k < 7; k++) m.box(cx - S / 2 + k, base + H + 1 + k, cz - S / 2 + k, S - 2 * k, 1, S - 2 * k, 0x5b7db8);
+  m.box(cx - 1, base + H + 8, cz - 1, 2, 2, 2, C.Hazard);
+  return m;
+}
+
+// ---------------------------------------------------------------- the Harbour's rooftops
+
+/**
+ * A lighthouse's top, for a `w` x `w` tile tower: a gallery with a railing all round, the glass
+ * lantern room with its big yellow lamp, and a red domed cap. Pivot it at [W/2, 0, W/2].
+ */
+export function lantern(w: number): Model {
+  const m = new Model();
+  const W = w * 10 + 2;
+  const c = W / 2;
+  m.box(-1, 0, -1, W + 2, 2, W + 2, C.Dark); // the gallery floor, sticking out a little
+  for (let k = -1; k <= W; k += 2) m.box(k, 2, -1, 1, 3, 1, C.White).box(k, 2, W, 1, 3, 1, C.White).box(-1, 2, k, 1, 3, 1, C.White).box(W, 2, k, 1, 3, 1, C.White);
+  m.box(-1, 5, -1, W + 2, 1, 1, C.White).box(-1, 5, W, W + 2, 1, 1, C.White).box(-1, 5, -1, 1, 1, W + 2, C.White).box(W, 5, -1, 1, 1, W + 2, C.White);
+  const r = 8;
+  m.box(c - r, 2, c - r, 2 * r, 1, 2 * r, C.Dark);
+  m.box(c - r, 3, c - r, 2 * r, 9, 2 * r, C.Glass);
+  for (const [x, z] of [[c - r, c - r], [c + r - 1, c - r], [c - r, c + r - 1], [c + r - 1, c + r - 1]]) m.box(x, 3, z, 1, 9, 1, C.Dark);
+  m.box(c - 4, 4, c - 4, 8, 6, 8, 0xffe066); // the lamp
+  m.box(c - 2, 6, c - r - 1, 4, 2, 1, 0xfff4b0).box(c - 2, 6, c + r, 4, 2, 1, 0xfff4b0); // its shine through the glass
+  for (let k = 0; k < 6; k++) m.box(c - r - 1 + k, 12 + k, c - r - 1 + k, 2 * r + 2 - 2 * k, 1, 2 * r + 2 - 2 * k, 0xd8382c);
+  m.box(c - 1, 18, c - 1, 2, 3, 2, C.Dark).box(c - 2, 21, c - 2, 4, 1, 4, C.Hazard);
+  return m;
+}
+
+/** A giant cheerful fish on a pole, on a flat roof's top (y = 2): the fish shop's sign. */
+export function bigFish(m: Model, cx: number, cz: number, body: number, fin: number): Model {
+  m.box(cx - 1, 2, cz - 1, 2, 6, 2, C.Steel);
+  const y0 = 13;
+  for (let x = -14; x < 14; x++)
+    for (let y = -7; y < 7; y++) {
+      const e = (x + 0.5) * (x + 0.5) / 196 + (y + 0.5) * (y + 0.5) / 42;
+      if (e > 1) continue;
+      const stripe = x % 6 === 0 && x < 8 && x > -10;
+      for (let z = -2; z < 2; z++) m.set(cx + x, y0 + y, cz + z, y < -3 ? 0xfff4d6 : stripe ? fin : body);
+    }
+  // The tail, at -x, and a fin on top.
+  for (let k = 0; k < 7; k++) m.box(cx - 15 - k, y0 - 1 - k, cz - 1, 1, 2 + 2 * k, 2, fin);
+  for (let k = 0; k < 4; k++) m.box(cx - 4 + k, y0 + 6 + (3 - k), cz - 1, 6 - k, 1, 2, fin);
+  // Eyes and a smile on both sides.
+  for (const z of [cz - 3, cz + 2]) {
+    m.box(cx + 7, y0 + 1, z, 3, 3, 1, C.White).set(cx + 8, y0 + 2, z, C.Black);
+    m.box(cx + 10, y0 - 2, z, 2, 1, 1, 0xd8263a).set(cx + 12, y0 - 1, z, 0xd8263a);
+  }
+  return m;
+}
+
+/** A big friendly whale on the aquarium's flat roof (y = 2), its tail up and a spout of water. */
+export function whale(m: Model, cx: number, cz: number): Model {
+  const Blue = 0x3f7fd8, Belly = 0xdfeef8;
+  for (let x = -16; x < 16; x++)
+    for (let y = 0; y < 14; y++)
+      for (let z = -7; z < 7; z++) {
+        const e = ((x + 0.5) / 16) ** 2 + ((y - 6) / 7) ** 2 + ((z + 0.5) / 7) ** 2;
+        if (e <= 1) m.set(cx + x, 2 + y, cz + z, y < 4 ? Belly : Blue);
+      }
+  // The tail, at -x, sweeping up into flukes.
+  for (let k = 0; k < 8; k++) m.box(cx - 16 - k, 6 + k, cz - 2, 2, 3, 4, Blue);
+  m.box(cx - 26, 13, cz - 7, 4, 2, 14, Blue);
+  // A smile and eyes on both sides, and a spout from the top.
+  for (const z of [cz - 7, cz + 6]) m.box(cx + 9, 9, z, 2, 2, 1, C.White).set(cx + 10, 9, z, C.Black).box(cx + 6, 5, z, 8, 1, 1, 0x23406e);
+  for (const [x, y, z] of [[0, 16, 0], [-1, 18, 0], [1, 18, 0], [-2, 20, -1], [2, 20, 1], [0, 20, 0]]) m.box(cx + 4 + x, y, cz + z - 1, 2, 2, 2, 0x9fe3ff);
+  return m;
+}
+
+// ---------------------------------------------------------------- dump truck (teal) and street sweeper (pink)
+
+export const DumpPaint = 0x1fb5a8;
+
+/** The dump truck's chassis and cab: six big wheels, a cab up front. The bed tips on its own. */
+export function dumpTruckBody(): Model {
+  const P = DumpPaint;
+  const m = new Model();
+  for (const x0 of [6, -6, -11]) {
+    for (const z0 of [-6, 5]) {
+      m.box(x0, 0, z0, 4, 4, 1, C.Rubber).clear(x0, 0, z0, 1, 1, 1).clear(x0 + 3, 0, z0, 1, 1, 1).clear(x0, 3, z0, 1, 1, 1).clear(x0 + 3, 3, z0, 1, 1, 1);
+      m.set(x0 + 1, 1, z0, C.Steel).set(x0 + 2, 2, z0, C.Steel);
+    }
+  }
+  m.box(-12, 2, -5, 23, 2, 10, C.Dark);
+  // The cab: tall, with a white roof and big windows.
+  m.box(4, 4, -5, 7, 7, 10, P);
+  m.box(4, 11, -5, 7, 1, 10, C.White);
+  bevelTop(m, 4, 11, -5, 7, 10);
+  m.box(10, 7, -4, 1, 3, 8, C.Glass);
+  m.box(5, 7, -5, 4, 3, 1, C.Glass).box(5, 7, 4, 4, 3, 1, C.Glass);
+  m.box(11, 3, -5, 1, 2, 10, C.Steel).set(11, 4, -5, C.Light).set(11, 4, 4, C.Light);
+  m.box(4, 5, -5, 7, 1, 1, C.White).box(4, 5, 4, 7, 1, 1, C.White);
+  return m;
+}
+
+/** The tipping bed, hinged at its back bottom edge (pivot at the hinge: cell 0 along x). */
+export function dumpBed(): Model {
+  const P = DumpPaint;
+  const m = new Model();
+  m.box(0, 0, -5, 16, 1, 10, P); // floor
+  m.box(0, 1, -5, 16, 5, 1, P).box(0, 1, 4, 16, 5, 1, P); // sides
+  m.box(15, 1, -5, 1, 6, 10, P).box(15, 6, -5, 2, 1, 10, P); // front wall and the lip over the cab
+  m.box(0, 1, -5, 1, 4, 10, C.Hazard); // tailgate
+  m.box(1, 5, -5, 14, 1, 1, C.White).box(1, 5, 4, 14, 1, 1, C.White);
+  return m;
+}
+
+/** A heap of dirt that sits in the bed: grows as it's loaded. Pivot at its bottom middle. */
+export function bedDirt(): Model {
+  const m = new Model();
+  for (let x = -7; x < 7; x++)
+    for (let z = -4; z < 4; z++) {
+      const h = Math.max(1, Math.round(4 - (Math.abs(x + 0.5) / 7) * 2 - (Math.abs(z + 0.5) / 4) * 1.5));
+      for (let y = 0; y < h; y++) m.set(x, y, z, y === h - 1 && (x + z) % 3 === 0 ? 0x86592f : C.Earth);
+    }
+  return m;
+}
+
+/** A skip by the gate for the dirt to go in: chunky yellow, sloped ends. Pivot at the bottom middle. */
+export function skip(): Model {
+  const m = new Model();
+  m.box(-9, 0, -6, 18, 1, 12, C.Dark);
+  for (let y = 1; y < 8; y++) {
+    const s = Math.floor(y / 2);
+    m.box(-9 - s, y, -6, 1, 1, 12, C.Hazard).box(8 + s, y, -6, 1, 1, 12, C.Hazard);
+    m.box(-9 - s, y, -6, 18 + 2 * s, 1, 1, C.Hazard).box(-9 - s, y, 5, 18 + 2 * s, 1, 1, C.Hazard);
+  }
+  m.box(-13, 7, -6, 26, 1, 1, C.Dark).box(-13, 7, 5, 26, 1, 1, C.Dark);
+  return m;
+}
+
+export const SweeperPaint = 0xff6fae;
+
+/** The street sweeper: a little cab on four wheels, a water tank behind, a squeegee under. */
+export function sweeperBody(): Model {
+  const P = SweeperPaint;
+  const m = new Model();
+  for (const x0 of [3, -7]) for (const z0 of [-5, 4]) m.box(x0, 0, z0, 3, 3, 1, C.Rubber).set(x0 + 1, 1, z0, C.Gray);
+  m.box(-8, 1, -4, 15, 3, 8, P);
+  m.box(-8, 3, -4, 15, 1, 1, C.White).box(-8, 3, 3, 15, 1, 1, C.White);
+  // The water tank behind the cab, white with a blue band.
+  m.box(-8, 4, -4, 7, 5, 8, C.White).box(-8, 6, -4, 7, 1, 8, 0x4aa8ff);
+  bevelTop(m, -8, 8, -4, 7, 8);
+  // The cab, glass all round.
+  m.box(0, 4, -4, 6, 6, 8, P);
+  m.box(5, 6, -3, 1, 3, 6, C.Glass).box(1, 6, -4, 4, 3, 1, C.Glass).box(1, 6, 3, 4, 3, 1, C.Glass);
+  m.box(0, 10, -4, 6, 1, 8, C.White);
+  bevelTop(m, 0, 10, -4, 6, 8);
+  // Arms out to the brushes at the front corners, and a squeegee under the middle.
+  m.box(6, 1, -6, 3, 1, 1, C.Dark).box(6, 1, 5, 3, 1, 1, C.Dark);
+  m.box(-6, 0, -5, 1, 1, 10, C.Dark);
+  return m;
+}
+
+/** One round brush, flat, spinning about y: bristles in yellow and dark. */
+export function sweeperBrush(): Model {
+  const m = new Model();
+  for (let x = -3; x < 3; x++)
+    for (let z = -3; z < 3; z++) {
+      const d = Math.hypot(x + 0.5, z + 0.5);
+      if (d > 3.2) continue;
+      m.set(x, 0, z, (Math.floor(Math.atan2(z + 0.5, x + 0.5) / (Math.PI / 3)) + 6) % 2 ? C.Hazard : C.Dark);
+      if (d < 1.4) m.set(x, 1, z, C.Steel);
+    }
+  return m;
+}
+
+/**
+ * A drift of pale beach sand blown over the site, `w` x `d` cells: a little heaped in the middle,
+ * with wind ripples and the odd shell, so it stands out against the site's own sand.
+ */
+export function sandPatch(w: number, d: number, seed: number): Model {
+  const m = new Model();
+  for (let x = 0; x < w; x++)
+    for (let z = 0; z < d; z++) {
+      const ex = Math.abs(x - (w - 1) / 2) / (w / 2), ez = Math.abs(z - (d - 1) / 2) / (d / 2);
+      const e = ex * ex + ez * ez;
+      if (e > 1 || (e > 0.7 && (x * 7 + z * 3 + seed) % 3 === 0)) continue;
+      const h = e < 0.3 ? 2 : 1;
+      for (let y = 0; y < h; y++) m.set(x, y, z, (x + seed) % 3 === 0 ? 0xead7a8 : 0xfaf0d7);
+    }
+  m.set(Math.floor(w / 3), 2, Math.floor(d / 2), (seed % 2 ? 0xff9ec4 : 0xffffff)); // a shell
   return m;
 }

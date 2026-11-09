@@ -49,12 +49,12 @@ Your wife has shown adults can follow it. This phase checks that a 4-year-old ca
 
 Roughly 3 to 5 times today's content.
 
-- [ ] **More towns:** grow from 8 lots to about 20, across 3 neighbourhoods:
-  - **Home Street:** what exists now.
-  - **Market Square:** shops and a school.
-  - **Harbour or Hill:** something with a different look, for variety.
-  - Finishing a neighbourhood opens the next, celebrated with a road-roller ribbon cutting.
-- [ ] **Homes for everyone (the user asked for this; housing for all kinds of families):**
+- [x] **More towns:** 24 lots across 3 neighbourhoods:
+  - [x] **Home Street:** what exists now.
+  - [x] **Market Square:** a school, café, library, police station, a town hall with a clock tower, and more homes, around a square with a fountain and market stalls.
+  - [x] **Harbour:** a fish shop, a boathouse, an aquarium with a whale on the roof, seaside homes and a lighthouse, by a beach with a pier and boats.
+  - [x] Finishing a neighbourhood opens the next: the gate's barrier lifts with a fanfare. Each gate shows a little model of where it goes.
+- [x] **Homes for everyone (the user asked for this; housing for all kinds of families):** done, except the shared spaces.
   - **Duplex and row of terraced homes:** one wide footprint with two or three front doors, each painted its own colour.
   - **Small apartment block:** three storeys with balconies. The crane already stacks storeys; check it reaches a third.
   - **Corner block:** flats over a shop, with homes upstairs and the café or bakery below.
@@ -64,17 +64,18 @@ Roughly 3 to 5 times today's content.
     - a wheelchair user, with step-free ramps at the front doors
     - people living alone
     - pets
-  - **Shared spaces:** a community garden or play area between the blocks.
+  - [ ] **Shared spaces:** a community garden or play area between the blocks. The flats have a roof garden; a street-level one is still to do.
   - **Same mechanics:** it's the same dig, pour, walls, roof, path and clean-up; a block is just a bigger blueprint with more doors and more people moving in.
 - [ ] **New building kinds** (each one is a blueprint entry):
-  - café, bakery, school, library, playground and park, police station
-  - a lighthouse or clock tower to finish each neighbourhood
-  - a tall tower the crane builds floor by floor
+  - [x] café, bakery (flats over it), school, library, police station
+  - [ ] playground and park
+  - [x] clock tower (the town hall) to finish Market Square; lighthouse to finish the Harbour
+  - [x] a tall tower the crane builds floor by floor (the lighthouse: three red and white storeys and a lantern)
 - [ ] **New machines that fit the same controls:**
-  - **Dump truck:** the excavator loads it, then you drive it to tip.
-  - **Forklift:** stacks pallets in the yard.
-  - **Street sweeper:** drive over mess to clean it.
-- [ ] **Pick by picture:** choose wall and roof colours from swatches before the crane lifts them.
+  - [x] **Dump truck** (Market Square, half the Harbour): stop by a heap and press Work to load it (two heaps fill it), then stop by the skip at the gate. It backs up to the skip and tips.
+  - [ ] **Forklift:** stacks pallets in the yard.
+  - [x] **Street sweeper** (the Harbour): beach sand blows over the site at the end; drive over the drifts to sweep them up.
+- [x] **Pick by picture:** homes show four paint pictures before the crane lifts the walls, and four roof pictures before a pitched roof. Move left and right, then press Work, or tap one. The first picture is always the building's own colours, and the town keeps whatever was picked.
 - [ ] **A living town:**
   - Cars on the roads that always stop for you.
   - Lights that come on at dusk on finished streets.

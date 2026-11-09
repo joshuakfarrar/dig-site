@@ -43,10 +43,21 @@ function use(m: Mode): void {
   if (old && old !== m) old.dispose();
 }
 
-function goTown(arrived: number | null): void {
+/**
+ * The town you're in (`saved.at`). `arrived`: the lot you've just built, back from its site.
+ * `via`: came through the gate from the next neighbourhood ("next") or the one before ("back").
+ */
+function goTown(arrived: number | null, via: "next" | "back" | null = null): void {
   build = null;
-  town = createTown(new Set(saved.built), arrived, {
+  const h = saved.at;
+  town = createTown(h, new Set(Save.builtIn(saved, h)), arrived, via, (i) => saved.looks[`${h}:${i}`], {
     build: (i) => void switchTo(() => goBuild(i)),
+    travel: (to) =>
+      void switchTo(() => {
+        saved.at = to;
+        Save.save(saved);
+        goTown(null, to > h ? "back" : "next");
+      }),
     controls: Input.controls,
     hints: Input.hints,
   });
@@ -54,7 +65,7 @@ function goTown(arrived: number | null): void {
   Hud.corner("fresh", () =>
     void switchTo(() => {
       Save.clear();
-      saved = { built: [] };
+      saved = Save.fresh();
       goTown(null);
     }),
   );
@@ -63,10 +74,13 @@ function goTown(arrived: number | null): void {
 function goBuild(i: number, at?: Stage): void {
   town = null;
   Hud.nudge(false);
-  build = createBuild(B.LOTS[i], {
-    finished: () =>
+  const h = saved.at;
+  build = createBuild(B.HOODS[h].lots[i], {
+    finished: (looks) =>
       void switchTo(() => {
-        if (!saved.built.includes(i)) saved.built.push(i);
+        if (looks[0] || looks[1]) saved.looks[`${h}:${i}`] = looks;
+        const built = Save.builtIn(saved, h);
+        if (!built.includes(i)) built.push(i);
         Save.save(saved);
         goTown(i);
       }),
@@ -128,11 +142,16 @@ document.getElementById("mute")!.addEventListener("click", (e) => {
 });
 addEventListener("pointerdown", () => Audio.unlock());
 
-// Dev aids: `?lot=3` goes straight to that lot's site, `&stage=walls` further on into it.
+// Dev aids: `?hood=1` starts in that neighbourhood, `?lot=3` goes straight to that lot's site,
+// `&stage=walls` further on into it.
 const params = new URLSearchParams(location.search);
+const hoodParam = Number(params.get("hood"));
+if (import.meta.env.DEV && Number.isInteger(hoodParam) && B.HOODS[hoodParam]) saved.at = hoodParam;
+if (saved.at >= B.HOODS.length) saved.at = 0;
 const lotParam = params.get("lot");
 const stageParam = params.get("stage") as Stage | null;
-if (lotParam !== null && B.LOTS[Number(lotParam)]) goBuild(Number(lotParam), stageParam && STAGES.includes(stageParam) ? stageParam : undefined);
+if (lotParam !== null && B.HOODS[saved.at].lots[Number(lotParam)])
+  goBuild(Number(lotParam), stageParam && STAGES.includes(stageParam) ? stageParam : undefined);
 else goTown(null);
 
 // For poking at it from the console (and for checking renders); not in the released game.
@@ -144,6 +163,12 @@ if (import.meta.env.DEV) Object.assign(window, {
     renderer,
     goTown,
     goBuild,
+    /** Jumps to neighbourhood `h` (not saved). */
+    goHood(h: number) {
+      saved.at = h;
+      goTown(null);
+    },
+    get saved() { return saved; },
     /** Steps the game `seconds` at 60 Hz with this input held, then draws (a hidden tab's frames are throttled). */
     advance(seconds: number, held: Partial<Input.Frame> = {}) {
       const steps = Math.round(seconds * 60);

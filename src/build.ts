@@ -7,7 +7,7 @@ import { Cell } from "./models";
 import * as B from "./blueprints";
 import { Fx } from "./fx";
 import { breathe, ghost, hopGlyph, Marker, Prompt, workGlyph, type Controls } from "./guide";
-import { Crane, Dozer, Excavator, Machine, Mixer, Roller, type Load, type World } from "./machines";
+import { Crane, Dozer, DumpTruck, Excavator, Machine, Mixer, Roller, Sweeper, type Load, type World } from "./machines";
 import { PATH, SCOOPS_PER_QUADRANT, Site, SLAB_TOP, type Quadrant } from "./site";
 import { disposeScene, lit, Pops, type Mode } from "./stage";
 import { voxelMaterial } from "./voxel";
@@ -17,12 +17,12 @@ import { voxelMaterial } from "./voxel";
  * the roof, roll the path to the gate, and push the dirt heaps away. Each job's shown at its machine and its spot; nothing's
  * read, nothing's timed, nothing fails.
  */
-export type Stage = "dig" | "pour" | "walls" | "roof" | "path" | "clean" | "done";
-export const STAGES: Stage[] = ["dig", "pour", "walls", "roof", "path", "clean", "done"];
+export type Stage = "dig" | "pour" | "walls" | "roof" | "path" | "clean" | "sweep" | "done";
+export const STAGES: Stage[] = ["dig", "pour", "walls", "roof", "path", "clean", "sweep", "done"];
 
 export interface BuildHooks {
-  /** It's built and the celebration's had its moment: back to town. */
-  finished(): void;
+  /** It's built and the celebration's had its moment: back to town, with the colours picked for it. */
+  finished(looks: B.Looks): void;
   /** Which button pictures to show: keys, pad or touch. */
   controls(): Controls;
   /** Tells the touch buttons what's possible right now. */
@@ -49,8 +49,13 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
   const mixer = new Mixer(new THREE.Vector2(-2.4, 6.3));
   const roller = new Roller(new THREE.Vector2(2.5, 6.1));
   const crane = new Crane(new THREE.Vector2(5.4, 5.6));
+  // The heaps go at the end one of two ways: pushed away by the dozer, or hauled to a skip by the dump truck.
+  const haul = bp.finish === "haul";
   const dozer = new Dozer(new THREE.Vector2(8.3, 5.8));
-  const machines: Machine[] = [excavator, mixer, roller, crane, dozer];
+  const dump = new DumpTruck(new THREE.Vector2(8.3, 5.8));
+  const finisher: Machine = haul ? dump : dozer;
+  const sweeper = bp.sweep ? new Sweeper(new THREE.Vector2(10.6, 5.8)) : null;
+  const machines: Machine[] = [excavator, mixer, roller, crane, finisher, ...(sweeper ? [sweeper] : [])];
   for (const m of machines) {
     scene.add(m.root);
     m.place(m.home.x, m.home.y, Math.PI / 2, site);
@@ -88,17 +93,17 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
       mesh.position.set(site.trailerAt.x, y, site.trailerAt.z + (s.side === "back" || s.side === "front" ? 0 : 0.2));
       mesh.quaternion.copy(FLAT);
       scene.add(mesh);
-      y += 0.2 + (s.style.awning ? 0.45 : 0);
+      y += 0.2 + (s.style.awning ? 0.45 : 0) + (s.style.balconies?.length ? 0.32 : 0);
       wallLoads[k] = { mesh, hang: 1.85, slings: s.len * Cell * 0.36, top: 0.7, rest: FLAT.clone(), carryYaw: Math.PI / 2 };
     }
   }
 
-  const roofMesh = B.roofMesh(bp);
+  let roofMesh = B.roofMesh(bp);
   roofMesh.position.set(site.palletAt.x, site.palletTop, site.palletAt.z);
   scene.add(roofMesh);
   const roofLoad: Load = {
     mesh: roofMesh,
-    hang: bp.roof.height + 0.75,
+    hang: bp.roof.hang ?? bp.roof.height + 0.75,
     slings: Math.min(1.6, bp.w * 0.36),
     top: bp.roof.slingTop,
     rest: new THREE.Quaternion(),
@@ -107,7 +112,7 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
   const ROOF_AT = site.roofAt.clone();
 
   const flagMesh = M.flag().mesh(Cell, [0.5, 0, 0.5]);
-  if (bp.kind === "cottage" || bp.kind === "tall") flagMesh.position.set(F.cx - 0.6, ROOF_AT.y + M.gableHeight(bp.d) * Cell, F.cz);
+  if (bp.roof.look === "gable" || bp.roof.look === "clock") flagMesh.position.set(F.cx - 0.6, ROOF_AT.y + M.gableHeight(bp.d) * Cell, F.cz);
   else flagMesh.position.set(F.minX + 0.4, ROOF_AT.y + 0.2, F.maxZ - 0.4);
   flagMesh.scale.set(1, 0.001, 1);
   flagMesh.visible = false;
@@ -157,12 +162,25 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
         at > STAGES.indexOf("walls") || doneHere ? "done" : stage === "walls" && started ? "now" : "todo";
       list.push({ icon: s === 0 ? Hud.Icons.walls(front) : Hud.Icons.upstairs(front), state: st });
     }
-    const roofIcon = bp.kind === "shop" ? Hud.Icons.cone(0xff9ec4) : bp.kind === "station" ? Hud.Icons.tower : Hud.Icons.roof(0xd2513a);
+    const look = bp.roof.look;
+    const roofIcon =
+      look === "cone" ? Hud.Icons.cone(0xff9ec4)
+      : look === "tower" ? Hud.Icons.tower
+      : look === "garden" ? Hud.Icons.garden
+      : look === "cup" ? Hud.Icons.cup
+      : look === "book" ? Hud.Icons.book
+      : look === "lights" ? Hud.Icons.lights
+      : look === "clock" ? Hud.Icons.clock
+      : look === "lantern" ? Hud.Icons.lantern
+      : look === "fish" ? Hud.Icons.fish
+      : look === "whale" ? Hud.Icons.whale
+      : Hud.Icons.roof(bp.roof.tile ?? 0xd2513a);
     list.push(
       { icon: roofIcon, state: state("roof") },
       { icon: Hud.Icons.path, state: state("path") },
-      { icon: Hud.Icons.clean, state: state("clean") },
+      { icon: haul ? Hud.Icons.haul : Hud.Icons.clean, state: state("clean") },
     );
+    if (bp.sweep) list.push({ icon: Hud.Icons.sweep, state: state("sweep") });
     Hud.steps(list);
   }
 
@@ -204,6 +222,83 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
     fx.ring(new THREE.Vector3(F.cx, SLAB_TOP, F.cz), 4.5, 0xffffff);
     mixer.pouring = false;
     setStage("walls");
+    pickWalls();
+  }
+
+  // ------------------------------------------------------------------ picking colours, by picture
+
+  /** What's been picked: [walls, roof], 0 for the building's own colours. */
+  const looks: B.Looks = [0, 0];
+  let pickWait = 0; // a moment before the pictures take a press, so a held button doesn't pick
+  let ticket = -1; // our pictures, if they're up
+  let pickStick = false; // the stick's been pushed and not let back yet
+
+  function pickWalls(): void {
+    if (!B.canPickWalls(bp)) return;
+    ticket = Hud.choose([0, 1, 2, 3].map((c) => B.wallSwatch(bp, c)), (i) => {
+      looks[0] = i;
+      repaintWalls();
+    });
+    pickWait = 0.5;
+    Audio.pop();
+  }
+
+  function pickRoof(): void {
+    if (!B.canPickRoof(bp)) return;
+    ticket = Hud.choose([0, 1, 2, 3].map((c) => B.roofSwatch(B.recolour(bp, looks), c)), (i) => {
+      looks[1] = i;
+      repaintRoof();
+    });
+    pickWait = 0.5;
+    Audio.pop();
+  }
+
+  /** The panels on the trailer (and their see-through ghosts) in the picked paint. */
+  function repaintWalls(): void {
+    const styled = B.slots(B.recolour(bp, looks));
+    for (let k = wallsUp; k < site.slots.length; k++) {
+      site.slots[k].style = styled[k].style;
+      const old = wallLoads[k].mesh as THREE.Mesh;
+      const mesh = B.panelMesh(site.slots[k]);
+      mesh.position.copy(old.position);
+      mesh.quaternion.copy(old.quaternion);
+      scene.remove(old);
+      old.geometry.dispose();
+      scene.add(mesh);
+      pops.add(mesh);
+      wallLoads[k].mesh = mesh;
+      ghostWalls[k].geometry = B.panelMesh(site.slots[k]).geometry;
+    }
+    Audio.sectionDone(3);
+    fx.confetti(site.trailerAt.clone().setY(2), 30);
+  }
+
+  function repaintRoof(): void {
+    const mesh = B.roofMesh(B.recolour(bp, looks));
+    mesh.position.copy(roofMesh.position);
+    mesh.quaternion.copy(roofMesh.quaternion);
+    scene.remove(roofMesh);
+    roofMesh.geometry.dispose();
+    roofMesh = mesh;
+    scene.add(mesh);
+    pops.add(mesh);
+    roofLoad.mesh = mesh;
+    ghostRoof.geometry = B.roofMesh(B.recolour(bp, looks)).geometry;
+    Audio.sectionDone(4);
+    fx.confetti(site.palletAt.clone().setY(1.5), 30);
+  }
+
+  /** While the pictures are up: left/right moves, Work picks; the machines wait. */
+  function choosing(dt: number, read: Input.Frame): Input.Frame {
+    pickWait -= dt;
+    if (Math.abs(read.moveX) > 0.5 && !pickStick) {
+      Hud.moveChoice(Math.sign(read.moveX));
+      pickStick = true;
+      Audio.chime(2);
+    }
+    if (Math.abs(read.moveX) < 0.3) pickStick = false;
+    if (pickWait <= 0 && read.workPressed) Hud.confirmChoice();
+    return { ...read, moveX: 0, moveY: 0, work: false, workPressed: false, hopPressed: false };
   }
 
   function wallLanded(k: number): void {
@@ -221,7 +316,10 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
     Audio.sectionDone(2 + (wallsUp % perStorey || perStorey));
     const along = s.yaw === 0;
     fx.dustRect(s.centre.x, s.centre.y - B.WALL_H / 2, s.centre.z, along ? s.len * Cell : 0.3, along ? 0.3 : s.len * Cell, 2.5);
-    if (wallsUp === site.slots.length) setStage("roof");
+    if (wallsUp === site.slots.length) {
+      setStage("roof");
+      pickRoof();
+    }
     else progress();
   }
 
@@ -239,17 +337,39 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
     setStage("path");
   }
 
+  // Step-free ramps up to the front doors: they go in with the path.
+  const rampGroup = B.ramps(bp);
+  rampGroup.position.set(F.cx, 0, F.cz);
+  rampGroup.visible = false;
+  scene.add(rampGroup);
+
   function pathDone(): void {
     site.finishPath();
+    rampGroup.visible = true;
+    for (const r of rampGroup.children) pops.add(r, true);
     Audio.sectionDone(5);
     fx.ring(new THREE.Vector3(0, 0.05, (F.maxZ + 9) / 2), 5, 0xffffff);
-    // The heaps stop being in the way: the dozer's going to push them.
+    // The heaps stop being in the way if the dozer's going to push them (the dump truck parks by them instead).
+    if (!haul) clearHeapCircles();
+    chimeStep = 0;
+    setStage("clean");
+  }
+
+  function clearHeapCircles(): void {
     for (const q of site.quadrants) {
       const i = site.circles.findIndex((c) => c.x === q.moundAt.x && c.z === q.moundAt.y);
       if (i >= 0) site.circles.splice(i, 1);
     }
+  }
+
+  /** The heaps are gone: on to sweeping up, if there's sand, or it's finished. */
+  function cleanDone(): void {
+    Audio.sectionDone(6);
     chimeStep = 0;
-    setStage("clean");
+    if (bp.sweep) {
+      blowSand();
+      setStage("sweep");
+    } else allDone();
   }
 
   function allDone(): void {
@@ -441,13 +561,154 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
       left.push(new THREE.Vector2(q.mound.position.x, q.mound.position.z));
     }
     if (left.length === 0) {
-      allDone();
+      cleanDone();
       return none(dozer);
     }
     const job = guideTo(dozer, left, blade, 1.2, 0.9);
     if (job.over) job.over.y = 0.9;
     if (job.spot) job.spot.y = 0;
     return job;
+  }
+
+  // ------------------------------------------------------------------ hauling: heaps into the dump truck, then into the skip
+
+  const SKIP_AT = new THREE.Vector3(4.2, 0, 7.9);
+  const TIP_AT = new THREE.Vector3(2.1, 0, 7.5); // where the truck stops to tip
+  const skipMesh = M.skip().mesh(Cell, [0, 0, 0]);
+  const skipDirt = M.bedDirt().mesh(Cell, [0, 0, 0]);
+  let skipFill = 0;
+  if (haul) {
+    skipMesh.position.copy(SKIP_AT);
+    scene.add(skipMesh);
+    skipDirt.position.set(SKIP_AT.x, 0.1, SKIP_AT.z);
+    skipDirt.scale.set(1.1, 0.01, 1.2);
+    skipDirt.visible = false;
+    scene.add(skipDirt);
+    site.circles.push({ x: SKIP_AT.x, z: SKIP_AT.z, r: 1.0 });
+  }
+  /** A heap being loaded: it sinks away into the truck over half a second. */
+  let loading: { q: Quadrant; t: number } | null = null;
+
+  function haulJob(dt: number): Job {
+    const heapsLeft = site.quadrants.filter((q) => q.mound && q !== loading?.q);
+    if (loading) {
+      const L = loading;
+      L.t += dt / 0.5;
+      const m = L.q.mound!;
+      m.scale.setScalar(Math.max(0.05, 1 - L.t));
+      if (Math.random() < 0.6) fx.bits(m.position.clone().setY(0.4), 2, 0x8c6239, 1.4, 0);
+      if (L.t >= 1) {
+        site.root.remove(m);
+        m.geometry.dispose();
+        L.q.mound = null;
+        const i = site.circles.findIndex((c) => c.x === L.q.moundAt.x && c.z === L.q.moundAt.y);
+        if (i >= 0) site.circles.splice(i, 1);
+        dump.load++;
+        Audio.thud();
+        Audio.chime(chimeStep++ + 2);
+        fx.dust(dump.bedWorld(), 0.5, 8, 0xc9a27a);
+        loading = null;
+      }
+      return none(dump);
+    }
+    if (heapsLeft.length === 0 && dump.load === 0 && !dump.busy()) {
+      cleanDone();
+      return none(dump);
+    }
+    // Full, or nothing left to load: off to the skip.
+    if (dump.full || heapsLeft.length === 0) {
+      const there = dump.pos.distanceTo(new THREE.Vector2(TIP_AT.x, TIP_AT.z)) < 1.3;
+      return {
+        machine: dump,
+        over: there ? null : SKIP_AT.clone().setY(1.3),
+        spot: TIP_AT.clone(),
+        ring: 1.1,
+        canWork: there && !dump.busy() && dump.speed < 0.8,
+        work: () => {
+          dump.speed = 0;
+          Audio.clank();
+          dump.tip(new THREE.Vector2(SKIP_AT.x, SKIP_AT.z), () => {
+            const from = dump.tailWorld();
+            for (let k = 0; k < 4; k++) fx.bits(from, 8, 0x8c6239, 1.2, 0.3);
+            fx.dust(SKIP_AT.clone().setY(0.8), 0.8, 14, 0xc9a27a);
+            skipFill = Math.min(1, skipFill + 0.5);
+            skipDirt.visible = true;
+            skipDirt.scale.y = 0.4 + 1.2 * skipFill;
+            pops.add(skipMesh);
+            Audio.dump();
+          });
+        },
+      };
+    }
+    // Room in the bed: the nearest heap gets the ring.
+    let best: Quadrant | null = null;
+    let bd = Infinity;
+    for (const q of heapsLeft) {
+      const d = dump.pos.distanceTo(new THREE.Vector2(q.mound!.position.x, q.mound!.position.z));
+      if (d < bd) [best, bd] = [q, d];
+    }
+    const q = best!;
+    const at = q.mound!.position.clone().setY(0);
+    const there = bd < 2.3;
+    return {
+      machine: dump,
+      over: there ? null : at.clone().setY(1.0),
+      spot: at,
+      ring: 1.3,
+      canWork: there && !dump.busy() && dump.speed < 0.8,
+      work: () => {
+        dump.speed = 0;
+        loading = { q, t: 0 };
+        Audio.scoop();
+      },
+    };
+  }
+
+  // ------------------------------------------------------------------ sweeping: sand blown in from the beach
+
+  const sand: { mesh: THREE.Mesh; x: number; z: number; r: number }[] = [];
+  function blowSand(): void {
+    let seed = 5 + bp.w * 7 + bp.storeys;
+    const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+    for (let k = 0; k < 9; k++) {
+      const w = 10 + Math.floor(rnd() * 6), d = 8 + Math.floor(rnd() * 5);
+      // In open ground: in front of the building, short of where the machines park, and a couple
+      // on the path by the gate.
+      const byGate = k >= 7;
+      const x = byGate ? -0.5 + rnd() : -6.5 + rnd() * 13;
+      const z = byGate ? 7.3 + (k - 7) * 0.9 : F.maxZ + 1 + rnd() * (4.3 - F.maxZ - 1);
+      const mesh = M.sandPatch(w, d, k).mesh(Cell, [w / 2, 0, d / 2]);
+      mesh.position.set(x, 0, z);
+      mesh.scale.y = 0.5;
+      scene.add(mesh);
+      pops.add(mesh, true);
+      sand.push({ mesh, x, z, r: Math.max(w, d) * Cell * 0.45 });
+      fx.dust(new THREE.Vector3(x, 0.2, z), 0.6, 4, 0xe9cf98);
+    }
+    Audio.whoosh();
+  }
+
+  function sweepJob(): Job {
+    if (!sweeper) return none(active);
+    const b = sweeper.brushWorld();
+    if (active === sweeper && sweeper.speed > 0.2) {
+      for (let i = sand.length - 1; i >= 0; i--) {
+        const p = sand[i];
+        if (Math.hypot(p.x - b.x, p.z - b.z) > p.r + Sweeper.REACH * 0.6) continue;
+        scene.remove(p.mesh);
+        p.mesh.geometry.dispose();
+        sand.splice(i, 1);
+        fx.dust(new THREE.Vector3(p.x, 0.15, p.z), 0.5, 8, 0xe9cf98);
+        Audio.crunch();
+        Audio.chime(chimeStep++);
+      }
+    }
+    if (sand.length === 0) {
+      Audio.sectionDone(6);
+      allDone();
+      return none(sweeper);
+    }
+    return guideTo(sweeper, sand.map((p) => new THREE.Vector2(p.x, p.z)), b, 0.9, 0.9);
   }
 
   const REACH = 4.6;
@@ -472,7 +733,7 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
         over: at.clone().setY(at.y + 0.35),
         spot: null,
         ring: 1,
-        canWork: r <= REACH && r >= 0.6,
+        canWork: r <= REACH && r >= 0.6 && crane.canReachOver(at, load.hang),
         work: () => {
           crane.speed = 0;
           crane.pick(load, () => {}, () => Audio.clank());
@@ -490,7 +751,7 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
           const q = Math.round(yaw / Math.PI) * Math.PI;
           return new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), q);
         })();
-    const ok = r <= REACH && outsideFootprint(crane);
+    const ok = r <= REACH && outsideFootprint(crane) && crane.canReachOver(place, load.hang);
     return {
       machine: crane,
       over: ok ? null : place.clone().setY(place.y + (walls ? 1 : bp.roof.height + 0.5)),
@@ -514,7 +775,7 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
   let left = false;
 
   function machineTop(m: Machine): THREE.Vector3 {
-    const h = m === crane ? 1.5 : m === excavator ? 1.55 : m === roller || m === dozer ? 1.5 : 1.35;
+    const h = m === crane ? 1.5 : m === excavator ? 1.55 : m === roller || m === dozer || m === dump ? 1.5 : m === sweeper ? 1.4 : 1.35;
     return new THREE.Vector3(m.pos.x, m.y + h, m.pos.y);
   }
 
@@ -522,7 +783,7 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
 
   function tick(dt: number, read: Input.Frame): void {
     clock += dt;
-    input = read;
+    input = Hud.choosing() ? choosing(dt, read) : read;
 
     // Steer the machine you're in (not while you're mid-hop).
     for (const m of machines) {
@@ -543,7 +804,8 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
       : stage === "pour" ? pourJob(dt)
       : stage === "walls" || stage === "roof" ? craneJob()
       : stage === "path" ? pathJob(dt)
-      : stage === "clean" ? cleanJob(dt)
+      : stage === "clean" ? (haul ? haulJob(dt) : cleanJob(dt))
+      : stage === "sweep" ? sweepJob()
       : null;
     if (stage !== "pour") mixer.pouring = false;
 
@@ -615,7 +877,7 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
       }
       if (!left && (celebrate > 6 || (celebrate > 2 && input.workPressed))) {
         left = true;
-        hooks.finished();
+        hooks.finished([...looks] as B.Looks);
       }
     }
 
@@ -667,22 +929,31 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
     }
     if (at > 4) {
       site.finishPath();
-      for (const q of site.quadrants) {
-        const i = site.circles.findIndex((c) => c.x === q.moundAt.x && c.z === q.moundAt.y);
-        if (i >= 0) site.circles.splice(i, 1);
-      }
+      rampGroup.visible = true;
+      if (!haul) clearHeapCircles();
     }
     if (at > 5) {
-      for (const q of site.quadrants) if (q.mound) site.root.remove(q.mound);
+      for (const q of site.quadrants) {
+        if (q.mound) site.root.remove(q.mound);
+        q.mound = null;
+      }
+      clearHeapCircles();
+      if (s === "sweep") blowSand();
+    }
+    if (at > 6) {
       flagMesh.visible = true;
       flagMesh.scale.set(1, 1, 1);
     }
-    const drive: Machine = at === 1 ? mixer : at === 4 ? roller : at === 5 ? dozer : at >= 2 ? crane : excavator;
+    // There's no sweeping without sand: straight on to done.
+    if (s === "sweep" && !sweeper) s = "done";
+    const drive: Machine = at === 1 ? mixer : at === 4 ? roller : at === 5 ? finisher : at === 6 && sweeper ? sweeper : at >= 2 && at < 5 ? crane : at >= 5 ? finisher : excavator;
     active.driven = false;
     active = drive;
     active.driven = true;
     setStage(s);
     focus.set(active.pos.x, 0, active.pos.y);
+    if (s === "walls") pickWalls();
+    if (s === "roof") pickRoof();
   }
 
   setStage("dig");
@@ -693,10 +964,11 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
     tick,
     skipTo,
     dispose() {
+      Hud.cancelChoice(ticket);
       disposeScene(scene, new Set([voxelMaterial]));
     },
     debug: {
-      site, machines, excavator, mixer, roller, crane, dozer, fx,
+      site, machines, excavator, mixer, roller, crane, dozer, dump, sweeper, fx, sand,
       get stage() { return stage; },
       get active() { return active; },
       look(x?: number, y = 0, z = 0, ax = 0, ay = 0, az = 0) {

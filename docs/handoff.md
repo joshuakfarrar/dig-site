@@ -50,6 +50,46 @@ Where Dig Site stands, for whichever session picks it up next. Everything below 
 - **Camera:** the view's middle is nudged below the progress strip (`fitCamera`), and the site camera's southern limit is 2.6, so the building no longer sits under the strip.
 - **Not yet done from Phase 1:** testing on real devices (a cheap Android tablet and an iPad).
 
+## Phase 3, homes for everyone (done)
+
+- **Panels** (`M.wallPanel`) support several front doors (`doors`), a colour per home (`bands`) and upstairs `balconies`.
+- **New blueprints:** `duplex`, `terrace`, `flats` (three storeys, roof garden, `hang: 1.0` so the crane can reach) and `corner` (bakery with flats over it). They're on lots 2, 4, 5 and 6, replacing three colour variants.
+- **Ramps:** `B.ramps(bp)` puts a step-free ramp with handrails at every front door. In town it's part of the building; on site it pops in when the path is done.
+- **Crane:** `BOOM_SECTION` is 24, and `Crane.canReachOver` gates Work, so the crane only lifts once it can carry the load down from above. A third storey or a tall roof means driving closer; the arrow keeps pointing until it can.
+- **Residents** (`residents()` in `town.ts`): more people the more homes a building has, mixed across adults, children, older people with sticks, wheelchair users (who wave with a wheelie) and dogs. Some wear headscarves.
+
+## Phase 3, neighbourhoods (Market Square done)
+
+- **Data:** `B.HOODS` lists the neighbourhoods. Each has a theme (`park` or `square`), eight lots, and a landmark that its gate sign shows.
+- **Save** (`town/v2`): built lots for each neighbourhood, plus the one you were last in. Old v1 saves become Home Street.
+- **Gates:** `makeGate` in `town.ts`. The gate to the next neighbourhood is at the east end of road A and opens after the last lot's party. The way back is at the east end of road B. A street without a gate stops at the side road.
+- **Market Square:**
+  - Blueprints: `school`, `cafe`, `library` (with `columns`), `police`, `townHall` (clock tower at the east end of the roof, so the crane's slings miss it).
+  - Models: `cupola`, `coffeeCup`, `openBook`, `lightBar`, `clockTower`.
+  - Town: `buildSquare` draws the fountain, stalls and planters.
+- **Ramps:** double doors share one wide ramp.
+- **Dev:** `?hood=1` starts in Market Square; `game.goHood(h)` switches.
+- **The Harbour** (hood 2):
+  - Blueprints: `lighthouse` (3x3, three storeys, `lantern` top), `fishShop` (`bigFish`), `boathouse` (`garagePaint` boat door), `aquarium` (`whale`), plus seaside homes.
+  - Town: `buildHarbour` draws the promenade, beach, sea, pier and bobbing boats; per-frame movement goes in the `anims` list.
+
+## Phase 3, new machines
+
+- **Finishing jobs:** `Blueprint.finish` is `"push"` (dozer) or `"haul"` (dump truck), and `Blueprint.sweep` adds a `sweep` stage. `B.HOODS` sets them: Home Street pushes, Market Square hauls, and the Harbour alternates between the two, with sweeping on every lot. Only the machines a site needs are parked there.
+- **Stages:** `STAGES` now has `sweep` before `done`, so `?stage=done` is index 7.
+- **Dump truck** (`DumpTruck`):
+  - Load: stop within about 2.3 of a heap and press Work; the heap sinks into the bed. It carries two heaps.
+  - Tip: at `TIP_AT` beside the skip (`SKIP_AT`, by the gate), Work turns it on the spot to back up to the skip, then tips.
+- **Street sweeper** (`Sweeper`): `blowSand()` drops nine pale drifts, in front of the building and on the path by the gate, clear of the parking row. Brushes moving over a drift sweep it.
+
+## Phase 3, picking colours
+
+- **Choices:** `B.WALL_PALETTES` (three sets of three colours) and `B.ROOF_CHOICES`. `B.recolour(bp, [walls, roof])` maps the building's own paints (`paintsOf`, main colour first) onto the picked set.
+- **Who gets them:** homes only (`canPickWalls`), and roof choices only for homes with gable roofs (`canPickRoof`).
+- **Picker** (`Hud.choose`, `#picker`): big SVG swatches. Left and right move, Work picks, tap or click picks. A ticket stops one site from closing another's picker. While it's up, the machines get no input, and there's a 0.5 s wait before Work counts.
+- **On site:** `pickWalls()` runs when the walls stage starts, `pickRoof()` when the roof stage starts. They repaint the trailer panels and ghosts, or the roof and its ghost.
+- **Saving:** `Save.Town.looks["hood:lot"] = [walls, roof]`, saved only when something other than the default was picked. The town draws built lots with `B.recolour`.
+
 ## Design decisions the user made
 
 - **Stack:** TS + Vite + three.js (they picked it); newest dependency versions.

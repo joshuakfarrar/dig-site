@@ -38,9 +38,32 @@ pauses and goes quiet.
 
 ### The town
 
+The town has neighbourhoods. You start in **Home Street**, which has a park with a pond. Build
+all eight lots there and the barrier on the gate at the east end of the top street lifts, with a
+fanfare. Drive through it to reach **Market Square**: a school, café, library, police station, a
+town hall with a clock tower, and more homes, around a square with a fountain and market stalls.
+Finish Market Square and its gate opens onto **the Harbour**: a fish shop, a boathouse, an
+aquarium with a whale on the roof, seaside homes, and a lighthouse the crane builds floor by
+floor, by a beach with umbrellas, beach huts, a pier and boats bobbing on the sea. Each gate has
+a little model on top of a building from the neighbourhood it leads to, and the bottom street's
+gate goes back.
+
+Before the crane lifts a home's walls, four pictures pop up: the home's own colours and three
+other paint sets (a terrace or duplex gets a colour for each home). Before a pitched roof goes on,
+four roof colours do the same. Move left and right and press Work, or tap or click one. The
+panels on the trailer repaint with confetti, and the finished home stays in those colours in town.
+
+Each neighbourhood finishes its sites a little differently. On Home Street the bulldozer pushes
+the dirt heaps away. In Market Square the teal dump truck hauls them: stop by a heap and press
+Work to load it, then stop by the skip at the gate and it backs up and tips. On the Harbour, sand
+blows in from the beach at the end, and the pink street sweeper sweeps it up. Each neighbourhood's progress is saved on its own.
+
 You drive the crew's orange truck round two streets. Eight empty lots each show a little model of
-what goes there (a cottage, a two-storey house, an ice-cream shop, a fire station, and colour
-variants), turning on a stand.
+what goes there, turning on a stand: a cottage, a two-storey house, a duplex, a row of three
+terraced homes, a three-storey block of flats with balconies and a roof garden, flats over a
+bakery, an ice-cream shop and a fire station. Every front door gets a step-free ramp, and the
+people who move in are all sorts: children, grandparents with walking sticks, wheelchair users,
+headscarves, dogs.
 
 1. Stop in the ring by the yard's pile and press Work: a pallet and a crate hop into the truck.
 2. Drive to any empty lot's ring and press Work: they hop off onto the lot, and its site opens.

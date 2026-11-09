@@ -27,6 +27,240 @@ const ROAD_B = 11;
 const HALF = 1.5; // half a road's width
 const SIDE_X = 18; // the side roads joining the two streets
 const COLS = [-12, -4, 4, 12];
+/** Where the streets end in the east, at the gates to the other neighbourhoods. */
+const GATE_X = 25;
+
+interface Gate {
+  z: number; // which street it's across
+  to: number; // the neighbourhood it goes to
+  open: boolean;
+  pole: THREE.Object3D; // the barrier, down while it's shut
+  lift: number; // 0 down .. 1 up
+  sign: THREE.Object3D; // the little building on top that says where it goes
+}
+
+/**
+ * A gate across the east end of a street: two posts, an arch with bunting, a little model of a
+ * building from the neighbourhood it leads to on top (no words), and a striped barrier pole that
+ * lifts when it opens.
+ */
+function makeGate(scene: THREE.Scene, z: number, to: number, open: boolean): Gate {
+  const g = new THREE.Group();
+  const m = new Model();
+  const Post = 0xf3e6c8, Brick = 0xc0573f;
+  for (const pz of [-17, 15]) m.box(-1, 0, pz, 3, 24, 3, Brick).box(-2, 24, pz - 1, 5, 2, 5, Post);
+  m.box(-1, 24, -16, 3, 2, 32, Post);
+  const flags = [0xff5d8f, 0xffc93c, 0x4aa8ff, 0x3fb950, 0xc77dff];
+  for (let k = 0; k < 10; k++) m.box(0, 21 - (k % 2), -14 + k * 3, 1, 2, 2, flags[k % flags.length]);
+  const posts = m.mesh(Cell, [0, 0, 0]);
+  g.add(posts);
+  // The barrier: a red-and-white pole pivoting on the north post.
+  const pole = new THREE.Group();
+  const pm = new Model();
+  for (let k = 0; k < 30; k++) pm.box(0, 0, k, 1, 1, 1, Math.floor(k / 3) % 2 ? 0xffffff : 0xd8382c);
+  const poleMesh = pm.mesh(Cell, [0.5, 0.5, 0]);
+  pole.add(poleMesh);
+  pole.position.set(0.05, 0.9, -1.4);
+  g.add(pole);
+  const sign = B.assemble(B.HOODS[to].landmark);
+  sign.scale.setScalar(0.22);
+  sign.position.set(0.05, 2.6, 0);
+  g.add(sign);
+  g.position.set(GATE_X, 0, z);
+  scene.add(g);
+  return { z, to, open, pole, lift: open ? 1 : 0, sign };
+}
+
+function updateGate(g: Gate, dt: number, clock: number): void {
+  g.lift += ((g.open ? 1 : 0) - g.lift) * (1 - Math.exp(-4 * dt));
+  g.pole.rotation.x = g.lift * Math.PI * 0.45;
+  g.sign.rotation.y = Math.sin(clock * 0.8) * 0.5 - Math.PI / 2;
+}
+
+/**
+ * The Harbour's seafront, where Home Street has its park: a promenade with a railing, a sandy beach
+ * with umbrellas and beach huts, the sea out to the horizon, a wooden pier with a rowing boat, and
+ * sailing boats bobbing out on the water.
+ */
+function buildHarbour(scene: THREE.Scene, anims: ((t: number) => void)[]): void {
+  const f = new Faces();
+  const top = (n: [number, number, number]) => n[1] === 1;
+  const Z0 = ROAD_B + HALF + 1; // the back of the pavement
+  // The promenade, then the sand.
+  f.box(-40, 0, Z0, 80, 0.03, 1.6, 0xe4ddd0, top);
+  f.box(-40, 0, Z0 + 1.6, 80, 0.02, 3.4, C.Sand, top);
+  // Darker wet sand at the water's edge.
+  f.box(-40, 0, Z0 + 4.6, 80, 0.015, 0.4, 0xc9a36a, top);
+  const ground = new THREE.Mesh(f.geometry(), voxelMaterial);
+  ground.receiveShadow = true;
+  scene.add(ground);
+  const sea = new THREE.Mesh(new THREE.PlaneGeometry(200, 120), new THREE.MeshLambertMaterial({ color: 0x4fb3e8 }));
+  sea.rotation.x = -Math.PI / 2;
+  sea.position.set(0, 0.004, Z0 + 5 + 60);
+  sea.receiveShadow = true;
+  scene.add(sea);
+  const shallows = new THREE.Mesh(new THREE.PlaneGeometry(200, 1.2), new THREE.MeshLambertMaterial({ color: 0x8fd6f5 }));
+  shallows.rotation.x = -Math.PI / 2;
+  shallows.position.set(0, 0.008, Z0 + 5.6);
+  scene.add(shallows);
+
+  // The railing along the promenade, with a gap onto the pier.
+  const rail = new Model();
+  for (let x = 0; x < 10; x += 3) rail.box(x, 0, 0, 1, 5, 1, C.White);
+  rail.box(0, 4, 0, 10, 1, 1, C.White).box(0, 2, 0, 10, 1, 1, C.White);
+  for (let x = -30; x < 30; x++) {
+    if (x >= 5 && x < 8) continue;
+    const r = rail.mesh(Cell, [0, 0, 0]);
+    r.position.set(x, 0.03, Z0 + 1.5);
+    scene.add(r);
+  }
+
+  // Beach umbrellas and beach huts on the sand, and a sandcastle.
+  const umbrella = (c1: number, c2: number) => {
+    const m = new Model();
+    m.box(0, 0, 0, 1, 12, 1, C.White);
+    for (let x = -6; x <= 6; x++)
+      for (let z = -6; z <= 6; z++) {
+        const d = Math.hypot(x, z);
+        if (d > 6.5) continue;
+        m.set(x, 12 - Math.floor(d / 3), z, Math.floor(Math.atan2(z, x) / (Math.PI / 4) + 8) % 2 ? c1 : c2);
+      }
+    m.box(3, 0, 2, 6, 1, 3, 0xffffff).box(3, 0, 2, 6, 1, 1, c1); // a towel
+    return m;
+  };
+  [[-14, 0xd8382c, 0xffffff], [-2, 0x2f74d0, 0xffffff], [16, 0xffc93c, 0xff5d8f]].forEach(([x, c1, c2]) => {
+    const u = umbrella(c1, c2).mesh(Cell, [0, 0, 0]);
+    u.position.set(x, 0.02, Z0 + 3.3);
+    scene.add(u);
+  });
+  const hut = (paint: number) => {
+    const m = new Model();
+    m.box(0, 0, 0, 10, 12, 8, C.White);
+    for (let x = 0; x < 10; x += 2) m.box(x, 0, 8, 1, 12, 1, paint);
+    m.box(3, 0, 8, 4, 8, 1, paint).box(4, 0, 8, 2, 7, 1, 0x3a3f47);
+    for (let k = 0; k < 4; k++) m.box(-1 + k, 12 + k, -1, 12 - 2 * k, 1, 10, paint);
+    return m;
+  };
+  [-24, -21.5, -19, 21, 23.5].forEach((x, k) => {
+    const h = hut([0xff5d8f, 0x4aa8ff, 0xffc93c, 0x3fb950, 0xc77dff][k]).mesh(Cell, [5, 0, 4]);
+    h.position.set(x, 0.02, Z0 + 2.2);
+    h.rotation.y = Math.PI;
+    scene.add(h);
+  });
+  const castle = new Model().box(0, 0, 0, 6, 3, 6, 0xe0c08a).box(1, 3, 1, 4, 2, 4, 0xe0c08a).box(2, 5, 2, 2, 2, 2, 0xe0c08a).box(2, 7, 2, 1, 2, 1, C.White).box(3, 8, 2, 2, 1, 1, 0xd8382c);
+  const cm = castle.mesh(Cell, [3, 0, 3]);
+  cm.position.set(-8, 0.02, Z0 + 3.4);
+  scene.add(cm);
+
+  // The pier: planks out over the water on posts, a rowing boat tied up at its end.
+  const pier = new Model();
+  for (let z = 0; z < 110; z++) pier.box(0, 0, z, 30, 1, 1, z % 2 ? 0x9a6a3c : 0xa8774a);
+  for (let z = 10; z < 110; z += 20) pier.box(-1, -4, z, 2, 5, 2, 0x6b4a2b).box(29, -4, z, 2, 5, 2, 0x6b4a2b);
+  for (let z = 4; z < 110; z += 6) pier.box(0, 1, z, 1, 4, 1, C.White).box(29, 1, z, 1, 4, 1, C.White);
+  pier.box(0, 4, 0, 1, 1, 110, C.White).box(29, 4, 0, 1, 1, 110, C.White);
+  const pm = pier.mesh(Cell, [0, 0, 0]);
+  pm.position.set(5, 0.12, Z0 + 1.5);
+  scene.add(pm);
+
+  const boat = (hull: number, sail: number | null) => {
+    const m = new Model();
+    for (let x = -9; x <= 9; x++) {
+      const half = Math.max(1, Math.round(4 * Math.sqrt(1 - (x / 10) ** 2)));
+      m.box(x, 0, -half, 1, 2, 2 * half, hull).box(x, 2, -half, 1, 1, 2 * half, C.White);
+      m.box(x, 2, -half + 1, 1, 1, 2 * half - 2, 0x9a6a3c);
+    }
+    if (sail !== null) {
+      m.box(0, 3, 0, 1, 22, 1, C.Wood);
+      for (let y = 0; y < 18; y++) m.box(1, 5 + y, 0, Math.max(1, Math.round((18 - y) * 0.5)), 1, 1, sail);
+    }
+    return m;
+  };
+  const rowing = boat(0xd8382c, null).mesh(Cell, [0, 0, 0]);
+  rowing.position.set(4.2, 0, Z0 + 11.5);
+  rowing.rotation.y = Math.PI / 2;
+  scene.add(rowing);
+  anims.push((t) => {
+    rowing.position.y = 0.02 + Math.sin(t * 1.6) * 0.03;
+    rowing.rotation.z = Math.sin(t * 1.3) * 0.04;
+  });
+  ([[-12, 10, 0x2f74d0, 0xffffff], [16, 13, 0xffc93c, 0xd8382c], [-26, 17, 0x3fb950, 0xfff4d6]] as const).forEach(([x, dz, hull, sail], k) => {
+    const b = boat(hull, sail).mesh(Cell, [0, 0, 0]);
+    b.position.set(x, 0, Z0 + dz);
+    scene.add(b);
+    anims.push((t) => {
+      b.position.x = x + Math.sin(t * 0.12 + k * 2) * 3;
+      b.position.y = Math.sin(t * 1.4 + k) * 0.04;
+      b.rotation.x = Math.sin(t * 1.1 + k) * 0.05;
+      b.rotation.y = Math.cos(t * 0.12 + k * 2) > 0 ? 0 : Math.PI;
+    });
+  });
+}
+
+/**
+ * Market Square's middle, where Home Street has its park: a paved square with a fountain, a few
+ * market stalls under striped canopies, trees in planters and benches.
+ */
+function buildSquare(scene: THREE.Scene, plant: (x: number, z: number) => void): void {
+  const f = new Faces();
+  const top = (n: [number, number, number]) => n[1] === 1;
+  // Paving in a soft check.
+  for (let x = -16; x < 16; x++)
+    for (let z = 13; z < 22; z++) f.box(x, 0, z, 1, 0.02, 1, (x + z) % 2 ? 0xe4ddd0 : 0xd6cdbd, top);
+  const paving = new THREE.Mesh(f.geometry(), voxelMaterial);
+  paving.receiveShadow = true;
+  scene.add(paving);
+  // The fountain: a round basin, a column and a bowl, with water in both.
+  const fm = new Model();
+  for (let x = -14; x < 14; x++)
+    for (let z = -14; z < 14; z++) {
+      const d = Math.hypot(x + 0.5, z + 0.5);
+      if (d <= 14 && d > 12) fm.box(x, 0, z, 1, 3, 1, 0xcfc8bb);
+      else if (d <= 12) fm.set(x, 0, z, 0x6ec6f0).set(x, 1, z, 0x8fd6f5);
+      if (d <= 2) fm.box(x, 2, z, 1, 8, 1, 0xcfc8bb);
+      if (d <= 6 && d > 4.5) fm.box(x, 9, z, 1, 2, 1, 0xcfc8bb);
+      if (d <= 4.5) fm.set(x, 9, z, 0xcfc8bb).set(x, 10, z, 0x8fd6f5);
+    }
+  fm.box(-1, 10, -1, 2, 3, 2, 0xbfe9fb);
+  const fountain = fm.mesh(Cell, [0, 0, 0]);
+  fountain.position.set(0, 0, 17.5);
+  scene.add(fountain);
+  // Market stalls: a counter, four posts and a striped canopy, each with something on the counter.
+  const canopies: [number, number][] = [[0xd8382c, 0xffffff], [0x2f74d0, 0xffffff], [0x3fb950, 0xfff4d6], [0xffc93c, 0xffffff]];
+  const goods = [0xff8a1f, 0xd8263a, 0x7ec850, 0xf6dc7a];
+  [-12, -7, 7, 12].forEach((x, k) => {
+    const s = new Model();
+    s.box(0, 0, 0, 14, 7, 6, 0x9a6a3c).box(0, 7, 0, 14, 1, 6, 0xc98a3e);
+    for (const [px, pz] of [[0, 0], [13, 0], [0, 9], [13, 9]]) s.box(px, 0, pz, 1, 16, 1, C.White);
+    const [c1, c2] = canopies[k];
+    for (let x2 = -1; x2 < 15; x2++) for (let z2 = -1; z2 < 11; z2++) s.set(x2, 16 + (z2 < 5 ? 1 : 0), z2, Math.floor(x2 / 2) % 2 ? c1 : c2);
+    for (let x2 = 1; x2 < 13; x2 += 2) s.box(x2, 8, 1, 1, 1, 1, goods[(k + x2) % goods.length]).box(x2, 8, 3, 1, 1, 1, goods[(k + x2 + 1) % goods.length]);
+    const mesh = s.mesh(Cell, [7, 0, 5]);
+    mesh.position.set(x, 0, 15.2);
+    mesh.rotation.y = Math.PI;
+    scene.add(mesh);
+  });
+  // Trees in round planters at the corners, and benches facing the fountain.
+  for (const [x, z] of [[-15, 20.5], [15, 20.5], [-3.5, 21], [3.5, 21]]) {
+    const pm = new Model();
+    for (let x2 = -4; x2 < 4; x2++) for (let z2 = -4; z2 < 4; z2++) if (Math.hypot(x2 + 0.5, z2 + 0.5) <= 4) pm.box(x2, 0, z2, 1, 3, 1, 0xb5523b).set(x2, 3, z2, 0x6b4a2b);
+    const planter = pm.mesh(Cell, [0, 0, 0]);
+    planter.position.set(x, 0, z);
+    scene.add(planter);
+    plant(x, z);
+  }
+  const bench = M.bench();
+  for (const [x, z, r] of [[-3, 17.5, Math.PI / 2], [3, 17.5, -Math.PI / 2], [0, 20.5, 0]]) {
+    const b = bench.mesh(Cell, [5, 0, 1.5]);
+    b.position.set(x, 0, z);
+    b.rotation.y = r;
+    scene.add(b);
+  }
+  for (const [x, n] of [[-10, 30], [10, 30]]) {
+    const fl = M.flowers(n, x).mesh(Cell, [n / 2, 0, 1.5]);
+    fl.position.set(x, 0, 20.8);
+    scene.add(fl);
+  }
+}
 
 interface Lot {
   i: number;
@@ -55,10 +289,16 @@ interface Person {
   waveCooldown: number;
   lot: Lot;
   inside: boolean; // in the garden (or on the pavement)
+  kind: Kind;
 }
+
+/** Who lives on the street: all sorts. A wheelchair user waves with a happy wheelie instead of a jump. */
+type Kind = "adult" | "child" | "elder" | "wheel" | "dog";
 
 export interface TownHooks {
   build(lot: number): void;
+  /** Drove through a gate: off to neighbourhood `to`. */
+  travel(to: number): void;
   controls(): Controls;
   hints(work: boolean, hop: boolean): void;
 }
@@ -71,12 +311,61 @@ const LOOKS: M.Look[] = [
   { shirt: 0x4aa8ff, pants: 0x3c4652, hair: 0x5a3a22, skin: 0xf6d3a6 },
   { shirt: 0xff5d8f, pants: 0x2f3b52, hair: 0x2b2118, skin: 0xc68a5b },
   { shirt: 0x3fb950, pants: 0x6b4a2b, hair: 0xe0b040, skin: 0xf6d3a6 },
-  { shirt: 0xffc93c, pants: 0x3c4652, hair: 0x2b2118, skin: 0x8d5a3b },
+  { shirt: 0xffc93c, pants: 0x3c4652, hair: 0x2b2118, skin: 0x8d5a3b, scarf: 0x2ea05a },
   { shirt: 0xc77dff, pants: 0x2f3b52, hair: 0xb5523b, skin: 0xf1c7a0, hat: 0xff5d5d },
   { shirt: 0xff8a1f, pants: 0x3c4652, hair: 0x7a7a7a, skin: 0xe0ac7e },
+  { shirt: 0x6fd3b0, pants: 0x3c4652, hair: 0x2b2118, skin: 0x5e3b28 },
+  { shirt: 0xf7b6c8, pants: 0x2f3b52, hair: 0x2b2118, skin: 0xe8b98a, scarf: 0x7a4fd6 },
 ];
+const ELDER_LOOKS: M.Look[] = [
+  { shirt: 0x8fc8f0, pants: 0x5a6270, hair: 0xe8e8e8, skin: 0xf1c7a0 },
+  { shirt: 0xd8382c, pants: 0x3c4652, hair: 0xcfcfcf, skin: 0x8d5a3b },
+  { shirt: 0xb9a6e6, pants: 0x4a4f57, hair: 0xf4f4f4, skin: 0xc68a5b, scarf: 0x3a6fb0 },
+];
+const DOGS: [number, number][] = [[0xc98a3e, 0xf3e6c8], [0x3a3f47, 0xffffff], [0xf3e6c8, 0x9a6a3c]];
 
-export function createTown(built: Set<number>, arrived: number | null, hooks: TownHooks): TownMode {
+/**
+ * Who lives in a building: more people the more homes it has, and all sorts of households (a
+ * child, a grandparent, someone in a wheelchair, a dog), mixed so every street has every kind.
+ * A shop or a fire station has a couple of people about.
+ */
+function residents(i: number, homes: number): Kind[] {
+  const count = homes === 0 ? 2 : Math.min(6, homes + 2);
+  const mix: Kind[] = ["adult", "child", "elder", "adult", "wheel", "child", "adult", "elder", "adult", "wheel"];
+  const out: Kind[] = [];
+  for (let k = 0; k < count; k++) out.push(mix[(i * 3 + k) % mix.length]);
+  if (homes > 0 && i % 2 === 0) out.push("dog");
+  return out;
+}
+
+function residentMesh(kind: Kind, i: number, k: number): THREE.Mesh {
+  const look = LOOKS[(i * 3 + k) % LOOKS.length];
+  const elder = ELDER_LOOKS[(i + k) % ELDER_LOOKS.length];
+  const model =
+    kind === "child" ? M.person(look, true)
+    : kind === "elder" ? M.elder(elder)
+    : kind === "wheel" ? M.wheelchair(LOOKS[(i * 5 + k + 3) % LOOKS.length])
+    : kind === "dog" ? M.dog(...DOGS[i % DOGS.length])
+    : M.person(look);
+  return model.mesh(M.WorkerCell, [0, 0, 0.5]);
+}
+
+const SPEED: Record<Kind, number> = { adult: 0.8, child: 1.1, elder: 0.45, wheel: 0.9, dog: 1.4 };
+
+export function createTown(
+  hood: number,
+  built: Set<number>,
+  arrived: number | null,
+  via: "next" | "back" | null,
+  looksOf: (lot: number) => B.Looks | undefined,
+  hooks: TownHooks,
+): TownMode {
+  const H = B.HOODS[hood];
+  const nextHood = hood + 1 < B.HOODS.length ? hood + 1 : null;
+  const backHood = hood > 0 ? hood - 1 : null;
+  // A street with a gate runs on east to it; one without stops at the side road.
+  const END_A = nextHood !== null ? GATE_X + 0.6 : SIDE_X + HALF;
+  const END_B = backHood !== null ? GATE_X + 0.6 : SIDE_X + HALF;
   const { scene, camera, frame: frameCamera } = lit();
   const fx = new Fx(scene);
   const marker = new Marker(scene);
@@ -91,7 +380,10 @@ export function createTown(built: Set<number>, arrived: number | null, hooks: To
       { minX: -SIDE_X + HALF, maxX: SIDE_X - HALF, minZ: ROAD_A + HALF, maxZ: ROAD_B - HALF }, // between the streets
       { minX: -60, maxX: 60, minZ: ROAD_B + HALF, maxZ: 60 }, // south of the second
       { minX: -60, maxX: -SIDE_X - HALF, minZ: -60, maxZ: 60 },
-      { minX: SIDE_X + HALF, maxX: 60, minZ: -60, maxZ: 60 },
+      // East: the two streets run on out to the gates, and stop there.
+      { minX: SIDE_X + HALF, maxX: 60, minZ: ROAD_A + HALF, maxZ: ROAD_B - HALF },
+      { minX: END_A, maxX: 60, minZ: ROAD_A - HALF, maxZ: ROAD_A + HALF },
+      { minX: END_B, maxX: 60, minZ: ROAD_B - HALF, maxZ: ROAD_B + HALF },
     ],
     circles: [],
     heightAt: () => 0,
@@ -108,7 +400,7 @@ export function createTown(built: Set<number>, arrived: number | null, hooks: To
     const Road = 0x5d636b, Line = 0xf4f4f4, Walk = 0xdcd6cb, Curb = 0xb3ada3;
     const top = (n: [number, number, number]) => n[1] === 1;
     // The two streets and the side roads joining them.
-    for (const z of [ROAD_A, ROAD_B]) f.box(-SIDE_X - HALF, 0, z - HALF, 2 * (SIDE_X + HALF), 0.012, 2 * HALF, Road, top);
+    for (const [z, end] of [[ROAD_A, END_A], [ROAD_B, END_B]]) f.box(-SIDE_X - HALF, 0, z - HALF, end + 0.4 + SIDE_X + HALF, 0.012, 2 * HALF, Road, top);
     for (const x of [-SIDE_X, SIDE_X]) f.box(x - HALF, 0, ROAD_A + HALF, 2 * HALF, 0.012, ROAD_B - ROAD_A - 2 * HALF, Road, top);
     // Dashes down the middles.
     for (const z of [ROAD_A, ROAD_B])
@@ -137,11 +429,16 @@ export function createTown(built: Set<number>, arrived: number | null, hooks: To
 
   // ------------------------------------------------------------------ trees, the park and the crew's yard
 
+  /** Little things that move on their own (boats bobbing), run every frame with the clock. */
+  const anims: ((t: number) => void)[] = [];
   {
     let seed = 11;
     const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
     const trees = [M.tree(0), M.tree(1)];
     const plant = (x: number, z: number) => {
+      // Not on the streets running out east to the gates, or round the gates themselves.
+      if (x > SIDE_X && x < GATE_X + 3.5 && (Math.abs(z - ROAD_A) < 3 || Math.abs(z - ROAD_B) < 3)) return;
+      if (H.theme === "harbour" && z > ROAD_B + 2.5) return; // that's the beach and the sea
       const t = trees[Math.floor(rnd() * 2)].mesh(Cell);
       t.position.set(x, 0, z);
       t.rotation.y = rnd() * Math.PI;
@@ -152,6 +449,11 @@ export function createTown(built: Set<number>, arrived: number | null, hooks: To
     for (let k = 0; k < 16; k++) plant(22 + rnd() * 10, -14 + rnd() * 34); // east
     for (let k = 0; k < 10; k++) plant(-30 - rnd() * 6, -14 + rnd() * 34); // west, beyond the yard
     for (let k = 0; k < 14; k++) plant(-30 + rnd() * 60, 24 + rnd() * 8); // beyond the park
+    if (H.theme === "square") {
+      buildSquare(scene, plant);
+    } else if (H.theme === "harbour") {
+      buildHarbour(scene, anims);
+    } else {
     // The park: trees round the edge, a pond, benches and flowers.
     for (const [x, z] of [[-15, 15], [-11, 19], [-6, 16.2], [9, 15.5], [14, 18.5], [17, 15], [-17, 20], [2, 21]]) plant(x, z);
     const pond = new THREE.Mesh(new THREE.CircleGeometry(1, 40), new THREE.MeshLambertMaterial({ color: 0x6ec6f0 }));
@@ -183,7 +485,14 @@ export function createTown(built: Set<number>, arrived: number | null, hooks: To
     d.position.set(2, 0.01, 17.2);
     d.name = "duck";
     scene.add(d);
+    }
   }
+
+  // ------------------------------------------------------------------ the gates to the other neighbourhoods
+
+  const gates: Gate[] = [];
+  if (nextHood !== null) gates.push(makeGate(scene, ROAD_A, nextHood, built.size >= H.lots.length));
+  if (backHood !== null) gates.push(makeGate(scene, ROAD_B, backHood, true));
 
   // The crew's yard, west of the side road: the machines that do the building, parked.
   const yardMachines: Machine[] = [
@@ -242,7 +551,7 @@ export function createTown(built: Set<number>, arrived: number | null, hooks: To
 
   // ------------------------------------------------------------------ the lots
 
-  const lots: Lot[] = B.LOTS.map((bp, i) => {
+  const lots: Lot[] = H.lots.map((bp, i) => {
     const row1 = i < 4;
     const x = COLS[i % 4];
     const front = row1 ? ROAD_A - HALF - 3 : ROAD_B - HALF - 3.5;
@@ -305,7 +614,7 @@ export function createTown(built: Set<number>, arrived: number | null, hooks: To
   function builtLot(l: Lot): THREE.Group {
     clearLot(l);
     l.built = true;
-    const bp = l.bp;
+    const bp = B.recolour(l.bp, looksOf(l.i)); // in the colours picked for it
     const f = new Faces();
     f.box(l.zone.minX + 0.1, 0, l.zone.minZ, l.zone.maxX - l.zone.minX - 0.2, 0.006, l.zone.maxZ - l.zone.minZ, 0x8fd65e, (n) => n[1] === 1);
     // The paved path, door to gate.
@@ -334,9 +643,17 @@ export function createTown(built: Set<number>, arrived: number | null, hooks: To
     mb.position.set(l.x + 1.2, 0, l.fence - 0.35);
     mb.rotation.y = -Math.PI / 2;
     l.group.add(mb);
-    // Flowers along the front wall, either side of the door, and a bush at each corner.
+    // Flowers along the front wall, leaving room for the path and every door's ramp, and a bush at each corner.
     const hw = bp.w / 2;
-    for (const [x0, x1] of [[-hw + 0.1, -1], [1, hw - 0.1]]) {
+    const gaps = [[-0.85, 0.85], ...B.frontDoors(bp).map((x) => [x - 0.5, x + 0.5])].sort((p, q) => p[0] - q[0]);
+    const beds: [number, number][] = [];
+    let from = -hw + 0.1;
+    for (const [g0, g1] of gaps) {
+      if (g0 > from) beds.push([from, g0]);
+      from = Math.max(from, g1);
+    }
+    if (hw - 0.1 > from) beds.push([from, hw - 0.1]);
+    for (const [x0, x1] of beds) {
       const n = Math.round((x1 - x0) * 10);
       if (n < 4) continue;
       const fl = M.flowers(n, l.i * 3 + Math.round(x0)).mesh(Cell, [0, 0, 0]);
@@ -349,16 +666,14 @@ export function createTown(built: Set<number>, arrived: number | null, hooks: To
       l.group.add(b);
     }
 
-    // Who lives here: a grown-up and a child, sometimes a second grown-up.
-    const count = l.i % 3 === 0 ? 3 : 2;
-    for (let k = 0; k < count; k++) {
-      const look = LOOKS[(l.i * 2 + k) % LOOKS.length];
-      const mesh = M.person(look, k === 1).mesh(M.WorkerCell, [0, 0, 0.5]);
-      const pos = new THREE.Vector2(l.x - 0.4 + k * 0.4, l.front + 0.35);
+    // Who lives here.
+    residents(l.i, bp.homes).forEach((kind, k) => {
+      const mesh = residentMesh(kind, l.i, k);
+      const pos = new THREE.Vector2(l.x - 1.2 + k * 0.45, l.front + 0.45);
       mesh.position.set(pos.x, 0, pos.y);
       scene.add(mesh);
-      l.people.push({ mesh, pos, route: [], wait: 0.5 + k * 1.3, speed: k === 1 ? 1.1 : 0.8, phase: k * 2, wave: 0, waveCooldown: 0, lot: l, inside: true });
-    }
+      l.people.push({ mesh, pos, route: [], wait: 0.5 + k * 1.1, speed: SPEED[kind], phase: k * 2, wave: 0, waveCooldown: 0, lot: l, inside: true, kind });
+    });
     return house;
   }
 
@@ -401,8 +716,11 @@ export function createTown(built: Set<number>, arrived: number | null, hooks: To
           // Turn to the truck and give a happy little jump or two.
           p.wave -= dt;
           p.mesh.rotation.y = Math.atan2(-(truck.y - p.pos.y), truck.x - p.pos.x);
-          y = Math.abs(Math.sin((1.2 - p.wave) * Math.PI * 2.5)) * 0.18;
+          const bounce = Math.abs(Math.sin((1.2 - p.wave) * Math.PI * 2.5));
+          if (p.kind === "wheel") p.mesh.rotation.z = bounce * 0.3; // a wheelie
+          else y = bounce * (p.kind === "dog" ? 0.12 : 0.18);
         } else if (p.wait > 0) {
+          p.mesh.rotation.z = 0;
           p.wait -= dt;
           if (p.wait <= 0 && p.route.length === 0) nextRoute(p);
         } else if (p.route.length) {
@@ -418,7 +736,9 @@ export function createTown(built: Set<number>, arrived: number | null, hooks: To
             p.pos.addScaledVector(d, step / len);
             p.mesh.rotation.y = Math.atan2(-d.y, d.x);
           }
-          y = Math.abs(Math.sin(p.phase * 9)) * 0.05;
+          p.mesh.rotation.z = 0;
+          // Walkers bob as they step; wheels roll smoothly.
+          if (p.kind !== "wheel") y = Math.abs(Math.sin(p.phase * (p.kind === "dog" ? 14 : 9))) * (p.kind === "dog" ? 0.03 : 0.05);
         } else p.wait = 1;
         const onWalk = Math.abs(p.pos.y - l.walk) < 0.6;
         p.mesh.position.set(p.pos.x, y + (onWalk ? 0.07 : 0), p.pos.y);
@@ -433,6 +753,7 @@ export function createTown(built: Set<number>, arrived: number | null, hooks: To
   const world: World = { site: ground, machines: [truck] };
   const arrivedLot = arrived !== null ? lots[arrived] : null;
   if (arrivedLot) truck.place(arrivedLot.x - 2.6, arrivedLot.roadZ, 0, ground);
+  else if (via) truck.place(GATE_X - 2.4, via === "next" ? ROAD_A : ROAD_B, Math.PI, ground);
   else truck.place(truck.home.x, truck.home.y, Math.PI / 2, ground);
 
   // What's in the truck's bed: nothing, or a pallet of panels and a crate.
@@ -486,10 +807,16 @@ export function createTown(built: Set<number>, arrived: number | null, hooks: To
   let buildIn = -1;
 
   function progress(): void {
-    Hud.steps(lots.map((l) => ({ icon: Hud.Icons.house(l.bp.colour, l.built), state: l.built ? "done" : "todo" })), true);
+    Hud.steps(lots.map((l) => ({ icon: Hud.Icons.house(B.recolour(l.bp, looksOf(l.i)).colour, l.built), state: l.built ? "done" : "todo" })), true);
   }
   progress();
-  Hud.nudge(allBuilt());
+  // All built here: the gate to the next neighbourhood's the way on (or, at the very last, the new-town button).
+  Hud.nudge(allBuilt() && nextHood === null);
+  let gateOpening = allBuilt() && arrivedLot !== null && nextHood !== null ? 0 : -1;
+  if (gateOpening >= 0) {
+    gates[0].open = false;
+    gates[0].lift = 0;
+  }
 
   const focus = new THREE.Vector3(truck.pos.x, 0, truck.pos.y - 2.5);
   if (arrivedLot) focus.set(arrivedLot.x, 0, arrivedLot.front - 1.5);
@@ -539,6 +866,26 @@ export function createTown(built: Set<number>, arrived: number | null, hooks: To
       }
     }
 
+    // The street's finished: after the party, the gate to the next neighbourhood swings up.
+    if (gateOpening >= 0) {
+      gateOpening += dt;
+      if (gateOpening > 3.2 && !gates[0].open) {
+        gates[0].open = true;
+        Audio.fanfare();
+        fx.confetti(new THREE.Vector3(GATE_X, 3, ROAD_A), 60);
+        fx.ring(new THREE.Vector3(GATE_X - 1.5, 0.05, ROAD_A), 3, 0xffe3a0);
+      }
+    }
+    for (const g of gates) updateGate(g, dt, clock);
+    // Through an open gate: off to that neighbourhood.
+    if (!leaving && flying.length === 0)
+      for (const g of gates)
+        if (g.open && truck.pos.x > GATE_X - 1.2 && Math.abs(truck.pos.y - g.z) < HALF) {
+          leaving = true;
+          Audio.whoosh();
+          hooks.travel(g.to);
+        }
+
     const stopped = (x: number, z: number) => Math.hypot(truck.pos.x - x, truck.pos.y - z) < 1.1 && truck.speed < 1.5;
     const busy = flying.length > 0 || leaving;
     const anyLeft = lots.some((l) => !l.built);
@@ -556,10 +903,12 @@ export function createTown(built: Set<number>, arrived: number | null, hooks: To
       if (d < nd) [next, nd] = [l, d];
     }
     const from = new THREE.Vector3(truck.pos.x, 0, truck.pos.y);
-    if (busy || !anyLeft || at || atPile) marker.update(dt, null, null, 1, null);
+    const nextGate = gates.find((g) => g.to === nextHood && g.open);
+    if (!anyLeft && nextGate && !busy) marker.update(dt, new THREE.Vector3(GATE_X, 3.1, nextGate.z), new THREE.Vector3(GATE_X - 1.5, 0, nextGate.z), 1.2, from);
+    else if (busy || !anyLeft || at || atPile) marker.update(dt, null, null, 1, null);
     else if (!loaded) marker.update(dt, PILE.clone().setY(1.3), null, 1, from);
     else if (next) {
-      const top = new THREE.Vector3(next.x, 0.52 + (B.roofAt(next.bp).y + next.bp.roof.height) * 0.3 + 0.2, next.front - 1.2);
+      const top = new THREE.Vector3(next.x, 0.52 + (B.roofAt(next.bp).y + next.bp.roof.height) * 0.3 + 0.2, next.fence - 1.1);
       marker.update(dt, top, null, 1, from);
     }
     hooks.hints(!!(at || atPile), false);
@@ -621,6 +970,7 @@ export function createTown(built: Set<number>, arrived: number | null, hooks: To
     }
 
     updatePeople(dt, truck.pos);
+    for (const a of anims) a(clock);
     const duck = scene.getObjectByName("duck");
     if (duck) {
       duck.position.set(3 + Math.cos(clock * 0.3) * 2.2, 0.01, 17.5 + Math.sin(clock * 0.3) * 1.2);
@@ -633,7 +983,7 @@ export function createTown(built: Set<number>, arrived: number | null, hooks: To
     Audio.setEngine(truck.speed / truck.def.speed, true);
 
     const want = new THREE.Vector3(truck.pos.x, 0, truck.pos.y - 2.5);
-    want.x = Math.max(-16, Math.min(16, want.x));
+    want.x = Math.max(-16, Math.min(gates.length ? 20 : 16, want.x));
     want.z = Math.max(-6, Math.min(9.5, want.z));
     const admiring = arrivedLot !== null && party >= 0 && party < 3;
     if (admiring) want.set(arrivedLot!.x, 0, arrivedLot!.front - 1.5);
@@ -653,7 +1003,7 @@ export function createTown(built: Set<number>, arrived: number | null, hooks: To
       disposeScene(scene, new Set([voxelMaterial]));
     },
     debug: {
-      truck, lots, fx, get loaded() { return loaded; },
+      truck, lots, fx, gates, get loaded() { return loaded; },
       look(x?: number, y = 0, z = 0, ax = 0, ay = 0, az = 0) {
         debugCam = x === undefined ? null : { pos: new THREE.Vector3(x, y, z), at: new THREE.Vector3(ax, ay, az) };
       },

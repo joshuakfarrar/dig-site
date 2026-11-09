@@ -523,6 +523,15 @@ export class Crane extends Machine {
     return best;
   }
 
+  /**
+   * Can the boom get its tip high enough over `place` to carry a load hanging `hang` below the
+   * hook down onto it from above (a third storey, a tall pile)? If not, it needs to come closer.
+   */
+  canReachOver(place: THREE.Vector3, hang: number): boolean {
+    const hookY = place.y + hang;
+    return this.aimAt(place, hookY + 0.9).tipY >= hookY + 0.3;
+  }
+
   /** How far a world point is from the turntable, along the ground. */
   reach(p: THREE.Vector3): number {
     const c = new THREE.Vector3();
@@ -692,6 +701,148 @@ export class Dozer extends Machine {
   bladeWorld(): THREE.Vector3 {
     this.root.updateMatrixWorld(true);
     return this.tilt.localToWorld(new THREE.Vector3(Dozer.BLADE_X, 0, 0));
+  }
+}
+
+
+// ======================================================================== dump truck
+
+/**
+ * Takes the dirt away at the end: stop by a heap and it's loaded in (two heaps fill it), then
+ * stop by the skip at the gate and the bed tips up and pours it in.
+ */
+export class DumpTruck extends Machine {
+  static readonly CAPACITY = 2;
+  private bed = new THREE.Group();
+  private dirt: THREE.Mesh;
+  load = 0; // heaps aboard
+  private shown = 0; // how full the bed looks, easing toward `load`
+  private tipT = -1; // seconds into a tip, or -1
+  private tipped: (() => void) | null = null;
+  private turnTo: number | null = null; // turning on the spot to back up to the skip, first
+
+  constructor(home: THREE.Vector2) {
+    super(
+      "dump",
+      { speed: 3.0, accel: 6, turn: 130 * deg, halfLen: 1.2, radius: 0.6, circles: [[-0.6, 0.6], [0.5, 0.6]], cab: new THREE.Vector3(0.75, 1.1, 0) },
+      new THREE.Vector3(0.75, 1.27, 0),
+      home,
+    );
+    this.tilt.add(M.dumpTruckBody().mesh(Cell));
+    this.bed.position.set(-1.2, 0.42, 0);
+    this.bed.add(M.dumpBed().mesh(Cell, [0, 0, 0]));
+    this.dirt = M.bedDirt().mesh(Cell, [0, 0, 0]);
+    this.dirt.position.set(0.8, 0.1, 0);
+    this.dirt.visible = false;
+    this.bed.add(this.dirt);
+    this.tilt.add(this.bed);
+    this.addBeacon(this.tilt);
+  }
+
+  busy(): boolean {
+    return this.tipT >= 0 || this.turnTo !== null;
+  }
+
+  get full(): boolean {
+    return this.load >= DumpTruck.CAPACITY;
+  }
+
+  /** Behind the tailgate, where the dirt pours out, in the world. */
+  tailWorld(): THREE.Vector3 {
+    this.root.updateMatrixWorld(true);
+    return this.tilt.localToWorld(new THREE.Vector3(-1.5, 0.5, 0));
+  }
+
+  /** The middle of the bed, in the world (where loaded dirt lands). */
+  bedWorld(): THREE.Vector3 {
+    this.root.updateMatrixWorld(true);
+    return this.tilt.localToWorld(new THREE.Vector3(-0.4, 0.9, 0));
+  }
+
+  /**
+   * Turn on the spot so the back faces `into` (the skip), then tip the bed up, pour the load out,
+   * and bring the bed down again.
+   */
+  tip(into: THREE.Vector2, done: () => void): void {
+    if (this.busy() || this.load === 0) return;
+    this.turnTo = Math.atan2(-(this.pos.y - into.y), this.pos.x - into.x);
+    this.tipped = done;
+  }
+
+  update(dt: number, w: World): void {
+    super.update(dt, w);
+    if (this.turnTo !== null) {
+      const off = wrap(this.turnTo - this.heading);
+      const step = this.def.turn * dt;
+      this.heading = wrap(this.heading + Math.max(-step, Math.min(step, off)));
+      if (Math.abs(off) <= step) {
+        this.turnTo = null;
+        this.tipT = 0;
+      }
+    }
+    let angle = 0;
+    if (this.tipT >= 0) {
+      this.tipT += dt;
+      const t = this.tipT;
+      // Up (0.6 s), hold while it pours (0.7 s), down (0.5 s).
+      angle = t < 0.6 ? ease(t / 0.6) : t < 1.3 ? 1 : t < 1.8 ? 1 - ease((t - 1.3) / 0.5) : 0;
+      if (t >= 0.9 && this.load > 0) {
+        this.load = 0;
+        const f = this.tipped;
+        this.tipped = null;
+        f?.();
+      }
+      if (t >= 1.8) this.tipT = -1;
+    }
+    this.bed.rotation.z = angle * 50 * deg;
+    this.shown += (this.load - this.shown) * (1 - Math.exp(-6 * dt));
+    const k = this.shown / DumpTruck.CAPACITY;
+    this.dirt.visible = k > 0.03;
+    this.dirt.scale.set(0.6 + 0.4 * k, Math.max(0.05, k), 0.8 + 0.2 * k);
+    this.dirt.position.x = 0.8 - angle * 0.4;
+  }
+}
+
+// ======================================================================== street sweeper
+
+/** Sweeps up sand blown in from the beach: wherever its brushes go, it's clean. */
+export class Sweeper extends Machine {
+  private brushes: THREE.Mesh[] = [];
+  static readonly BRUSH_X = 0.85;
+  static readonly REACH = 0.75; // half the width it sweeps
+
+  constructor(home: THREE.Vector2) {
+    super(
+      "sweeper",
+      { speed: 2.5, accel: 6, turn: 140 * deg, halfLen: 0.9, radius: 0.55, circles: [[-0.3, 0.55], [0.5, 0.55]], cab: new THREE.Vector3(0.3, 1.0, 0) },
+      new THREE.Vector3(0.3, 1.16, 0),
+      home,
+    );
+    this.tilt.add(M.sweeperBody().mesh(Cell));
+    for (const z of [-0.55, 0.55]) {
+      const b = M.sweeperBrush().mesh(Cell, [0, 0, 0]);
+      b.position.set(Sweeper.BRUSH_X, 0.02, z);
+      this.tilt.add(b);
+      this.brushes.push(b);
+    }
+    this.addBeacon(this.tilt);
+  }
+
+  busy(): boolean {
+    return false;
+  }
+
+  /** The front middle, between the brushes, in the world. */
+  brushWorld(): THREE.Vector3 {
+    this.root.updateMatrixWorld(true);
+    return this.tilt.localToWorld(new THREE.Vector3(Sweeper.BRUSH_X, 0, 0));
+  }
+
+  update(dt: number, w: World): void {
+    super.update(dt, w);
+    const spin = (this.driven ? 4 : 0) + this.speed * 6;
+    this.brushes[0].rotation.y += spin * dt;
+    this.brushes[1].rotation.y -= spin * dt;
   }
 }
 
