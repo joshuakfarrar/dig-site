@@ -17,6 +17,7 @@ export function unlock(): void {
   master.gain.value = muted ? 0 : 0.55;
   master.connect(ctx.destination);
   startEngine();
+  startMusic();
 }
 
 /** Hushes everything while the game's in the background (another app, a locked screen). */
@@ -81,6 +82,7 @@ export function chime(step = 0): void {
 /** A section done: three notes up. */
 export function sectionDone(step = 0): void {
   const t = now();
+  duck(1.2);
   [0, 2, 4].forEach((k, i) => {
     tone(note(step + k), t + i * 0.11, 0.7, "sine", 0.22);
     tone(note(step + k) * 2, t + i * 0.11, 0.4, "triangle", 0.05);
@@ -147,6 +149,7 @@ export function whoosh(): void {
 
 export function fanfare(): void {
   const t = now();
+  duck(3);
   const seq = [0, 2, 3, 4, 5, 7];
   seq.forEach((s, i) => {
     tone(note(s), t + i * 0.13, 0.9, "sine", 0.22);
@@ -155,7 +158,7 @@ export function fanfare(): void {
   [5, 7, 9].forEach((s) => tone(note(s), t + 0.9, 1.6, "sine", 0.14));
 }
 
-// ---- engine hum: two detuned saws through a low-pass, pitch and loudness follow `setEngine`.
+// ---- engine hum: two detuned soft waves through a low-pass, pitch and loudness follow `setEngine`.
 let engOsc: OscillatorNode[] = [];
 let engGain: GainNode | null = null;
 let engFilter: BiquadFilterNode | null = null;
@@ -170,7 +173,7 @@ function startEngine(): void {
   engFilter.connect(engGain).connect(master);
   engOsc = [0, 7].map((det) => {
     const o = ctx!.createOscillator();
-    o.type = "sawtooth";
+    o.type = "triangle";
     o.frequency.value = 48;
     o.detune.value = det;
     o.connect(engFilter!);
@@ -185,6 +188,109 @@ export function setEngine(load: number, running: boolean): void {
   const t = ctx.currentTime;
   const f = 42 + load * 30;
   for (const o of engOsc) o.frequency.setTargetAtTime(f, t, 0.15);
-  engFilter.frequency.setTargetAtTime(220 + load * 380, t, 0.15);
-  engGain.gain.setTargetAtTime(running ? 0.05 + load * 0.06 : 0, t, 0.2);
+  engFilter.frequency.setTargetAtTime(180 + load * 280, t, 0.15);
+  engGain.gain.setTargetAtTime(running ? 0.04 + load * 0.05 : 0, t, 0.2);
+}
+
+// ---- music: a gentle loop made on the fly. Soft marimba over a warm pad and a round bass, in a
+// major pentatonic (so any note sits nicely with any other), at an easy walking pace. The tune
+// wanders a little differently every eight bars, so it never gets samey. Quiet under everything else.
+
+const MUSIC_VOL = 0.14;
+const BEAT = 60 / 88;
+// C, A minor, F, G: the four chords it goes round, as semitones above middle C.
+const CHORDS = [[0, 4, 7], [-3, 0, 4], [-7, -3, 0], [-5, -1, 2]];
+const MELODY = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21]; // C major pentatonic, two octaves up from C5
+let musicGain: GainNode | null = null;
+let nextBeat = 0;
+let beat = 0;
+let lastNote = 4;
+
+const pitch = (semi: number, base = 261.63) => base * Math.pow(2, semi / 12);
+
+function startMusic(): void {
+  if (!ctx || !master) return;
+  musicGain = ctx.createGain();
+  musicGain.gain.value = 0;
+  musicGain.gain.setTargetAtTime(MUSIC_VOL, ctx.currentTime + 0.5, 2); // fades in
+  musicGain.connect(master);
+  nextBeat = ctx.currentTime + 0.6;
+}
+
+function voice(freq: number, at: number, dur: number, vol: number, type: OscillatorType, attack = 0.01): void {
+  if (!ctx || !musicGain) return;
+  const o = ctx.createOscillator();
+  const g = ctx.createGain();
+  o.type = type;
+  o.frequency.value = freq;
+  g.gain.setValueAtTime(0, at);
+  g.gain.linearRampToValueAtTime(vol, at + attack);
+  g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+  o.connect(g).connect(musicGain);
+  o.start(at);
+  o.stop(at + dur + 0.05);
+}
+
+/** A soft marimba note: a round tone that dies away, and a faint ping above it. */
+function marimba(freq: number, at: number, vol: number): void {
+  voice(freq, at, 0.6, vol, "sine");
+  voice(freq * 4, at, 0.12, vol * 0.18, "sine");
+}
+
+/** A little seeded dice, so each eight-bar phrase plays its own tune (but the same one if repeated). */
+function dice(a: number, b: number): number {
+  const x = Math.sin(a * 127.1 + b * 311.7) * 43758.5453;
+  return x - Math.floor(x);
+}
+
+function playBeat(b: number, t: number): void {
+  const bar = Math.floor(b / 4);
+  const inBar = b % 4;
+  const chord = CHORDS[bar % 4];
+  const phrase = Math.floor(bar / 8);
+  if (inBar === 0) {
+    // The pad: the chord, swelling in slowly and held for the bar.
+    for (const s of chord) voice(pitch(s), t, BEAT * 4.2, 0.022, "sine", 0.6);
+  }
+  if (inBar === 0 || inBar === 2) voice(pitch(chord[0] - 12), t, BEAT * 1.8, 0.075, "triangle", 0.03); // bass
+  // The tune: eighth notes, about half of them sounded, stepping round the scale, landing on chord
+  // notes on the strong beats.
+  for (const half of [0, 1]) {
+    const r = dice(phrase * 13 + (bar % 8), inBar * 2 + half);
+    if (r > (half === 0 ? 0.75 : 0.45)) continue;
+    let k = lastNote + Math.round((dice(bar + 7, b * 3 + half) - 0.5) * 4);
+    k = Math.max(0, Math.min(MELODY.length - 1, k));
+    if (half === 0 && inBar % 2 === 0) {
+      // Pull to the nearest note of the chord.
+      let best = k, bd = 99;
+      for (let j = 0; j < MELODY.length; j++) {
+        const n = ((MELODY[j] % 12) + 12) % 12;
+        if (!chord.some((c) => ((c % 12) + 12) % 12 === n)) continue;
+        if (Math.abs(j - k) < bd) [best, bd] = [j, Math.abs(j - k)];
+      }
+      k = best;
+    }
+    lastNote = k;
+    marimba(pitch(MELODY[k] + 12), t + half * BEAT * 0.5, half ? 0.045 : 0.06);
+  }
+}
+
+/** Called every frame: keeps the next quarter second of music lined up. */
+export function music(): void {
+  if (!ctx || !musicGain || ctx.state !== "running") return;
+  if (nextBeat < ctx.currentTime - 0.3) nextBeat = ctx.currentTime + 0.05; // back from a pause
+  while (nextBeat < ctx.currentTime + 0.25) {
+    playBeat(beat, nextBeat);
+    beat++;
+    nextBeat += BEAT;
+  }
+}
+
+/** Turns the music right down for a moment, so a fanfare rings out. */
+function duck(seconds: number): void {
+  if (!ctx || !musicGain) return;
+  const t = ctx.currentTime;
+  musicGain.gain.cancelScheduledValues(t);
+  musicGain.gain.setTargetAtTime(MUSIC_VOL * 0.25, t, 0.08);
+  musicGain.gain.setTargetAtTime(MUSIC_VOL, t + seconds, 0.8);
 }

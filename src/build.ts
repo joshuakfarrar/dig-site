@@ -174,6 +174,7 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
       : look === "lantern" ? Hud.Icons.lantern
       : look === "fish" ? Hud.Icons.fish
       : look === "whale" ? Hud.Icons.whale
+      : look === "play" ? Hud.Icons.play
       : Hud.Icons.roof(bp.roof.tile ?? 0xd2513a);
     list.push(
       { icon: roofIcon, state: state("roof") },

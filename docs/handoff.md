@@ -90,6 +90,29 @@ Where Dig Site stands, for whichever session picks it up next. Everything below 
 - **On site:** `pickWalls()` runs when the walls stage starts, `pickRoof()` when the roof stage starts. They repaint the trailer panels and ghosts, or the roof and its ghost.
 - **Saving:** `Save.Town.looks["hood:lot"] = [walls, roof]`, saved only when something other than the default was picked. The town draws built lots with `B.recolour`.
 
+## Phase 3, a living town
+
+- **Traffic** (`town.ts`, `LOOP`, `updateCars`):
+  - Two cars and the bus follow a lane loop round both streets and the side roads.
+  - A car stops if the truck is within its lane just ahead (1.05 sideways, its length + 2.6 ahead) or another car is (0.9 sideways). It never reverses.
+  - Car circles live in `ground.circles`, so the truck bumps into cars rather than through them.
+  - The truck's home and the yard's load ring are by the west kerb, so traffic can pass them.
+- **Evening** (`updateDusk`):
+  - Once every lot is built (after the last party), the sky, fog, sun and hemisphere light ease to warm evening colours, and the lamp heads and soft light pools fade in.
+  - It starts at full evening when you come back to a finished street.
+
+## Phase 3, playground and music
+
+- **Playground** (`B.playground`, Market Square lot 6):
+  - The panels are `fence` styles (`playFence`), and the "roof" is `playSet` with `onGround: true`, so `roofAt` puts it on the slab.
+  - `Blueprint.slab` gives the soft green surface; the site and `assemble` both use it.
+  - In town, `residents(..., playground)` fills it with children.
+- **Music** (`audio.ts`, `music()`, called every frame from `main.ts`):
+  - A lookahead scheduler at 88 bpm going round C, Am, F, G: pad and bass, and a seeded marimba tune that changes every eight bars.
+  - `duck()` lowers it for `fanfare` and `sectionDone`. It sits under the master mute.
+  - Not yet heard by a person.
+- **Engine:** triangle waves, a lower filter and less gain.
+
 ## Design decisions the user made
 
 - **Stack:** TS + Vite + three.js (they picked it); newest dependency versions.

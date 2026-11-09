@@ -297,7 +297,7 @@ export class Site implements Ground {
   private rebuildPit(): void {
     const f = new Faces();
     const colour = (k: Kind, t: number) =>
-      k === "concrete" ? C.Concrete : k === "wet" ? C.WetConcrete : k === "gravel" ? C.Gravel : t < -0.01 ? 0x8c6239 : C.Sand;
+      k === "concrete" ? (this.bp.slab ?? C.Concrete) : k === "wet" ? C.WetConcrete : k === "gravel" ? C.Gravel : t < -0.01 ? 0x8c6239 : C.Sand;
     for (let i = 0; i < this.NX; i++)
       for (let j = 0; j < this.NZ; j++) {
         const t = this.top[i][j];

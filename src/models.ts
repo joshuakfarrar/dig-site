@@ -293,6 +293,8 @@ export interface PanelStyle {
   balconies?: number[];
   /** White columns standing out in front (a library, a town hall): each one's left cell. */
   columns?: number[];
+  /** Not a wall at all: a playground's rainbow fence (the front one with a gap to go in). */
+  fence?: { gate: boolean };
 }
 
 /**
@@ -300,6 +302,7 @@ export interface PanelStyle {
  * on the front wall, so awnings stick out that way.
  */
 export function wallPanel(len: number, s: PanelStyle): Model {
+  if (s.fence) return playFence(len, s.fence.gate);
   const trim = s.trim ?? C.White;
   const m = new Model();
   m.box(0, 0, 0, len, 14, 2, s.paint);
@@ -1120,5 +1123,103 @@ export function sandPatch(w: number, d: number, seed: number): Model {
       for (let y = 0; y < h; y++) m.set(x, y, z, (x + seed) % 3 === 0 ? 0xead7a8 : 0xfaf0d7);
     }
   m.set(Math.floor(w / 3), 2, Math.floor(d / 2), (seed % 2 ? 0xff9ec4 : 0xffffff)); // a shell
+  return m;
+}
+
+// ---------------------------------------------------------------- town traffic
+
+/** A little round car for the town's streets, facing +x: body in `paint`, white roof, big windows. */
+export function car(paint: number, roof = C.White): Model {
+  const m = new Model();
+  for (const x0 of [3, -6]) for (const z0 of [-4, 3]) m.box(x0, 0, z0, 3, 3, 1, C.Rubber).set(x0 + 1, 1, z0, C.Gray);
+  m.box(-8, 1, -3, 17, 3, 6, paint);
+  bevelTop(m, -8, 3, -3, 17, 6);
+  m.box(-5, 4, -3, 10, 3, 6, paint);
+  m.box(-4, 4, -3, 8, 2, 6, C.Glass).box(-5, 4, -2, 10, 2, 4, C.Glass);
+  m.box(-5, 7, -3, 10, 1, 6, roof);
+  bevelTop(m, -5, 7, -3, 10, 6);
+  m.box(9, 2, -3, 1, 1, 1, C.Light).box(9, 2, 2, 1, 1, 1, C.Light); // headlights
+  m.box(-9, 2, -3, 1, 1, 1, 0xd8263a).box(-9, 2, 2, 1, 1, 1, 0xd8263a); // tail lights
+  return m;
+}
+
+/** A little town bus: long, yellow-and-white, a row of windows. Faces +x. */
+export function bus(): Model {
+  const m = new Model();
+  const P = 0xffc93c;
+  for (const x0 of [8, -12]) for (const z0 of [-5, 4]) m.box(x0, 0, z0, 4, 4, 1, C.Rubber).set(x0 + 1, 1, z0, C.Gray).set(x0 + 2, 2, z0, C.Gray);
+  m.box(-15, 1, -4, 30, 5, 8, P);
+  m.box(-15, 6, -4, 30, 4, 8, C.White);
+  for (let x = -13; x < 12; x += 4) m.box(x, 6, -4, 3, 3, 8, C.Glass);
+  m.box(13, 5, -3, 2, 4, 6, C.Glass);
+  m.box(-15, 10, -4, 30, 1, 8, P);
+  bevelTop(m, -15, 10, -4, 30, 8);
+  m.box(15, 2, -4, 1, 1, 1, C.Light).box(15, 2, 3, 1, 1, 1, C.Light);
+  m.box(-16, 2, -4, 1, 1, 1, 0xd8263a).box(-16, 2, 3, 1, 1, 1, 0xd8263a);
+  return m;
+}
+
+// ---------------------------------------------------------------- the playground
+
+const Rainbow = [0xff5d8f, 0xffc93c, 0x3fb950, 0x4aa8ff, 0xc77dff];
+
+/**
+ * A playground's fence panel instead of a wall: rainbow posts and white rails, about knee to waist
+ * height on a small child, and on the front a wide open gap for the way in.
+ */
+function playFence(len: number, gate: boolean): Model {
+  const m = new Model();
+  const g0 = Math.floor(len / 2) - 6, g1 = g0 + 12;
+  const open = (x: number) => gate && x >= g0 && x < g1;
+  for (let x = 0; x < len; x++) {
+    if (open(x)) continue;
+    if (x % 4 === 0 || x === len - 1) m.box(x, 0, 0, 1, 9, 2, Rainbow[Math.floor(x / 4) % Rainbow.length]);
+    m.box(x, 8, 0, 1, 1, 2, C.White).box(x, 4, 0, 1, 1, 2, C.White);
+  }
+  if (gate) for (const x of [g0 - 1, g1]) m.box(x, 0, 0, 1, 11, 2, C.White).box(x, 11, 0, 1, 1, 2, C.Hazard);
+  return m;
+}
+
+/**
+ * Everything to play on, as one piece the crane lifts in: a slide tower with a little roof and a
+ * yellow slide, swings, a roundabout and a sandpit. Pivot it at [W/2, 0, D/2] for a `w` x `d` lot.
+ */
+export function playSet(w: number, d: number): Model {
+  const m = new Model();
+  const W = w * 10, D = d * 10;
+  const cx = Math.round(W / 2), cz = Math.round(D / 2) - 4;
+  // The tower: four posts, a deck, a little red roof, and a ladder at the back.
+  for (const [x, z] of [[cx - 5, cz - 5], [cx + 4, cz - 5], [cx - 5, cz + 4], [cx + 4, cz + 4]]) m.box(x, 0, z, 1, 18, 1, 0x4aa8ff);
+  m.box(cx - 5, 9, cz - 5, 10, 1, 10, 0x9a6a3c);
+  for (let x = cx - 5; x < cx + 5; x += 2) m.box(x, 10, cz - 5, 1, 4, 1, C.White).box(x, 10, cz + 4, 1, 4, 1, C.White);
+  for (let k = 0; k < 4; k++) m.box(cx - 6 + k, 18 + k, cz - 6 + k, 12 - 2 * k, 1, 12 - 2 * k, 0xd8382c);
+  for (let y = 1; y < 9; y += 2) m.box(cx - 3, y, cz - 6, 6, 1, 1, C.Steel);
+  // The slide, down to the front.
+  for (let k = 0; k < 12; k++) {
+    m.box(cx - 2, 9 - Math.round(k * 0.75), cz + 5 + k, 4, 1, 1, C.Hazard);
+    m.box(cx - 3, 10 - Math.round(k * 0.75), cz + 5 + k, 1, 1, 1, 0xff8a1f).box(cx + 2, 10 - Math.round(k * 0.75), cz + 5 + k, 1, 1, 1, 0xff8a1f);
+  }
+  // Swings on the left: an A-frame each end, a bar across, two seats on chains.
+  const sx = 4;
+  for (const z of [cz - 7, cz + 7]) for (let y = 0; y < 15; y++) m.set(sx + Math.floor(y / 5), y, z, 0xff5d8f).set(sx + 8 - Math.floor(y / 5), y, z, 0xff5d8f);
+  m.box(sx + 3, 15, cz - 7, 3, 1, 15, 0xff5d8f);
+  for (const z of [cz - 3, cz + 3]) {
+    for (let y = 5; y < 15; y++) m.set(sx + 4, y, z - 1, C.Steel).set(sx + 4, y, z + 1, C.Steel);
+    m.box(sx + 3, 4, z - 1, 3, 1, 3, 0x3a3f47);
+  }
+  // A roundabout on the right.
+  const rx = W - 9, rz = cz;
+  for (let x = -5; x <= 5; x++)
+    for (let z = -5; z <= 5; z++) {
+      const dd = Math.hypot(x, z);
+      if (dd <= 5) m.set(rx + x, 1, rz + z, Rainbow[(Math.floor((Math.atan2(z, x) + Math.PI) / (Math.PI / 2.5))) % Rainbow.length]);
+    }
+  m.box(rx, 0, rz, 1, 1, 1, C.Steel).box(rx, 2, rz, 1, 4, 1, C.Steel).box(rx - 3, 5, rz, 7, 1, 1, C.Steel).box(rx, 5, rz - 3, 1, 1, 7, C.Steel);
+  // A sandpit at the front left, with a bucket and spade.
+  const px = 6, pz = D - 12;
+  m.box(px, 0, pz, 12, 2, 9, 0x9a6a3c).box(px + 1, 0, pz + 1, 10, 2, 7, 0xf0d9a0);
+  m.box(px + 3, 2, pz + 3, 2, 2, 2, 0x4aa8ff).box(px + 7, 2, pz + 4, 1, 3, 1, 0xd8382c);
+  // A bench at the front right for the grown-ups.
+  m.box(W - 16, 0, D - 6, 1, 2, 3, C.Dark).box(W - 8, 0, D - 6, 1, 2, 3, C.Dark).box(W - 16, 2, D - 6, 9, 1, 3, C.Wood).box(W - 16, 3, D - 4, 9, 2, 1, C.Wood);
   return m;
 }

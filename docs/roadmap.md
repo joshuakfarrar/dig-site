@@ -64,11 +64,11 @@ Roughly 3 to 5 times today's content.
     - a wheelchair user, with step-free ramps at the front doors
     - people living alone
     - pets
-  - [ ] **Shared spaces:** a community garden or play area between the blocks. The flats have a roof garden; a street-level one is still to do.
+  - [x] **Shared spaces:** the flats have a roof garden, and Market Square has a playground next to its flats.
   - **Same mechanics:** it's the same dig, pour, walls, roof, path and clean-up; a block is just a bigger blueprint with more doors and more people moving in.
 - [ ] **New building kinds** (each one is a blueprint entry):
   - [x] café, bakery (flats over it), school, library, police station
-  - [ ] playground and park
+  - [x] playground (Market Square, lot 6): a soft green surface, a rainbow fence with a way in, then the crane lifts in the whole play set
   - [x] clock tower (the town hall) to finish Market Square; lighthouse to finish the Harbour
   - [x] a tall tower the crane builds floor by floor (the lighthouse: three red and white storeys and a lantern)
 - [ ] **New machines that fit the same controls:**
@@ -76,14 +76,14 @@ Roughly 3 to 5 times today's content.
   - [ ] **Forklift:** stacks pallets in the yard.
   - [x] **Street sweeper** (the Harbour): beach sand blows over the site at the end; drive over the drifts to sweep them up.
 - [x] **Pick by picture:** homes show four paint pictures before the crane lifts the walls, and four roof pictures before a pitched roof. Move left and right, then press Work, or tap one. The first picture is always the building's own colours, and the town keeps whatever was picked.
-- [ ] **A living town:**
-  - Cars on the roads that always stop for you.
-  - Lights that come on at dusk on finished streets.
-  - Pets in gardens.
+- [x] **A living town:**
+  - [x] Two cars and a yellow bus drive a loop round the streets, keeping to their lane. They always stop for the truck and for each other, and never back up.
+  - [x] When a street is finished, the light turns to a warm golden evening and the street lamps come on.
+  - [x] Pets in gardens: dogs live at about half the homes.
 - [ ] **Polish:**
-  - Real sound design, still made from code with no files: softer engines and nicer chimes.
-  - A gentle music loop.
-  - A title screen that's one big Play button.
+  - [x] Softer engine hum (soft waves, darker and quieter).
+  - [x] A gentle music loop made in code: marimba over a pad and bass, in a pentatonic scale, wandering a little differently every eight bars, and dipping for fanfares. Not yet heard by a person.
+  - [ ] A title screen that's one big Play button.
 
 **Done when:** a fresh player gets an hour or more of varied building before seeing everything.
 

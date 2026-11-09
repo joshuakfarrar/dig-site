@@ -7,7 +7,7 @@ import { C, Cell } from "./models";
 import * as B from "./blueprints";
 import { Fx } from "./fx";
 import { Marker, Prompt, workGlyph, type Controls } from "./guide";
-import { Crane, Excavator, Mixer, Roller, Truck, type Machine, type World } from "./machines";
+import { Crane, Excavator, Mixer, Roller, Truck, wrap, type Machine, type World } from "./machines";
 import type { Box, Circle, Ground } from "./site";
 import { disposeScene, lit, Pops, type Mode } from "./stage";
 import { Faces, Model, voxelMaterial } from "./voxel";
@@ -27,6 +27,31 @@ const ROAD_B = 11;
 const HALF = 1.5; // half a road's width
 const SIDE_X = 18; // the side roads joining the two streets
 const COLS = [-12, -4, 4, 12];
+// ------------------------------------------------------------------ traffic
+
+const LANE = 0.75; // from a road's middle to the middle of its lane
+/**
+ * The loop the town's traffic drives, keeping to its lane: east along the top street, down the
+ * east side road, west along the bottom street and back up the west side road.
+ */
+const LOOP = [
+  new THREE.Vector2(-SIDE_X + LANE, ROAD_A + LANE),
+  new THREE.Vector2(SIDE_X - LANE, ROAD_A + LANE),
+  new THREE.Vector2(SIDE_X - LANE, ROAD_B - LANE),
+  new THREE.Vector2(-SIDE_X + LANE, ROAD_B - LANE),
+];
+const CAR_SPEED = 2.2;
+
+interface Car {
+  mesh: THREE.Mesh;
+  pos: THREE.Vector2;
+  heading: number;
+  speed: number;
+  next: number; // the corner it's heading for
+  len: number; // half its length
+  circles: Circle[]; // what the truck bumps into
+}
+
 /** Where the streets end in the east, at the gates to the other neighbourhoods. */
 const GATE_X = 25;
 
@@ -329,7 +354,9 @@ const DOGS: [number, number][] = [[0xc98a3e, 0xf3e6c8], [0x3a3f47, 0xffffff], [0
  * child, a grandparent, someone in a wheelchair, a dog), mixed so every street has every kind.
  * A shop or a fire station has a couple of people about.
  */
-function residents(i: number, homes: number): Kind[] {
+function residents(i: number, homes: number, playground = false): Kind[] {
+  // A playground's full of children, with a grown-up or two and a dog.
+  if (playground) return ["child", "adult", "child", "wheel", "child", "elder", "dog"];
   const count = homes === 0 ? 2 : Math.min(6, homes + 2);
   const mix: Kind[] = ["adult", "child", "elder", "adult", "wheel", "child", "adult", "elder", "adult", "wheel"];
   const out: Kind[] = [];
@@ -524,7 +551,8 @@ export function createTown(
 
   // The pile of building materials in the yard, and the ring on the road beside it to load up at.
   const PILE = new THREE.Vector3(-21.3, 0, 4.5);
-  const LOAD_AT = new THREE.Vector2(-SIDE_X, 4.5);
+  // By the kerb on the yard side, so the traffic can get past while the truck loads.
+  const LOAD_AT = new THREE.Vector2(-SIDE_X - 0.75, 4.5);
   {
     const pile = new THREE.Group();
     const cargo = M.cargo(), crate = M.crate();
@@ -667,7 +695,7 @@ export function createTown(
     }
 
     // Who lives here.
-    residents(l.i, bp.homes).forEach((kind, k) => {
+    residents(l.i, bp.homes, bp.kind === "playground").forEach((kind, k) => {
       const mesh = residentMesh(kind, l.i, k);
       const pos = new THREE.Vector2(l.x - 1.2 + k * 0.45, l.front + 0.45);
       mesh.position.set(pos.x, 0, pos.y);
@@ -747,7 +775,7 @@ export function createTown(
 
   // ------------------------------------------------------------------ the truck
 
-  const truck = new Truck(new THREE.Vector2(-SIDE_X, 8.6));
+  const truck = new Truck(new THREE.Vector2(-SIDE_X - 0.8, 8.6));
   scene.add(truck.root);
   truck.driven = true;
   const world: World = { site: ground, machines: [truck] };
@@ -755,6 +783,95 @@ export function createTown(
   if (arrivedLot) truck.place(arrivedLot.x - 2.6, arrivedLot.roadZ, 0, ground);
   else if (via) truck.place(GATE_X - 2.4, via === "next" ? ROAD_A : ROAD_B, Math.PI, ground);
   else truck.place(truck.home.x, truck.home.y, Math.PI / 2, ground);
+
+  // ------------------------------------------------------------------ traffic: a couple of cars and the bus
+
+  const cars: Car[] = [];
+  ([[0, 0.15, M.car(0xd8382c)], [1, 0.55, M.car(0x4aa8ff, 0xf6dc7a)], [2, 0.6, M.bus()]] as const).forEach(([k, along, model]) => {
+    const isBus = k === 2;
+    const a = LOOP[k % 4], b = LOOP[(k + 1) % 4];
+    const pos = a.clone().lerp(b, along);
+    const mesh = model.mesh(Cell, [0, 0, 0]);
+    scene.add(mesh);
+    const len = isBus ? 1.5 : 0.85;
+    const circles: Circle[] = [-len * 0.5, len * 0.5].map(() => ({ x: pos.x, z: pos.y, r: 0.5 }));
+    ground.circles.push(...circles);
+    cars.push({ mesh, pos, heading: Math.atan2(-(b.y - a.y), b.x - a.x), speed: CAR_SPEED, next: (k + 1) % 4, len, circles });
+  });
+
+  /**
+   * Cars follow the loop at a gentle speed and always stop for the truck (and for each other): if
+   * anything's just ahead in their lane, they wait until it's gone. They never back up or go round.
+   */
+  function updateCars(dt: number): void {
+    for (const c of cars) {
+      const target = LOOP[c.next];
+      const to = target.clone().sub(c.pos);
+      if (to.length() < 1.3) c.next = (c.next + 1) % LOOP.length;
+      const want = Math.atan2(-to.y, to.x);
+      const off = wrap(want - c.heading);
+      const step = 2.2 * dt;
+      c.heading = wrap(c.heading + Math.max(-step, Math.min(step, off)));
+      const fwd = new THREE.Vector2(Math.cos(c.heading), -Math.sin(c.heading));
+      const blocked = (p: THREE.Vector2, reach: number, width: number) => {
+        const rel = p.clone().sub(c.pos);
+        const ahead = rel.dot(fwd);
+        const side = Math.abs(rel.x * fwd.y - rel.y * fwd.x);
+        return ahead > -0.3 && ahead < reach && side < width;
+      };
+      let stop = blocked(truck.pos, c.len + 2.6, 1.05);
+      for (const o of cars) if (o !== c && blocked(o.pos, c.len + o.len + 0.9, 0.9)) stop = true;
+      const goal = stop ? 0 : CAR_SPEED;
+      c.speed = c.speed > goal ? Math.max(goal, c.speed - 7 * dt) : Math.min(goal, c.speed + 1.8 * dt);
+      c.pos.addScaledVector(fwd, c.speed * dt);
+      c.mesh.position.set(c.pos.x, 0, c.pos.y);
+      c.mesh.rotation.y = c.heading;
+      c.circles.forEach((ci, i) => {
+        const o = (i === 0 ? -0.5 : 0.5) * c.len;
+        ci.x = c.pos.x + fwd.x * o;
+        ci.z = c.pos.y + fwd.y * o;
+      });
+    }
+  }
+
+  // ------------------------------------------------------------------ evening, once a street's all built
+
+  /**
+   * When every lot here is built, the light turns to a warm golden evening and the street lamps
+   * come on: a cosy reward, never dark.
+   */
+  const hemi = scene.children.find((o): o is THREE.HemisphereLight => o instanceof THREE.HemisphereLight)!;
+  const sun = scene.children.find((o): o is THREE.DirectionalLight => o instanceof THREE.DirectionalLight)!;
+  const DAY = { sky: new THREE.Color(0xa9dcff), sun: new THREE.Color(0xfff6e6), hemi: new THREE.Color(0xdfefff), ground: new THREE.Color(0x6a7a40) };
+  const DUSK = { sky: new THREE.Color(0xffbf94), sun: new THREE.Color(0xffa860), hemi: new THREE.Color(0xffd2b0), ground: new THREE.Color(0x6a5a50) };
+  const glowMat = new THREE.MeshBasicMaterial({ color: 0xffe9a8, transparent: true, opacity: 0 });
+  const poolMat = new THREE.MeshBasicMaterial({ color: 0xffb04a, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending });
+  const glowGeo = new THREE.BoxGeometry(0.26, 0.12, 0.26);
+  const poolGeo = new THREE.CircleGeometry(0.85, 24);
+  for (const x of [-16, -8, 0, 8, 16])
+    for (const z of [ROAD_A - HALF - 0.3, ROAD_B + HALF + 0.3]) {
+      const g = new THREE.Mesh(glowGeo, glowMat);
+      g.position.set(x + 0.05, 0.07 + 1.52, z + 0.05);
+      scene.add(g);
+      const p = new THREE.Mesh(poolGeo, poolMat);
+      p.rotation.x = -Math.PI / 2;
+      p.position.set(x, 0.08, z);
+      scene.add(p);
+    }
+  let dusk = lots.length && [...built].length >= lots.length && arrived === null ? 1 : 0;
+  function updateDusk(dt: number, target: number): void {
+    dusk += (target - dusk) * (1 - Math.exp(-0.5 * dt));
+    const k = dusk;
+    (scene.background as THREE.Color).copy(DAY.sky).lerp(DUSK.sky, k);
+    scene.fog?.color.copy(DAY.sky).lerp(DUSK.sky, k);
+    sun.color.copy(DAY.sun).lerp(DUSK.sun, k);
+    sun.intensity = 1.7 - 0.45 * k;
+    hemi.color.copy(DAY.hemi).lerp(DUSK.hemi, k);
+    hemi.groundColor.copy(DAY.ground).lerp(DUSK.ground, k);
+    hemi.intensity = 1.35 - 0.3 * k;
+    glowMat.opacity = Math.min(1, Math.max(0, (k - 0.3) / 0.4));
+    poolMat.opacity = 0.18 * glowMat.opacity;
+  }
 
   // What's in the truck's bed: nothing, or a pallet of panels and a crate.
   const BED = [new THREE.Vector3(-0.7, 0.52, 0), new THREE.Vector3(-0.26, 0.52, 0.08)];
@@ -970,6 +1087,9 @@ export function createTown(
     }
 
     updatePeople(dt, truck.pos);
+    updateCars(dt);
+    // Evening comes once the street's all built (after the last building's party).
+    updateDusk(dt, allBuilt() && (party < 0 || party > 4) ? 1 : 0);
     for (const a of anims) a(clock);
     const duck = scene.getObjectByName("duck");
     if (duck) {
@@ -1003,7 +1123,7 @@ export function createTown(
       disposeScene(scene, new Set([voxelMaterial]));
     },
     debug: {
-      truck, lots, fx, gates, get loaded() { return loaded; },
+      truck, lots, fx, gates, cars, get dusk() { return dusk; }, get loaded() { return loaded; },
       look(x?: number, y = 0, z = 0, ax = 0, ay = 0, az = 0) {
         debugCam = x === undefined ? null : { pos: new THREE.Vector3(x, y, z), at: new THREE.Vector3(ax, ay, az) };
       },

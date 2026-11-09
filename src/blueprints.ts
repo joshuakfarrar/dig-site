@@ -10,7 +10,7 @@ import type { Model } from "./voxel";
  *
  * Coordinates are relative to the middle of the footprint at ground level; the front is +z.
  */
-export type Kind = "cottage" | "tall" | "shop" | "station" | "duplex" | "terrace" | "flats" | "corner" | "school" | "cafe" | "library" | "police" | "hall" | "lighthouse" | "fish" | "boathouse" | "aquarium";
+export type Kind = "cottage" | "tall" | "shop" | "station" | "duplex" | "terrace" | "flats" | "corner" | "school" | "cafe" | "library" | "police" | "hall" | "lighthouse" | "fish" | "boathouse" | "aquarium" | "playground";
 
 export interface RoofSpec {
   model: () => Model;
@@ -18,8 +18,10 @@ export interface RoofSpec {
   height: number; // world units, from its foot to its highest point
   slingTop: number; // pivot to where the slings meet it
   /** What the progress strip shows for it, and where the finishing flag goes. */
-  look: "gable" | "cone" | "tower" | "garden" | "cup" | "book" | "lights" | "clock" | "lantern" | "fish" | "whale";
+  look: "gable" | "cone" | "tower" | "garden" | "cup" | "book" | "lights" | "clock" | "lantern" | "fish" | "whale" | "play";
   tile?: number; // a gable's tile colour, for its picture
+  /** It goes on the ground inside the walls (a playground's play set), not on top of them. */
+  onGround?: boolean;
   /** Hook to the roof's pivot while it's carried, if not its height plus a bit (a flat roof hangs closer, so the crane reaches a third storey). */
   hang?: number;
 }
@@ -36,6 +38,8 @@ export interface Blueprint {
   colour: number;
   /** How many households live here: a cottage is one, a block of flats six. */
   homes: number;
+  /** What the slab sets to, if not concrete (a playground's soft green surface). */
+  slab?: number;
   /** How the dirt heaps go at the end: the bulldozer pushes them away, or the dump truck hauls them to a skip. */
   finish?: "push" | "haul";
   /** Sand's blown in from the beach by the end, and the street sweeper sweeps it up. */
@@ -74,7 +78,7 @@ export function slots(bp: Blueprint): Slot[] {
 
 /** Where the roof sits, relative to the footprint's middle. */
 export function roofAt(bp: Blueprint): THREE.Vector3 {
-  return new THREE.Vector3(0, SLAB_TOP + WALL_H * bp.storeys, 0);
+  return new THREE.Vector3(0, bp.roof.onGround ? SLAB_TOP : SLAB_TOP + WALL_H * bp.storeys, 0);
 }
 
 export function panelMesh(s: Slot): THREE.Mesh {
@@ -90,7 +94,7 @@ export function assemble(bp: Blueprint): THREE.Group {
   const g = new THREE.Group();
   const slab = new THREE.Mesh(
     new THREE.BoxGeometry(bp.w, SLAB_TOP + 0.02, bp.d),
-    new THREE.MeshLambertMaterial({ color: C.Concrete }),
+    new THREE.MeshLambertMaterial({ color: bp.slab ?? C.Concrete }),
   );
   slab.position.y = (SLAB_TOP - 0.02) / 2;
   slab.receiveShadow = true;
@@ -504,6 +508,28 @@ export function townHall(): Blueprint {
   };
 }
 
+/**
+ * A playground, built the same way as everything else: dig, pour a soft green surface, the crane
+ * lifts in a rainbow fence (a way in at the front, no door to open), then the whole play set (a
+ * slide tower, swings, a roundabout, a sandpit), and the path. Somewhere for everyone on the street.
+ */
+export function playground(): Blueprint {
+  const w = 5, d = 4;
+  const fence = (gate: boolean): M.PanelStyle => ({ paint: C.White, windows: [], fence: { gate } });
+  return {
+    kind: "playground", w, d, storeys: 1, colour: 0x3fb950, homes: 0, slab: 0x7fc98a,
+    walls: [[fence(false), fence(false), fence(false), fence(true)]],
+    roof: {
+      model: () => M.playSet(w, d),
+      pivot: [w * 5, 0, d * 5],
+      height: 2.2,
+      slingTop: 2.05,
+      onGround: true,
+      look: "play",
+    },
+  };
+}
+
 const MARKET_SQUARE: Blueprint[] = [
   school(),
   cafe(0x6fd3b0, [0x8a5a3c, 0xfff4d6], 0xff5d8f),
@@ -511,7 +537,7 @@ const MARKET_SQUARE: Blueprint[] = [
   library(),
   police(),
   flats(Pastel.peach, C.White),
-  duplex(Pastel.lilac, Pastel.mint, 0xffc93c, 0x2f74d0, GreenTiles),
+  playground(),
   townHall(),
 ];
 

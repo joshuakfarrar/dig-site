@@ -112,6 +112,7 @@ function tick(dt: number, read: Input.Frame): void {
   const input = switching ? idle : read;
   mode.tick(dt, input);
   Hud.updateHold(dt, input.restart);
+  Audio.music();
 }
 
 let last = performance.now();

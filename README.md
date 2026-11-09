@@ -53,6 +53,17 @@ other paint sets (a terrace or duplex gets a colour for each home). Before a pit
 four roof colours do the same. Move left and right and press Work, or tap or click one. The
 panels on the trailer repaint with confetti, and the finished home stays in those colours in town.
 
+Two cars and a little yellow bus drive round the streets. They always stop and wait if the truck
+is in the way, and pass it when it's pulled in at the kerb. Once a street is finished, the light
+turns to a warm golden evening and the street lamps come on.
+
+Market Square has a playground too: a soft green surface, a rainbow fence with a way in, and a
+play set the crane lifts in all at once (a slide tower, swings, a roundabout, a sandpit). In town
+it fills up with children.
+
+A gentle tune plays underneath: a soft marimba over a warm pad, made in code like every other
+sound, that wanders a little differently every eight bars and dips when a fanfare plays.
+
 Each neighbourhood finishes its sites a little differently. On Home Street the bulldozer pushes
 the dirt heaps away. In Market Square the teal dump truck hauls them: stop by a heap and press
 Work to load it, then stop by the skip at the gate and it backs up and tips. On the Harbour, sand
