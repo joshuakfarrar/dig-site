@@ -225,27 +225,33 @@ export function mixerDrum(): Model {
 
 // ---------------------------------------------------------------- crane (red)
 
+/**
+ * The crane's carrier: four axles of big wheels (lots of wheels says "crane"), mudguards, a deck
+ * the top turns on, and a narrow cab on the front left with the boom's rest beside it on the right.
+ */
 export function craneCarrier(): Model {
   const P = C.Crane;
   const m = new Model();
-  m.box(-13, 2, -4, 26, 3, 8, P);
-  for (const x0 of [9, 5, -7, -11]) {
-    m.box(x0, 0, -5, 3, 4, 1, C.Rubber).box(x0, 0, 4, 3, 4, 1, C.Rubber);
-    m.box(x0, 0, -4, 3, 2, 8, C.Rubber);
-    m.set(x0 + 1, 1, -5, C.Gray).set(x0 + 1, 1, 4, C.Gray);
+  const axles = [8, 1, -6, -13];
+  for (const x of axles) for (const z of [-7, 5]) bigWheel(m, x, z);
+  m.box(-14, 2, -4, 28, 1, 8, C.Dark); // chassis
+  m.box(-14, 3, -5, 28, 2, 10, P); // deck
+  m.box(-13, 3, -5, 20, 1, 1, C.White).box(-13, 3, 4, 20, 1, 1, C.White); // a stripe down each side
+  for (const x of axles) for (const z of [-7, 5]) m.box(x - 1, 6, z, 8, 1, 2, P); // mudguards
+  // The driving cab, front left, with a flat roof.
+  m.box(8, 5, -5, 6, 7, 5, P);
+  m.box(13, 7, -4, 1, 4, 3, C.Glass).box(9, 8, -5, 3, 3, 1, C.Glass).box(9, 8, -1, 3, 3, 1, C.Glass);
+  cabRoof(m, 8, 12, -5, 6, 5, P);
+  m.box(14, 2, -5, 1, 3, 10, C.Steel).set(14, 4, -5, C.Light).set(14, 4, 4, C.Light); // bumper and lights
+  m.box(9, 4, -6, 3, 1, 1, C.Steel); // step
+  // The boom's rest, on the right beside the cab.
+  m.box(10, 5, 0, 2, 2, 4, C.Steel).box(10, 7, 0, 2, 1, 1, C.Steel).box(10, 7, 3, 2, 1, 1, C.Steel);
+  // Outriggers folded in at each end, hazard striped.
+  for (const x0 of [-16, 6]) {
+    if (x0 === 6) m.box(6, 5, 0, 2, 1, 5, C.Steel).box(6, 5, 0, 1, 1, 5, C.Hazard);
+    else m.box(x0, 3, -5, 2, 2, 10, C.Steel).box(x0, 4, -5, 2, 1, 10, C.Hazard);
   }
-  m.box(-12, 3, -4, 7, 1, 1, C.White).box(-12, 3, 3, 7, 1, 1, C.White);
-  // The driving cab, front left.
-  m.box(9, 5, -4, 4, 4, 4, P);
-  bevelTop(m, 9, 8, -4, 4, 4);
-  m.box(12, 6, -4, 1, 2, 3, C.Glass);
-  m.box(10, 6, -4, 2, 2, 1, C.Glass);
-  m.box(13, 2, -4, 1, 2, 8, C.Steel);
-  m.set(13, 3, -4, C.Light).set(13, 3, 3, C.Light);
-  // A boom rest on the right for the boom to lie on when driving.
-  m.box(8, 5, 0, 1, 2, 3, C.Steel);
-  // Outrigger boxes at the corners, hazard striped.
-  for (const x0 of [6, -13]) m.box(x0, 4, -4, 2, 1, 8, C.Steel).box(x0, 4, -4, 1, 1, 8, C.Hazard);
+  m.set(-16, 3, -5, C.Light).set(-16, 3, 4, C.Light);
   return m;
 }
 
@@ -253,18 +259,18 @@ export function craneCarrier(): Model {
 export function craneTop(): Model {
   const P = C.Crane;
   const m = new Model();
-  m.box(-3, 0, -3, 6, 1, 6, C.Dark);
-  m.box(-6, 1, -4, 9, 3, 8, P);
-  bevelTop(m, -6, 3, -4, 9, 8);
-  m.box(-7, 1, -4, 1, 3, 8, C.Steel); // counterweight
-  m.box(-6, 2, -4, 5, 1, 1, C.White).box(-6, 2, 3, 5, 1, 1, C.White);
-  // Operator's cab, on the left, looking along the boom.
-  m.box(-1, 4, -4, 4, 4, 3, P);
-  m.box(2, 5, -4, 1, 2, 3, C.Glass);
-  m.box(0, 5, -4, 2, 2, 1, C.Glass);
-  bevelTop(m, -1, 7, -4, 4, 3);
-  // Boom foot: steel lugs on the right.
-  m.box(-4, 4, -1, 3, 2, 4, C.Steel);
+  m.box(-4, 0, -4, 8, 1, 8, C.Dark); // turntable: a dark seam so the turning reads
+  m.box(-7, 1, -4, 10, 3, 8, P); // housing, low enough for the boom to lie over it
+  m.box(-7, 4, 0, 3, 1, 4, C.Gray).box(-6, 4, 1, 1, 1, 2, C.Dark); // engine grille on top
+  m.box(-7, 2, -4, 10, 1, 1, C.White).box(-7, 2, 3, 10, 1, 1, C.White);
+  // Counterweight at the back: big and steel, hazard striped on top.
+  m.box(-10, 1, -5, 3, 5, 10, C.Steel).box(-10, 5, -5, 3, 1, 10, C.Hazard).box(-10, 5, -3, 3, 1, 2, C.Dark).box(-10, 5, 1, 3, 1, 2, C.Dark);
+  // Operator's cab, on the left, looking along the boom, with a flat roof.
+  m.box(-1, 4, -5, 5, 4, 4, P);
+  m.box(3, 5, -4, 1, 3, 2, C.Glass).box(0, 5, -5, 3, 3, 1, C.Glass).box(0, 5, -2, 3, 2, 1, C.Glass);
+  cabRoof(m, -1, 8, -5, 5, 4, P);
+  // Boom foot: steel lugs either side of the boom's root.
+  m.box(-5, 4, -1, 3, 3, 1, C.Steel).box(-5, 4, 4, 3, 3, 1, C.Steel);
   return m;
 }
 

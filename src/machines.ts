@@ -456,8 +456,8 @@ export class Crane extends Machine {
   constructor(home: THREE.Vector2) {
     super(
       "crane",
-      { speed: 2.8, accel: 5, turn: 115 * deg, halfLen: 1.35, radius: 0.55, circles: [[-0.8, 0.55], [0, 0.55], [0.8, 0.55]], cab: new THREE.Vector3(1.1, 0.95, -0.2) },
-      new THREE.Vector3(0.05, 0.86, -0.25),
+      { speed: 2.8, accel: 5, turn: 115 * deg, halfLen: 1.45, radius: 0.65, circles: [[-0.85, 0.65], [0, 0.65], [0.85, 0.65]], cab: new THREE.Vector3(1.1, 1.0, -0.3) },
+      new THREE.Vector3(0.15, 0.96, -0.3),
       home,
     );
     this.tilt.add(M.craneCarrier().mesh(Cell));

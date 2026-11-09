@@ -216,6 +216,11 @@ Estimated at adult pace from distances, speeds and animation times, about 1 s of
 - **Cement mixer remodelled:** it now has the dump truck's big wheels, mudguards and cab (shared `bigWheel` and `truckCab` in `models.ts`).
   - It also has a bigger pear-shaped drum with two spiral bands, tool boxes, a hopper and ladder, and a separate angled chute (`mixerChute`).
   - It's now 1.4 wide (collision radius 0.7, the same as the dump truck), and the chute tip has moved to (-1.75, 0.68). Pouring has been checked by driving across the pit.
+- **Crane remodelled:** it has four axles of `bigWheel` with mudguards, a narrow cab with a flat roof front left, and the boom rest beside it.
+  - The top has a lower housing (so the boom lies over it), a bigger striped counterweight and a flat-roofed operator's cab. The beacon is on that cab.
+  - Collision is now radius 0.65 with halfLen 1.45. `top.position` and `BOOM_ROOT` are unchanged, so the lift geometry is the same.
+  - Checked by lifting all of the cottage (walls and roof) and the flats (walls, both storey modules and the garden roof). The crane fits its parking spot on all 24 lots.
+- **Dev helpers:** `game.build` now exposes `wallLoads`, `moduleLoads`, `roofLoad` and `wallsUp`, for driving the crane from the console.
 - **Town yard:**
   - Packed gravel with a concrete edge, white parking bays and tyre tracks.
   - The crew's cabin and a green tool container at the back, plus pipe stacks, brick pallets and cones.

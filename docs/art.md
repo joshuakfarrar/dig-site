@@ -54,10 +54,10 @@ the dev server: arrows step and zoom, Space spins, E swaps the game camera for a
   boom. It's in the machine's paint (or paint and white), with hazard yellow where the work happens.
 - **The beacon** sits on the cab roof, slightly off centre.
 
-Brought into line so far: the dump truck and the cement mixer, which share their wheels and cab.
-Still to do:
+Brought into line so far: the dump truck and cement mixer (they share their wheels and cab), and
+the crane (four axles of the same big wheels, mudguards, flat roofs on both cabs, a big
+counterweight). Still to do:
 
-- **Crane:** thin square wheels and a short bevelled cab. It needs big wheels, mudguards and a flat cab roof.
 - **Excavator and roller:** bevelled cab and canopy corners; switch them to the flat roof.
 - **Tractor:** a glass box for a cab; give it a proper cab with a roof.
 - Then check the small ones (crew truck, sweeper, forklift) against each other.

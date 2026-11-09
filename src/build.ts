@@ -1203,6 +1203,8 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
     },
     debug: {
       site, machines, excavator, mixer, roller, crane, dozer, dump, sweeper, fx, sand,
+      wallLoads, moduleLoads, roofLoad,
+      get wallsUp() { return wallsUp; },
       get stage() { return stage; },
       get active() { return active; },
       look(x?: number, y = 0, z = 0, ax = 0, ay = 0, az = 0) {
