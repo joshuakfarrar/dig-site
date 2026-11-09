@@ -210,13 +210,18 @@ const SHOTS: Shot[] = [
  * `tools/make_reel.py` adds the words, the tune and the card.
  */
 const BEAT = 15;
-const POPS = [0, 4, 1, 5, 2, 6, 3, 7]; // the far houses first, so the near ones land last
+// The near row first, from the far end (all four big and clear), then the far row filling in
+// behind, nearest first.
+const POPS = [4, 5, 6, 7, 3, 2, 1, 0];
 // A new building waits about 0.45 s before it pops up (for the fade from its site to clear); run
 // that much first, so the pop lands on the beat.
 const POP_LEAD = 0.43;
-// High over the east end, looking down the street: both rows of lots, every house big enough to see.
-const STREET_EYE: Vec = [15.5, 12.5, -0.6];
-const STREET_AT: Vec = [-3.5, 0, -1.2];
+// High over the east end of the second street (road B), looking west down it. Every house in
+// Home Street faces south: the near row faces this street, and the far row shows its fronts over
+// their gardens. (Down the first street instead, the near row shows its back gardens.) The park's
+// on the other side.
+const STREET_EYE: Vec = [16, 11.5, 13.5];
+const STREET_AT: Vec = [-4, 0, 3];
 let popped = -1;
 
 const REEL: Shot[] = [
