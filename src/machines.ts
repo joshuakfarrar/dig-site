@@ -758,15 +758,15 @@ export class DumpTruck extends Machine {
   constructor(home: THREE.Vector2) {
     super(
       "dump",
-      { speed: 3.0, accel: 6, turn: 130 * deg, halfLen: 1.2, radius: 0.6, circles: [[-0.6, 0.6], [0.5, 0.6]], cab: new THREE.Vector3(0.75, 1.1, 0) },
-      new THREE.Vector3(0.75, 1.27, 0),
+      { speed: 3.0, accel: 6, turn: 130 * deg, halfLen: 1.25, radius: 0.7, circles: [[-0.65, 0.7], [0.55, 0.7]], cab: new THREE.Vector3(0.85, 1.2, 0) },
+      new THREE.Vector3(1.12, 1.36, 0.36),
       home,
     );
     this.tilt.add(M.dumpTruckBody().mesh(Cell));
-    this.bed.position.set(-1.2, 0.42, 0);
+    this.bed.position.set(-1.3, 0.5, 0);
     this.bed.add(M.dumpBed().mesh(Cell, [0, 0, 0]));
     this.dirt = M.bedDirt().mesh(Cell, [0, 0, 0]);
-    this.dirt.position.set(0.8, 0.1, 0);
+    this.dirt.position.set(0.85, 0.1, 0);
     this.dirt.visible = false;
     this.bed.add(this.dirt);
     this.tilt.add(this.bed);

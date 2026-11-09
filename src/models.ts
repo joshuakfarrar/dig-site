@@ -1027,37 +1027,54 @@ export function whale(m: Model, cx: number, cz: number): Model {
 
 export const DumpPaint = 0x1fb5a8;
 
-/** The dump truck's chassis and cab: six big wheels, a cab up front. The bed tips on its own. */
+/**
+ * The dump truck's chassis and cab, chunky like a toy: big wheels (two at the front, four at the
+ * back), a dark chassis, mudguards, and a short cab up front with a big windscreen. The tipper bed
+ * is its own piece and tips on its own.
+ */
 export function dumpTruckBody(): Model {
   const P = DumpPaint;
   const m = new Model();
-  for (const x0 of [6, -6, -11]) {
-    for (const z0 of [-6, 5]) {
-      m.box(x0, 0, z0, 4, 4, 1, C.Rubber).clear(x0, 0, z0, 1, 1, 1).clear(x0 + 3, 0, z0, 1, 1, 1).clear(x0, 3, z0, 1, 1, 1).clear(x0 + 3, 3, z0, 1, 1, 1);
-      m.set(x0 + 1, 1, z0, C.Steel).set(x0 + 2, 2, z0, C.Steel);
-    }
+  const wheel = (x0: number, z0: number) => {
+    m.box(x0, 0, z0, 6, 6, 2, C.Rubber).clear(x0, 0, z0, 1, 1, 2).clear(x0 + 5, 0, z0, 1, 1, 2).clear(x0, 5, z0, 1, 1, 2).clear(x0 + 5, 5, z0, 1, 1, 2);
+    const hub = z0 < 0 ? z0 : z0 + 1;
+    m.box(x0 + 2, 2, hub, 2, 2, 1, C.Steel).set(x0 + 2, 3, hub, C.Gray);
+  };
+  for (const z of [-7, 5]) {
+    wheel(5, z); // front
+    wheel(-6, z); // back, twice
+    wheel(-12, z);
   }
-  m.box(-12, 2, -5, 23, 2, 10, C.Dark);
-  // The cab: tall, with a white roof and big windows.
-  m.box(4, 4, -5, 7, 7, 10, P);
-  cabRoof(m, 4, 11, -5, 7, 10, P);
-  m.box(6, 12, -2, 3, 1, 4, C.Hazard); // a light bar on top
-  m.box(10, 7, -4, 1, 3, 8, C.Glass);
-  m.box(5, 7, -5, 4, 3, 1, C.Glass).box(5, 7, 4, 4, 3, 1, C.Glass);
-  m.box(11, 3, -5, 1, 2, 10, C.Steel).set(11, 4, -5, C.Light).set(11, 4, 4, C.Light);
-  m.box(4, 5, -5, 7, 1, 1, C.White).box(4, 5, 4, 7, 1, 1, C.White);
+  m.box(-13, 3, -4, 25, 2, 8, C.Dark); // chassis
+  for (const z of [-7, 5]) {
+    // Mudguards over the wheels, in the truck's colour.
+    m.box(4, 6, z, 8, 1, 2, P).box(-13, 6, z, 14, 1, 2, P);
+  }
+  // The cab: short and tall, a big windscreen, side windows, a step.
+  m.box(5, 5, -5, 7, 7, 10, P);
+  m.box(11, 7, -4, 1, 4, 8, C.Glass).box(6, 8, -5, 4, 3, 1, C.Glass).box(6, 8, 4, 4, 3, 1, C.Glass);
+  cabRoof(m, 5, 12, -5, 7, 10, P);
+  m.box(12, 3, -5, 1, 3, 10, C.Steel).set(12, 5, -5, C.Light).set(12, 5, 4, C.Light); // bumper and lights
+  m.box(12, 6, -2, 1, 2, 4, C.Dark); // grille
+  m.box(7, 4, -6, 3, 1, 1, C.Steel).box(7, 4, 5, 3, 1, 1, C.Steel); // steps
   return m;
 }
 
-/** The tipping bed, hinged at its back bottom edge (pivot at the hinge: cell 0 along x). */
+/**
+ * The tipper bed, hinged at its back bottom edge (pivot at the hinge: cell 0 along x): steel with
+ * ribs down the sides in the truck's colour, a sloped back lip, and a guard that reaches out over
+ * the cab's roof.
+ */
 export function dumpBed(): Model {
-  const P = DumpPaint;
+  const P = DumpPaint, Steel = 0xa3abb5, Dark = 0x7d8590;
   const m = new Model();
-  m.box(0, 0, -5, 16, 1, 10, P); // floor
-  m.box(0, 1, -5, 16, 5, 1, P).box(0, 1, 4, 16, 5, 1, P); // sides
-  m.box(15, 1, -5, 1, 6, 10, P).box(15, 6, -5, 2, 1, 10, P); // front wall and the lip over the cab
-  m.box(0, 1, -5, 1, 4, 10, C.Hazard); // tailgate
-  m.box(1, 5, -5, 14, 1, 1, C.White).box(1, 5, 4, 14, 1, 1, C.White);
+  m.box(0, 0, -6, 17, 1, 12, Dark); // floor
+  m.box(0, 1, -6, 17, 6, 1, Steel).box(0, 1, 5, 17, 6, 1, Steel); // sides
+  m.box(16, 1, -6, 1, 9, 12, Steel); // front wall
+  m.box(16, 9, -6, 7, 1, 12, Steel).box(22, 8, -6, 1, 1, 12, Dark); // the guard over the cab
+  for (let x = 1; x < 16; x += 4) m.box(x, 1, -7, 1, 6, 1, P).box(x, 1, 6, 1, 6, 1, P); // ribs
+  m.box(0, 7, -7, 17, 1, 1, P).box(0, 7, 6, 17, 1, 1, P); // rims
+  m.box(0, 1, -6, 1, 3, 12, C.Hazard).box(0, 4, -6, 1, 1, 12, C.Dark); // the low back edge
   return m;
 }
 

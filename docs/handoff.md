@@ -172,6 +172,16 @@ The order is `dig, pour, clean, walls, roof, path, sweep, done`. The user wants 
   - Count scales with quality: high 100%, medium 60%, low 35%.
 - **Performance note for Phase 4:** a full Home Street view is about 490k triangles across 319 draw calls, about 580k of the scene's triangles cast shadows, and trees are around 12k triangles each. Greedy meshing in `Model.geometry` (merging flat runs of same-colour faces) would cut this a lot, so do it before testing on tablets.
 
+## Hop anywhere, new dump truck (2026-11-09)
+
+- **Hop goes to the machine the arrow wants** (`wanted` in the build tick), from any distance. The builder takes a longer, higher leap, and the Hop prompt shows over the machine you're in.
+  - Before, after parking the truck you had to drive it next to the excavator to hop, which left the parking ring, so the arrow sent you back.
+  - Next to some other machine, Hop still goes to that one.
+- **Dump truck model:** chunkier, with six big wheels, mudguards, a short cab, a steel tipper with teal ribs, and a guard over the cab. Collision is a little wider (radius 0.7).
+
+- **Camera:** near the building it holds back (the focus z stays at most 2.6), and further towards the gate it follows (`2.6 + (z - 4.2)`), so tipping at the skip is framed in the middle.
+- **Off the pad before hopping:** if the machine you're in is on the building's pad and the arrow wants another, `padExit()` puts a ring just off the nearest edge. Hop is disabled until you drive there. This doesn't apply during digging.
+
 ## Design decisions the user made
 - **Diversity includes ordinary families:** the user wants a mix that reads as real streets, mostly cis/het families with children, plus the other kinds of households, not an unusual mix everywhere.
 

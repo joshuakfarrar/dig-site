@@ -75,7 +75,7 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
   const workerMesh = M.worker().mesh(M.WorkerCell, [0.5, 0, 0.5]);
   workerMesh.visible = false;
   scene.add(workerMesh);
-  let hop: { from: Machine; to: Machine; t: number } | null = null;
+  let hop: { from: Machine; to: Machine; t: number; dur: number; lift: number } | null = null;
 
   // ------------------------------------------------------------------ the building's parts
 
@@ -911,6 +911,18 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
 
   let pathStarted = false;
 
+  /** The nearest spot just off the building's pad, on whichever side you're nearest. */
+  function padExit(p: THREE.Vector2): THREE.Vector3 {
+    const gap = 1.7;
+    const options = [
+      new THREE.Vector3(Math.max(F.minX, Math.min(F.maxX, p.x)), 0, F.maxZ + gap),
+      new THREE.Vector3(Math.max(F.minX, Math.min(F.maxX, p.x)), 0, F.minZ - gap),
+      new THREE.Vector3(F.minX - gap, 0, Math.max(F.minZ, Math.min(F.maxZ, p.y))),
+      new THREE.Vector3(F.maxX + gap, 0, Math.max(F.minZ, Math.min(F.maxZ, p.y))),
+    ];
+    return options.sort((a, b) => Math.hypot(a.x - p.x, a.z - p.y) - Math.hypot(b.x - p.x, b.z - p.y))[0];
+  }
+
   function tick(dt: number, read: Input.Frame): void {
     clock += dt;
     input = Hud.choosing() ? choosing(dt, read) : read;
@@ -957,11 +969,25 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
       }
     }
 
+    // The machine the arrow wants you in: Hop takes you straight there from wherever you are (a
+    // big leap across the site), so you never have to drive one machine over to another.
+    let wanted = job && !hop && job.machine !== active && !active.busy() && stage !== "done" ? job.machine : null;
+    // But not from on the building's pad: a machine left there is in the way. First, a ring just
+    // off the pad to drive to; then Hop.
+    const onPad = stage !== "dig" && active.circleCentres().some((c) => c.x > F.minX - 0.3 && c.x < F.maxX + 0.3 && c.y > F.minZ - 0.3 && c.y < F.maxZ + 0.3);
+    if (onPad && (wanted || near) && !hop) {
+      const exit = padExit(active.pos);
+      job = { machine: active, over: exit.clone().setY(0.5), spot: exit, ring: 1.0, canWork: false, work: () => {} };
+      wanted = null;
+      near = null;
+    }
+    const hopTo = wanted ?? near;
+
     const from = new THREE.Vector3(active.pos.x, active.y, active.pos.y);
     if (job && !hop) {
       if (job.machine !== active) {
-        // The job needs another machine: point at it, higher still if the hop button's showing there too.
-        const top = machineTop(job.machine).add(new THREE.Vector3(0, near === job.machine ? 0.75 : 0, 0));
+        // The job needs another machine: point at it, higher still where the hop button's showing too.
+        const top = machineTop(job.machine).add(new THREE.Vector3(0, hopTo === job.machine ? 0.75 : 0, 0));
         marker.update(dt, top, null, 1, from);
         workPrompt.show(null, null, dt);
       } else {
@@ -973,19 +999,24 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
     if (!job) workPrompt.show(null, null, dt);
 
     // Work glows when it'd do something (and once the celebration's had its moment, to head back).
-    hooks.hints((!!job && !hop && job.machine === active && job.canWork) || celebrate > 2, near !== null);
-    hopPrompt.show(near ? hopGlyph(controls) : null, near ? machineTop(near).add(new THREE.Vector3(0, 0.7, 0)) : null, dt);
-    if (near && input.hopPressed && !hop) {
-      hop = { from: active, to: near, t: 0 };
+    hooks.hints((!!job && !hop && job.machine === active && job.canWork) || celebrate > 2, hopTo !== null);
+    // The hop button's picture: over the machine you're in when the arrow wants you elsewhere (that's
+    // where you're looking, and the other one may be off the screen), else over the one beside you.
+    const hopAt = wanted ? machineTop(active).add(new THREE.Vector3(0, 0.75, 0)) : hopTo ? machineTop(hopTo).add(new THREE.Vector3(0, 0.7, 0)) : null;
+    hopPrompt.show(hopTo ? hopGlyph(controls) : null, hopAt, dt);
+    if (hopTo && input.hopPressed && !hop) {
+      const dist = active.pos.distanceTo(hopTo.pos);
+      hop = { from: active, to: hopTo, t: 0, dur: Math.max(0.6, dist / 7), lift: 1.2 + dist * 0.12 };
+      active.speed = 0;
       active.driven = false;
       workerMesh.visible = true;
       Audio.hop();
     }
     if (hop) {
-      hop.t += dt / 0.6;
+      hop.t += dt / hop.dur;
       const a = hop.from.cabWorld(), b = hop.to.cabWorld();
       const k = Math.min(1, hop.t);
-      workerMesh.position.lerpVectors(a, b, k).setY(a.y + (b.y - a.y) * k + Math.sin(Math.PI * k) * 1.2 - 0.35);
+      workerMesh.position.lerpVectors(a, b, k).setY(a.y + (b.y - a.y) * k + Math.sin(Math.PI * k) * hop.lift - 0.35);
       workerMesh.rotation.y = Math.atan2(-(b.z - a.z), b.x - a.x);
       if (k >= 1) {
         active = hop.to;
@@ -1026,8 +1057,9 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
     const want = hop ? workerMesh.position.clone().setY(0) : new THREE.Vector3(active.pos.x, 0, active.pos.y);
     // Not so far out that the view's half grass: the site fills it.
     want.x = Math.max(-6.5, Math.min(6.5, want.x));
-    // Not so far south that the building's up under the progress strip: the machines park low on screen instead.
-    want.z = Math.max(-5, Math.min(2.6, want.z));
+    // Near the building, hold back a little so the building isn't up under the progress strip; out
+    // by the gate and the skip, follow on down so the machine you're in stays well on screen.
+    want.z = Math.max(-5, Math.min(want.z, 2.6 + Math.max(0, want.z - 4.2)));
     if (celebrate >= 0) want.lerp(new THREE.Vector3(F.cx, 0, F.cz), Math.min(1, celebrate));
     focus.lerp(want, 1 - Math.exp(-4 * dt));
     frameCamera(focus, celebrate >= 0 ? Math.min(1, celebrate / 1.5) : 0);
