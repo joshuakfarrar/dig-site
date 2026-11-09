@@ -847,7 +847,7 @@ export function createTown(
     l.group.add(house);
 
     // The fence along the front, with a gap for the path, and a mailbox by the gate. (A playground
-    // has its own rainbow fence and no post: it's open to the street, with a tree either side.)
+    // has its own rainbow fence and no post: it's open to the street.)
     const play = bp.kind === "playground";
     if (!play) {
       const pick = M.picket();
@@ -861,13 +861,7 @@ export function createTown(
       mb.position.set(l.x + 1.2, 0, l.fence - 0.35);
       mb.rotation.y = -Math.PI / 2;
       l.group.add(mb);
-    } else
-      for (const [dx, k] of [[-3.1, 0], [3.1, 1]] as const) {
-        const t = M.tree(k).mesh(Cell);
-        t.scale.setScalar(0.8);
-        t.position.set(l.x + dx, 0, l.front - bp.d / 2);
-        l.group.add(t);
-      }
+    }
     // Flowers along the front wall, leaving room for the path and every door's ramp, and a bush at each corner.
     const hw = bp.w / 2;
     const gaps = [[-0.85, 0.85], ...B.frontDoors(bp).map((x) => [x - 0.5, x + 0.5])].sort((p, q) => p[0] - q[0]);
@@ -1010,10 +1004,10 @@ export function createTown(
     const at = (q: readonly number[]) => new THREE.Vector2(l.x + q[0], l.front - l.bp.d / 2 + q[1]);
     const pickOf = <T,>(xs: readonly T[]): T => xs[Math.floor(Math.random() * xs.length)];
     p.route = [];
-    if (!p.inPlay) {
-      p.route.push(at(PLAY.outside), at(PLAY.inside));
-      p.inPlay = true;
-    }
+    const fresh = !p.inPlay;
+    const walkIn = fresh && arrivedLot === l;
+    if (walkIn) p.route.push(at(PLAY.outside), at(PLAY.inside));
+    p.inPlay = true;
     // One to a swing, one to each end of the bench.
     const taken = (kind: Play["kind"], k: number) =>
       l.people.some((o) => o !== p && ((o.act?.kind === kind && o.act.at === k) || (pending.get(o)?.kind === kind && pending.get(o)?.at === k)));
@@ -1022,23 +1016,23 @@ export function createTown(
     if (p.kind === "child") {
       let what = pickOf(["swing", "swing", "slide", "slide", "spin", "sand"] as const);
       if (what === "swing" && !free("swing").length) what = "slide";
-      if (what === "slide" && taken("slide", 0)) what = "sand";
+      if (what === "slide" && l.people.some((o) => o !== p && (o.act?.kind === "slide" || pending.get(o)?.kind === "slide"))) what = "sand";
       if (what === "swing") {
         const k = pickOf(free("swing"));
         const s = PLAY.swings[k];
         p.route.push(at(PLAY.left), at([s[0] + 0.6, s[1]]), at(s));
-        act = { kind: "swing", t: 0, dur: 5 + Math.random() * 4, at: k };
+        act = { kind: "swing", t: 0, dur: 9 + Math.random() * 6, at: k };
       } else if (what === "slide") {
         p.route.push(at(PLAY.left), at(PLAY.ladder[0]), at(PLAY.ladder[1]));
-        act = { kind: "slide", t: 0, dur: 2.6, at: 0 };
+        act = { kind: "slide", t: 0, dur: 2.6, at: 1 + Math.floor(Math.random() * 2) }; // goes again once or twice
       } else if (what === "spin") {
         // A second rider gets on across from the first.
         const a0 = l.people.some((o) => o !== p && (o.act?.kind === "spin" || pending.get(o)?.kind === "spin")) ? 0 : Math.PI;
         p.route.push(at(PLAY.right[0]), at(PLAY.right[1]), at([PLAY.spin[0] + Math.cos(a0) * 0.32, PLAY.spin[1]]));
-        act = { kind: "spin", t: 0, dur: 4 + Math.random() * 3, at: a0 };
+        act = { kind: "spin", t: 0, dur: 7 + Math.random() * 4, at: a0 };
       } else {
         p.route.push(at(PLAY.left), at(PLAY.sand));
-        act = { kind: "sand", t: 0, dur: 5 + Math.random() * 4, at: 0 };
+        act = { kind: "sand", t: 0, dur: 9 + Math.random() * 6, at: 0 };
       }
     } else if ((p.kind === "adult" || p.kind === "elder") && free("bench").length && Math.random() < (p.kind === "elder" ? 0.7 : 0.4)) {
       const k = pickOf(free("bench"));
@@ -1052,8 +1046,24 @@ export function createTown(
       p.route.push(at(w));
     }
     p.act = null;
+    pending.delete(p);
+    if (fresh && !walkIn) {
+      // Arriving at a street that's already built: they're already at it, not walking in.
+      p.pos.copy(p.route[p.route.length - 1]);
+      p.route = [];
+      p.act = act;
+      if (act) act.t = Math.random() * Math.min(act.dur * 0.5, act.kind === "slide" ? 0 : 99);
+      return;
+    }
     if (act) pending.set(p, act);
-    else pending.delete(p);
+  }
+
+  /** Down the slide again: round the tower and back up the ladder. */
+  function slideAgain(p: Person, left: number): void {
+    const l = p.lot;
+    const at = (q: readonly number[]) => new THREE.Vector2(l.x + q[0], l.front - l.bp.d / 2 + q[1]);
+    p.route = [at(PLAY.left), at(PLAY.ladder[0]), at(PLAY.ladder[1])];
+    pending.set(p, { kind: "slide", t: 0, dur: 2.6, at: left });
   }
 
   /** One step of a playground activity: moves them, turns them, and says how high they are. */
@@ -1134,13 +1144,17 @@ export function createTown(
         p.phase += dt;
         p.waveCooldown -= dt;
         const toTruck = Math.hypot(truck.x - p.pos.x, truck.y - p.pos.y);
+        // A built playground you've driven to: everyone's already at it, from the first moment.
+        if (!p.inPlay && l.bp.kind === "playground" && arrivedLot !== l) nextRoute(p);
         if (p.act) {
           // Playing: the activity moves them; then a little rest, and something else.
           const py = playStep(p, p.act, dt);
           if (p.act.t >= p.act.dur) {
+            const again = p.act.kind === "slide" && p.act.at > 0 ? p.act.at - 1 : -1;
             p.act = null;
             p.mesh.rotation.z = 0;
-            p.wait = 0.4 + Math.random() * 1.2;
+            if (again >= 0) slideAgain(p, again);
+            else p.wait = 0.2 + Math.random() * 0.5;
           }
           p.mesh.position.set(p.pos.x, py, p.pos.y);
           continue;

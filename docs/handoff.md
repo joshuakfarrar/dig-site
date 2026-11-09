@@ -232,9 +232,10 @@ Estimated at adult pace from distances, speeds and animation times, about 1 s of
   - The marking-out strings come up with a dust puff at the first bite; the excavator's body used to swing through them, flashing white.
   - The finished-town ring and arrow are now under the arch, where driving in takes you on. Before, the ring was in front of the arch, so stopping in it did nothing, and the arrow pointed at the landmark on top.
 - **Playground in use** (`PLAY`, `playRoute` and `playStep` in `town.ts`):
-  - Its families walk in through the gate. Children swing, climb up and go down the slide, ride the roundabout or dig in the sandpit; grown-ups sit on the bench or stand watching.
+  - When you drive to a playground that's already built, everyone is already playing. When it's just been built, they run in through the gate.
+  - Children swing, go down the slide two or three times in a row, ride the roundabout or dig in the sandpit; grown-ups sit on the bench or stand watching. Children are on the equipment about 70% of the time.
   - One child per swing, one on the slide at a time, and one grown-up at each end of the bench.
-  - It has no picket fence, mailbox, hedges or garden things (its rainbow fence is the fence), but there's a tree either side.
+  - It has no picket fence, mailbox, hedges, trees or garden things (its rainbow fence is the fence). Trees either side looked crowded next to the neighbours' garden trees.
 - **One hedge between neighbouring gardens**, on the boundary, planted by whichever lot is built first. Before, each lot planted its own, so there were two rows.
 - **No garden sheds:** squeezed in beside a house they read as an odd box. `M.shed` has been removed.
 - **Dev helpers:** `game.build` now exposes `wallLoads`, `moduleLoads`, `roofLoad` and `wallsUp`, for driving the crane from the console.
