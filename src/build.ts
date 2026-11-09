@@ -441,7 +441,8 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
 
   // Step-free ramps up to the front doors: they go in with the path.
   const rampGroup = B.ramps(bp);
-  rampGroup.add(...B.frontWalk(bp).children);
+  const walkParts = B.frontWalk(bp).children.slice();
+  if (walkParts.length) rampGroup.add(...walkParts);
   rampGroup.position.set(F.cx, 0, F.cz);
   rampGroup.visible = false;
   scene.add(rampGroup);

@@ -102,8 +102,18 @@ export function updateHold(dt: number, keyHeld: boolean): void {
   }
 }
 
+/** Bounces the corner button for a moment (Android's back button: here's the way out). */
+export function flash(): void {
+  hold.classList.add("nudge");
+  setTimeout(() => {
+    if (!nudged) hold.classList.remove("nudge");
+  }, 1600);
+}
+let nudged = false;
+
 /** Pulses the corner button (the town's all built: here's how to start another). */
 export function nudge(on: boolean): void {
+  nudged = on;
   hold.classList.toggle("nudge", on);
 }
 

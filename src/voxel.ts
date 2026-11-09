@@ -65,13 +65,65 @@ export class Model {
     return this.cells.size;
   }
 
+  /**
+   * The model's outside faces, with neighbouring faces of the same colour that face the same way
+   * merged into bigger rectangles ("greedy meshing"). It looks exactly the same as one square per
+   * cell face, but a tree or a house comes out as a small fraction of the triangles, which a cheap
+   * tablet needs.
+   */
   geometry(unit: number, pivot: [number, number, number] = [0, 0, 0]): THREE.BufferGeometry {
     const f = new Faces();
+    if (this.cells.size === 0) return f.geometry();
+    const pts: [number, number, number, number][] = [];
+    const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
     for (const [k, color] of this.cells) {
-      const [x, y, z] = k.split(",").map(Number);
-      for (const d of DIRS) {
-        if (!this.cells.has(Model.key(x + d.n[0], y + d.n[1], z + d.n[2])))
-          f.quad(d, x, y, z, 1, 1, 1, color, unit, pivot);
+      const p = k.split(",").map(Number) as [number, number, number];
+      pts.push([p[0], p[1], p[2], color]);
+      for (let i = 0; i < 3; i++) {
+        lo[i] = Math.min(lo[i], p[i]);
+        hi[i] = Math.max(hi[i], p[i]);
+      }
+    }
+    for (const d of DIRS) {
+      const a = d.n[0] !== 0 ? 0 : d.n[1] !== 0 ? 1 : 2; // the axis this face looks along
+      const u = a === 0 ? 1 : 0, v = a === 2 ? 1 : 2; // the two it spreads over
+      const nu = hi[u] - lo[u] + 1, nv = hi[v] - lo[v] + 1;
+      // The exposed faces, slice by slice along the facing axis.
+      const slices = new Map<number, Map<number, number>>();
+      for (const [x, y, z, color] of pts) {
+        if (this.cells.has(Model.key(x + d.n[0], y + d.n[1], z + d.n[2]))) continue;
+        const p = [x, y, z];
+        let sl = slices.get(p[a]);
+        if (!sl) slices.set(p[a], (sl = new Map()));
+        sl.set((p[u] - lo[u]) + (p[v] - lo[v]) * nu, color);
+      }
+      for (const [s, sl] of slices) {
+        const done = new Set<number>();
+        for (let j = 0; j < nv; j++)
+          for (let i = 0; i < nu; i++) {
+            const at = i + j * nu;
+            const color = sl.get(at);
+            if (color === undefined || done.has(at)) continue;
+            // As wide as the same colour runs, then as tall as whole rows of it run.
+            let w = 1;
+            while (i + w < nu && sl.get(at + w) === color && !done.has(at + w)) w++;
+            let h = 1;
+            grow: while (j + h < nv) {
+              for (let k = 0; k < w; k++) {
+                const b = at + k + h * nu;
+                if (sl.get(b) !== color || done.has(b)) break grow;
+              }
+              h++;
+            }
+            for (let jj = 0; jj < h; jj++) for (let ii = 0; ii < w; ii++) done.add(at + ii + jj * nu);
+            const o = [0, 0, 0], size = [1, 1, 1];
+            o[a] = s;
+            o[u] = lo[u] + i;
+            o[v] = lo[v] + j;
+            size[u] = w;
+            size[v] = h;
+            f.quad(d, o[0], o[1], o[2], size[0], size[1], size[2], color, unit, pivot);
+          }
       }
     }
     return f.geometry();

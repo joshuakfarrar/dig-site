@@ -89,12 +89,12 @@ Roughly 3 to 5 times today's content.
 
 ## Phase 4: App packaging (1–2 weeks)
 
-- [ ] **Fewer triangles first:** add greedy meshing to the voxel builder, since a full street is about 490k triangles today (trees are about 12k each).
-- [ ] **Wrap with Capacitor** for Android and iOS. The game ships inside the app and runs fully offline, with no web server.
+- [x] **Fewer triangles first:** greedy meshing in the voxel builder took a full street from about 490k to about 80k triangles.
+- [x] **Wrap with Capacitor** for Android (`android/`, see `docs/android.md`). Offline, with no permissions at all. [ ] iOS.
 - [ ] **App basics:**
-  - an icon and splash screen
-  - keeping the screen awake while playing
-  - Android's back button sends you home, behind the hold-to-confirm
+  - [ ] an icon and splash screen
+  - [x] keeping the screen awake while playing, full screen, landscape
+  - [x] Android's back button never leaves play; it bounces the hold-to-confirm button
   - iOS audio-session handling, so a silent switch or a call is respected
 - [ ] **iOS builds without a Mac:** a cloud macOS build (Codemagic or GitHub Actions) producing signed builds for TestFlight.
 - [ ] **Test on low-end hardware:** a cheap Android tablet, a Fire tablet and an older iPad.

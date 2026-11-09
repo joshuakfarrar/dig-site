@@ -8,6 +8,7 @@ import * as Quality from "./quality";
 import { createBuild, STAGES, type BuildMode, type Stage } from "./build";
 import { createTown, type TownMode } from "./town";
 import { fitCamera, setViewZoom, type Mode } from "./stage";
+import { App } from "@capacitor/app";
 
 /**
  * The game: the town, and a building site for whichever lot you picked. One renderer and one
@@ -151,6 +152,14 @@ soundButton.addEventListener("click", () => {
   soundButton.dataset.level = String(Audio.nextVolume());
 });
 addEventListener("pointerdown", () => Audio.unlock());
+
+// Android's back button. On the title it closes the game as usual; in play it never throws a
+// child's work away by accident: it just makes the hold-to-confirm corner button bounce, so a
+// grown-up can see how to leave. (In a browser this never fires.)
+void App.addListener("backButton", () => {
+  if (Hud.titleUp()) void App.exitApp();
+  else Hud.flash();
+});
 
 // Dev aids: `?hood=1` starts in that neighbourhood, `?lot=3` goes straight to that lot's site,
 // `&stage=walls` further on into it.
