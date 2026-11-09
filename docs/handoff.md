@@ -133,6 +133,17 @@ Phase 3 is complete apart from the "about an hour of play" check, which needs a 
   - Seeded per neighbourhood and lot.
 - **Volume:** the sound button steps loud, medium, quiet, off; it's saved on the device and works on the title.
 
+## Playtest fixes, round two (2026-11-09)
+
+- **Cab roofs:** `cabRoof()` in `models.ts` draws a flat roof, with a rim in the paint round a white panel, on the cars, truck, dozer, dump truck and sweeper. The rounded white tops looked like eggs.
+- **Dump truck on every site:**
+  - The excavator loads it if its bed is about 2.6 from the excavator (within 0.8). It uses a raised dump pose (`dig(..., high)`), and each scoop adds half a heap.
+  - `tipJob()` is offered whenever you drive the truck with a load, in any stage.
+  - At the end, `finishJob` lets either the dozer or the truck clear heaps; `Blueprint.finish` only picks which one the arrow suggests.
+  - The skip is always there. Homes: dozer (8.3, 5.8), dump (10.6, 5.8), sweeper (-7.7, 3.6).
+- **Gardens** (`gardens()` in `town.ts`): hedges down the sides and along the back, plus two seeded items (tree, shed, washing line, veg patch, trampoline). They go in the back garden if it's deep enough, otherwise down the sides.
+- **Countryside** (`buildCountryside`): a farm behind the first street (barn, three fields, tractor), patches of lighter and darker grass, and wildflower clusters. Trees are kept out of the farm.
+
 ## Design decisions the user made
 - **Diversity includes ordinary families:** the user wants a mix that reads as real streets, mostly cis/het families with children, plus the other kinds of households, not an unusual mix everywhere.
 

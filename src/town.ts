@@ -103,6 +103,50 @@ function updateGate(g: Gate, dt: number, clock: number): void {
 }
 
 /**
+ * The edge of town, so the grass isn't one flat green: a little farm behind the first street (a
+ * red barn, fields in rows, a tractor), wildflowers dotted through the grass, and gentle patches
+ * of lighter and darker green.
+ */
+function buildCountryside(scene: THREE.Scene): void {
+  const barn = M.barn().mesh(Cell, [0, 0, 0]);
+  barn.position.set(18.5, 0, -20.5);
+  scene.add(barn);
+  for (const [x, z, crop] of [[6.5, -26, 0x7ec850], [6.5, -20.6, 0xd9c24a], [11.6, -26, 0x5fb35a]] as const) {
+    const f = M.field(46, 42, crop).mesh(Cell, [0, 0, 0]);
+    f.position.set(x, 0.002, z);
+    f.receiveShadow = true;
+    scene.add(f);
+  }
+  const t = M.tractor().mesh(Cell, [0, 0, 0]);
+  t.position.set(13.5, 0, -16.5);
+  t.rotation.y = Math.PI * 0.9;
+  scene.add(t);
+
+  const f = new Faces();
+  const top = (n: [number, number, number]) => n[1] === 1;
+  let seed = 23;
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  // Patches of lighter and darker grass.
+  for (let k = 0; k < 160; k++) {
+    const x = -45 + rnd() * 90, z = -40 + rnd() * 80;
+    const w = 0.8 + rnd() * 2.2, d = 0.6 + rnd() * 1.8;
+    f.box(x, 0, z, w, 0.002, d, rnd() < 0.5 ? 0x8ad25c : 0x74bd4a, top);
+  }
+  // Wildflowers, in little clusters, out where nobody's built.
+  const cols = [0xffffff, 0xffd34d, 0xff8fb8, 0xc77dff, 0xff7a5a];
+  for (let k = 0; k < 90; k++) {
+    let x = -40 + rnd() * 80, z = -32 + rnd() * 18;
+    if (x > 4 && x < 25 && z > -28) x -= 30; // not in the farm's fields
+    const c = cols[Math.floor(rnd() * cols.length)];
+    for (let j = 0; j < 5; j++) f.box(x + rnd() * 0.8, 0, z + rnd() * 0.8, 0.1, 0.07, 0.1, c, (n) => n[1] !== -1);
+  }
+  const mesh = new THREE.Mesh(f.geometry(), voxelMaterial);
+  mesh.position.y = -0.008;
+  mesh.receiveShadow = true;
+  scene.add(mesh);
+}
+
+/**
  * The Harbour's seafront, where Home Street has its park: a promenade with a railing, a sandy beach
  * with umbrellas and beach huts, the sea out to the horizon, a wooden pier with a rowing boat, and
  * sailing boats bobbing out on the water.
@@ -506,6 +550,7 @@ export function createTown(
       // Not on the streets running out east to the gates, or round the gates themselves.
       if (x > SIDE_X && x < GATE_X + 3.5 && (Math.abs(z - ROAD_A) < 3 || Math.abs(z - ROAD_B) < 3)) return;
       if (H.theme === "harbour" && z > ROAD_B + 2.5) return; // that's the beach and the sea
+      if (x > 4 && x < 25 && z < -14 && z > -28) return; // the farm
       const t = trees[Math.floor(rnd() * 2)].mesh(Cell);
       t.position.set(x, 0, z);
       t.rotation.y = rnd() * Math.PI;
@@ -513,6 +558,7 @@ export function createTown(
       scene.add(t);
     };
     for (let k = 0; k < 40; k++) plant(-30 + rnd() * 60, -16 - rnd() * 12); // behind the first street
+    buildCountryside(scene);
     for (let k = 0; k < 16; k++) plant(22 + rnd() * 10, -14 + rnd() * 34); // east
     for (let k = 0; k < 10; k++) plant(-30 - rnd() * 6, -14 + rnd() * 34); // west, beyond the yard
     for (let k = 0; k < 14; k++) plant(-30 + rnd() * 60, 24 + rnd() * 8); // beyond the park
@@ -743,6 +789,7 @@ export function createTown(
       b.position.set(l.x + dx, 0, l.fence - 0.6);
       l.group.add(b);
     }
+    gardens(l, bp);
 
     // Who lives here.
     residents(hood, l.i, bp.homes, bp.kind === "playground").forEach(({ kind, model }, k) => {
@@ -753,6 +800,56 @@ export function createTown(
       l.people.push({ mesh, pos, route: [], wait: 0.5 + k * 1.1, speed: SPEED[kind], phase: k * 2, wave: 0, waveCooldown: 0, lot: l, inside: true, kind });
     });
     return house;
+  }
+
+  /**
+   * The rest of a garden: a hedge down each side and along the back, and a couple of the things
+   * families keep in their gardens (a tree, a shed, a washing line, a vegetable patch, a trampoline),
+   * out the back if there's room, otherwise down the sides.
+   */
+  function gardens(l: Lot, bp: B.Blueprint): void {
+    const r = rng(hood * 31 + l.i * 17 + 5);
+    const seg = M.hedge(10);
+    const back = l.zone.minZ + 0.15;
+    for (const side of [-1, 1])
+      for (let z = back + 1; z <= l.fence - 0.25; z += 1) {
+        const h = seg.mesh(Cell, [0, 0, 1]);
+        h.rotation.y = Math.PI / 2;
+        h.position.set(l.x + side * 3.72, 0, z);
+        l.group.add(h);
+      }
+    for (let x = l.x - 3.7; x < l.x + 3.69; x += 1) {
+      const h = seg.mesh(Cell, [0, 0, 0]);
+      h.position.set(x, 0, back);
+      l.group.add(h);
+    }
+    const kinds = ["tree", "shed", "line", "veg", "tramp", "tree"];
+    const pickKind = () => kinds[Math.floor(r() * kinds.length)];
+    const houseBack = l.front - bp.d;
+    const depth = houseBack - back;
+    const sideW = 3.6 - bp.w / 2 - 0.2;
+    const spots: [number, number, boolean][] = [];
+    if (depth > 1.3) spots.push([l.x - 1.8, (back + houseBack) / 2, false], [l.x + 1.8, (back + houseBack) / 2, false]);
+    else if (sideW > 0.9) {
+      const dx = bp.w / 2 + 0.2 + sideW / 2;
+      spots.push([l.x - dx, l.front - bp.d / 2, true], [l.x + dx, l.front - bp.d / 2, true]);
+    }
+    const shedPaints = [0x9ad9b5, 0x8fc8f0, 0xf6dc7a, 0xb9a6e6];
+    for (const [x, z, side] of spots) {
+      const kind = pickKind();
+      let mesh: THREE.Mesh;
+      if (kind === "tree") {
+        mesh = M.tree(Math.floor(r() * 2)).mesh(Cell);
+        mesh.scale.setScalar(0.75);
+      } else if (kind === "shed") mesh = M.shed(shedPaints[Math.floor(r() * shedPaints.length)]).mesh(Cell, [0, 0, 0]);
+      else if (kind === "line") {
+        mesh = M.washingLine(l.i).mesh(Cell, [12, 0, 0]);
+        if (side) mesh.rotation.y = Math.PI / 2;
+      } else if (kind === "veg") mesh = M.vegPatch(14, 10).mesh(Cell, [7, 0, 5]);
+      else mesh = M.trampoline().mesh(Cell, [0, 0, 0]);
+      mesh.position.set(x, 0, z);
+      l.group.add(mesh);
+    }
   }
 
   for (const l of lots) {

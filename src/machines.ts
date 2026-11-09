@@ -305,7 +305,7 @@ export class Excavator extends Machine {
    * One scoop: reach into the quadrant, curl the bucket full, lift, swing round over the mound,
    * tip it out, and swing back. `next` is asked at the end whether to go again (the button's held).
    */
-  dig(q: number, at: THREE.Vector2, mound: THREE.Vector2, ev: DigEvents, next: () => boolean): void {
+  dig(q: number, at: THREE.Vector2, mound: THREE.Vector2, ev: DigEvents, next: () => boolean, high = false): void {
     if (this.seq) return;
     const toPit = this.yawTo(at.x, at.y);
     const toMound = this.yawTo(mound.x, mound.y);
@@ -315,8 +315,9 @@ export class Excavator extends Machine {
       { dur: 0.32, to: (p) => ({ ...p, boom: -8 * deg, stick: -62 * deg, bucket: 10 * deg }), done: () => ev.bite(q) },
       { dur: 0.25, to: (p) => ({ ...p, boom: 0 * deg, stick: -100 * deg, bucket: -75 * deg, dirt: true }) },
       { dur: 0.28, to: (p) => ({ ...p, boom: 40 * deg, stick: -95 * deg, bucket: -80 * deg }) },
-      { dur: 0.45, to: (p) => ({ ...p, yaw: toMound, boom: 30 * deg, stick: -70 * deg }) },
-      { dur: 0.22, to: (p) => ({ ...p, bucket: 50 * deg, stick: -50 * deg }), done: () => ev.dump(q) },
+      // Over the heap, or held up high over a dump truck's bed.
+      { dur: 0.45, to: (p) => ({ ...p, yaw: toMound, boom: (high ? 60 : 30) * deg, stick: (high ? -95 : -70) * deg }) },
+      { dur: 0.22, to: (p) => ({ ...p, bucket: 50 * deg, stick: (high ? -78 : -50) * deg }), done: () => ev.dump(q) },
       { dur: 0.1, to: (p) => ({ ...p, dirt: false }) },
       { dur: 0.42, to: (p) => ({ ...p, yaw: toPit, ...Excavator.REST }) },
     ];

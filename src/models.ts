@@ -37,6 +37,16 @@ function bevelTop(m: Model, x0: number, y: number, z0: number, w: number, d: num
   return m;
 }
 
+/**
+ * A flat cab roof seen from above: a rim in the machine's paint round a white panel, square
+ * cornered, so it reads as a roof and not a white blob (rounded white tops looked like eggs).
+ */
+function cabRoof(m: Model, x0: number, y: number, z0: number, w: number, d: number, paint: number, inner: number = C.White): Model {
+  m.box(x0, y, z0, w, 1, d, paint);
+  if (w > 2 && d > 2) m.box(x0 + 1, y, z0 + 1, w - 2, 1, d - 2, inner);
+  return m;
+}
+
 // ---------------------------------------------------------------- excavator (yellow)
 
 /** Tracks and frame: about 1.8 long and 1.4 wide, 0.3 high. The house sits on top and turns. */
@@ -638,8 +648,7 @@ export function dozer(): Model {
   m.box(-6, 6, -4, 6, 6, 8, P);
   m.box(-1, 8, -3, 1, 3, 6, C.Glass);
   m.box(-5, 8, -4, 3, 3, 1, C.Glass).box(-5, 8, 3, 3, 3, 1, C.Glass);
-  m.box(-6, 12, -4, 6, 1, 8, C.White);
-  bevelTop(m, -6, 12, -4, 6, 8);
+  cabRoof(m, -6, 12, -4, 6, 8, P);
   m.box(-10, 1, -1, 3, 4, 2, C.Steel); // ripper
   // Push arms out to the blade.
   m.box(6, 2, -6, 4, 2, 1, P).box(6, 2, 5, 4, 2, 1, P);
@@ -685,8 +694,7 @@ export function truck(): Model {
   m.box(-10, 4, -4, 21, 1, 1, C.White).box(-10, 4, 3, 21, 1, 1, C.White);
   // Cab.
   m.box(-1, 5, -4, 7, 4, 8, P);
-  m.box(-1, 9, -4, 6, 1, 8, C.White);
-  bevelTop(m, -1, 9, -4, 6, 8);
+  cabRoof(m, -1, 9, -4, 6, 8, P);
   m.box(5, 6, -3, 1, 2, 6, C.Glass);
   m.box(0, 6, -4, 4, 2, 1, C.Glass).box(0, 6, 3, 4, 2, 1, C.Glass);
   m.box(11, 2, -4, 1, 2, 8, C.Steel);
@@ -1031,8 +1039,8 @@ export function dumpTruckBody(): Model {
   m.box(-12, 2, -5, 23, 2, 10, C.Dark);
   // The cab: tall, with a white roof and big windows.
   m.box(4, 4, -5, 7, 7, 10, P);
-  m.box(4, 11, -5, 7, 1, 10, C.White);
-  bevelTop(m, 4, 11, -5, 7, 10);
+  cabRoof(m, 4, 11, -5, 7, 10, P);
+  m.box(6, 12, -2, 3, 1, 4, C.Hazard); // a light bar on top
   m.box(10, 7, -4, 1, 3, 8, C.Glass);
   m.box(5, 7, -5, 4, 3, 1, C.Glass).box(5, 7, 4, 4, 3, 1, C.Glass);
   m.box(11, 3, -5, 1, 2, 10, C.Steel).set(11, 4, -5, C.Light).set(11, 4, 4, C.Light);
@@ -1087,12 +1095,11 @@ export function sweeperBody(): Model {
   m.box(-8, 3, -4, 15, 1, 1, C.White).box(-8, 3, 3, 15, 1, 1, C.White);
   // The water tank behind the cab, white with a blue band.
   m.box(-8, 4, -4, 7, 5, 8, C.White).box(-8, 6, -4, 7, 1, 8, 0x4aa8ff);
-  bevelTop(m, -8, 8, -4, 7, 8);
+  m.box(-8, 8, -4, 7, 1, 8, 0x4aa8ff).box(-7, 8, -3, 5, 1, 6, C.White).box(-6, 9, -1, 2, 1, 2, C.Dark); // its top, with a filler cap
   // The cab, glass all round.
   m.box(0, 4, -4, 6, 6, 8, P);
   m.box(5, 6, -3, 1, 3, 6, C.Glass).box(1, 6, -4, 4, 3, 1, C.Glass).box(1, 6, 3, 4, 3, 1, C.Glass);
-  m.box(0, 10, -4, 6, 1, 8, C.White);
-  bevelTop(m, 0, 10, -4, 6, 8);
+  cabRoof(m, 0, 10, -4, 6, 8, P);
   // Arms out to the brushes at the front corners, and a squeegee under the middle.
   m.box(6, 1, -6, 3, 1, 1, C.Dark).box(6, 1, 5, 3, 1, 1, C.Dark);
   m.box(-6, 0, -5, 1, 1, 10, C.Dark);
@@ -1140,8 +1147,7 @@ export function car(paint: number, roof = C.White): Model {
   bevelTop(m, -8, 3, -3, 17, 6);
   m.box(-5, 4, -3, 10, 3, 6, paint);
   m.box(-4, 4, -3, 8, 2, 6, C.Glass).box(-5, 4, -2, 10, 2, 4, C.Glass);
-  m.box(-5, 7, -3, 10, 1, 6, roof);
-  bevelTop(m, -5, 7, -3, 10, 6);
+  cabRoof(m, -5, 7, -3, 10, 6, paint, roof);
   m.box(9, 2, -3, 1, 1, 1, C.Light).box(9, 2, 2, 1, 1, 1, C.Light); // headlights
   m.box(-9, 2, -3, 1, 1, 1, 0xd8263a).box(-9, 2, 2, 1, 1, 1, 0xd8263a); // tail lights
   return m;
@@ -1278,5 +1284,103 @@ export function pot(flower: number): Model {
   const m = new Model();
   m.box(-1, 0, -1, 3, 2, 3, 0xc0573f).box(-1, 2, -1, 3, 1, 3, 0xd8734f);
   m.box(-1, 3, -1, 3, 1, 3, 0x4fae4a).set(0, 4, 0, flower).set(-1, 4, 1, flower).set(1, 4, -1, flower);
+  return m;
+}
+
+// ---------------------------------------------------------------- gardens and the edge of town
+
+/** A garden shed: wooden walls, a little window, a dark pitched roof. Faces +z. Pivot at its bottom middle. */
+export function shed(paint: number): Model {
+  const m = new Model();
+  m.box(-6, 0, -5, 12, 10, 10, paint);
+  for (let x = -6; x < 6; x += 2) m.box(x, 0, 4, 1, 10, 1, C.Wood); // boards
+  m.box(-2, 0, 5, 4, 8, 1, C.Wood).set(1, 4, 6, C.Hazard); // the door
+  m.box(3, 5, 5, 2, 2, 1, C.Glass);
+  for (let k = 0; k < 6; k++) m.box(-7, 10 + k, -6 + k, 14, 1, 12 - 2 * k, 0x4a4f57);
+  return m;
+}
+
+/** A washing line between two posts, with bright washing pegged on it. Along x. */
+export function washingLine(seed: number): Model {
+  const m = new Model();
+  m.box(0, 0, 0, 1, 14, 1, C.Wood).box(24, 0, 0, 1, 14, 1, C.Wood);
+  m.box(0, 13, 0, 25, 1, 1, C.White);
+  const cols = [0xff5d8f, 0x4aa8ff, 0xffc93c, 0x3fb950, 0xffffff, 0xc77dff];
+  for (let x = 3; x < 22; x += 5) {
+    const c = cols[(x + seed) % cols.length];
+    const h = 4 + ((x * 3 + seed) % 3);
+    m.box(x, 13 - h, 0, 3, h, 1, c);
+  }
+  return m;
+}
+
+/** A vegetable patch: rows of dark soil with green tops, a few orange carrots and red tomatoes. */
+export function vegPatch(w: number, d: number): Model {
+  const m = new Model();
+  m.box(0, 0, 0, w, 1, d, 0x6b4a2b);
+  for (let z = 1; z < d - 1; z += 3)
+    for (let x = 1; x < w - 1; x += 2) {
+      m.set(x, 1, z, 0x3f9440).set(x, 2, z, z % 2 ? 0x4fae4a : 0x3f9440);
+      if ((x + z) % 5 === 0) m.set(x, 1, z + 1, 0xff8a1f);
+      if ((x * 2 + z) % 7 === 0) m.set(x, 3, z, 0xd8263a);
+    }
+  return m;
+}
+
+/** A round trampoline on short legs, with a blue mat and a bright rim. Pivot at the middle. */
+export function trampoline(): Model {
+  const m = new Model();
+  for (let x = -6; x < 6; x++)
+    for (let z = -6; z < 6; z++) {
+      const d = Math.hypot(x + 0.5, z + 0.5);
+      if (d > 6) continue;
+      m.set(x, 3, z, d > 5 ? 0x3fb950 : 0x2f74d0);
+    }
+  for (const [x, z] of [[-4, -4], [3, -4], [-4, 3], [3, 3]]) m.box(x, 0, z, 1, 3, 1, C.Dark);
+  return m;
+}
+
+/** A trimmed hedge, `len` cells along x, about knee high on a grown-up. */
+export function hedge(len: number): Model {
+  const m = new Model();
+  for (let x = 0; x < len; x++) m.box(x, 0, 0, 1, 4, 2, (x * 7) % 5 === 0 ? 0x4fae4a : 0x3f8f45).set(x, 4, (x % 3) % 2, 0x3f9a45);
+  return m;
+}
+
+/** A red barn with white trim and big doors, for the farm at the edge of town. Faces +z. */
+export function barn(): Model {
+  const m = new Model();
+  const Red = 0xc0392b;
+  m.box(-14, 0, -10, 28, 16, 20, Red);
+  m.box(-14, 0, 9, 28, 1, 1, C.White).box(-14, 15, 9, 28, 1, 1, C.White);
+  m.box(-5, 0, 10, 10, 12, 1, C.White).box(-4, 1, 10, 8, 10, 1, 0xa83226);
+  for (let k = 0; k < 4; k++) m.box(-4 + k, 1 + Math.round(k * 2.5), 10, 8 - 2 * k, 1, 1, C.White);
+  for (let k = 0; k < 9; k++) m.box(-15, 16 + k, -11 + k, 30, 1, 22 - 2 * k, 0x7a3a2c);
+  m.box(-2, 19, 11, 4, 4, 1, C.White).box(-1, 20, 12, 2, 2, 1, C.Dark); // the hayloft window
+  return m;
+}
+
+/** A field in rows, `w` x `d` cells: brown furrows and green crops, a few with yellow flowers. */
+export function field(w: number, d: number, crop: number): Model {
+  const m = new Model();
+  for (let x = 0; x < w; x++)
+    for (let z = 0; z < d; z++) {
+      if (z % 4 < 2) m.set(x, 0, z, 0x7a5233);
+      else {
+        m.set(x, 0, z, 0x6b4a2b).set(x, 1, z, (x * 3 + z) % 9 === 0 ? 0xffd34d : crop);
+      }
+    }
+  return m;
+}
+
+/** A little green tractor with big back wheels. Faces +x. */
+export function tractor(): Model {
+  const m = new Model();
+  const P = 0x3fa34d;
+  for (const z of [-5, 4]) m.box(-6, 0, z, 6, 6, 1, C.Rubber).set(-4, 2, z, C.Hazard).set(-3, 3, z, C.Hazard);
+  for (const z of [-4, 3]) m.box(3, 0, z, 3, 3, 1, C.Rubber);
+  m.box(-6, 3, -3, 13, 3, 6, P).box(1, 6, -2, 6, 2, 4, P);
+  m.box(-5, 6, -3, 5, 6, 6, C.Glass).box(-5, 12, -3, 5, 1, 6, P);
+  m.box(7, 4, -2, 1, 2, 4, C.Dark).box(4, 8, 1, 1, 3, 1, C.Dark);
   return m;
 }

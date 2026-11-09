@@ -50,12 +50,14 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
   const roller = new Roller(new THREE.Vector2(2.5, 6.1));
   const crane = new Crane(new THREE.Vector2(5.4, 5.6));
   // The heaps go at the end one of two ways: pushed away by the dozer, or hauled to a skip by the dump truck.
+  // Both are on every site: the dump truck can be loaded by the excavator while it digs, and at the
+  // end either one clears the heaps (whichever you're driving). `haul` says which the arrow suggests.
   const haul = bp.finish === "haul";
   const dozer = new Dozer(new THREE.Vector2(8.3, 5.8));
-  const dump = new DumpTruck(new THREE.Vector2(8.3, 5.8));
+  const dump = new DumpTruck(new THREE.Vector2(10.6, 5.8));
   const finisher: Machine = haul ? dump : dozer;
-  const sweeper = bp.sweep ? new Sweeper(new THREE.Vector2(10.6, 5.8)) : null;
-  const machines: Machine[] = [excavator, mixer, roller, crane, finisher, ...(sweeper ? [sweeper] : [])];
+  const sweeper = bp.sweep ? new Sweeper(new THREE.Vector2(-7.7, 3.6)) : null;
+  const machines: Machine[] = [excavator, mixer, roller, crane, dozer, dump, ...(sweeper ? [sweeper] : [])];
   for (const m of machines) {
     scene.add(m.root);
     m.place(m.home.x, m.home.y, Math.PI / 2, site);
@@ -394,7 +396,7 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
     Audio.sectionDone(5);
     fx.ring(new THREE.Vector3(0, 0.05, (F.maxZ + 9) / 2), 5, 0xffffff);
     // The heaps stop being in the way if the dozer's going to push them (the dump truck parks by them instead).
-    if (!haul) clearHeapCircles();
+    clearHeapCircles();
     chimeStep = 0;
     setStage("clean");
   }
@@ -466,7 +468,12 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
       work: () => {
         const idx = site.quadrants.indexOf(q);
         excavator.speed = 0;
-        excavator.dig(idx, q.centre, q.moundAt, {
+        // The dump truck parked within the arm's swing, with room in its bed: this bucketful goes in it.
+        const bed = dump.bedWorld();
+        const toBed = new THREE.Vector2(bed.x, bed.z);
+        const d = toBed.distanceTo(excavator.pos);
+        const intoTruck = Math.abs(d - 2.6) < 0.8 && !dump.busy() && dump.speed < 0.3 && !dump.full;
+        excavator.dig(idx, q.centre, intoTruck ? toBed : q.moundAt, {
           bite: (i) => {
             const qq = site.quadrants[i];
             const finished = site.scoop(qq);
@@ -478,14 +485,21 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
           },
           dump: (i) => {
             const qq = site.quadrants[i];
-            const at = site.growMound(qq);
-            pops.add(qq.mound!);
-            fx.bits(excavator.bucketWorld(), 14, 0x8c6239, 1, 0.1);
-            fx.dust(at, 0.6, 8, 0xc9a27a);
+            if (intoTruck) {
+              dump.load = Math.min(DumpTruck.CAPACITY, dump.load + 1 / SCOOPS_PER_QUADRANT);
+              fx.bits(excavator.bucketWorld(), 14, 0x8c6239, 1, dump.bedWorld().y);
+              fx.dust(dump.bedWorld(), 0.5, 8, 0xc9a27a);
+              Audio.thud();
+            } else {
+              const at = site.growMound(qq);
+              pops.add(qq.mound!);
+              fx.bits(excavator.bucketWorld(), 14, 0x8c6239, 1, 0.1);
+              fx.dust(at, 0.6, 8, 0xc9a27a);
+            }
             Audio.dump();
             if (site.pitDug()) digDone();
           },
-        }, () => input.work && site.quadrants[idx].scoops < SCOOPS_PER_QUADRANT);
+        }, () => input.work && site.quadrants[idx].scoops < SCOOPS_PER_QUADRANT, intoTruck);
       },
     };
   }
@@ -604,10 +618,7 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
       }
       left.push(new THREE.Vector2(q.mound.position.x, q.mound.position.z));
     }
-    if (left.length === 0) {
-      cleanDone();
-      return none(dozer);
-    }
+    if (left.length === 0) return none(dozer);
     const job = guideTo(dozer, left, blade, 1.2, 0.9);
     if (job.over) job.over.y = 0.9;
     if (job.spot) job.spot.y = 0;
@@ -621,7 +632,7 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
   const skipMesh = M.skip().mesh(Cell, [0, 0, 0]);
   const skipDirt = M.bedDirt().mesh(Cell, [0, 0, 0]);
   let skipFill = 0;
-  if (haul) {
+  {
     skipMesh.position.copy(SKIP_AT);
     scene.add(skipMesh);
     skipDirt.position.set(SKIP_AT.x, 0.1, SKIP_AT.z);
@@ -660,30 +671,7 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
       return none(dump);
     }
     // Full, or nothing left to load: off to the skip.
-    if (dump.full || heapsLeft.length === 0) {
-      const there = dump.pos.distanceTo(new THREE.Vector2(TIP_AT.x, TIP_AT.z)) < 1.3;
-      return {
-        machine: dump,
-        over: there ? null : SKIP_AT.clone().setY(1.3),
-        spot: TIP_AT.clone(),
-        ring: 1.1,
-        canWork: there && !dump.busy() && dump.speed < 0.8,
-        work: () => {
-          dump.speed = 0;
-          Audio.clank();
-          dump.tip(new THREE.Vector2(SKIP_AT.x, SKIP_AT.z), () => {
-            const from = dump.tailWorld();
-            for (let k = 0; k < 4; k++) fx.bits(from, 8, 0x8c6239, 1.2, 0.3);
-            fx.dust(SKIP_AT.clone().setY(0.8), 0.8, 14, 0xc9a27a);
-            skipFill = Math.min(1, skipFill + 0.5);
-            skipDirt.visible = true;
-            skipDirt.scale.y = 0.4 + 1.2 * skipFill;
-            pops.add(skipMesh);
-            Audio.dump();
-          });
-        },
-      };
-    }
+    if (dump.full || heapsLeft.length === 0) return tipJob();
     // Room in the bed: the nearest heap gets the ring.
     let best: Quadrant | null = null;
     let bd = Infinity;
@@ -706,6 +694,47 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
         Audio.scoop();
       },
     };
+  }
+
+  /** Drive the loaded dump truck to the skip by the gate and tip it in: any time it's got dirt aboard. */
+  function tipJob(): Job {
+    const there = dump.pos.distanceTo(new THREE.Vector2(TIP_AT.x, TIP_AT.z)) < 1.3;
+    return {
+      machine: dump,
+      over: there ? null : SKIP_AT.clone().setY(1.3),
+      spot: TIP_AT.clone(),
+      ring: 1.1,
+      canWork: there && !dump.busy() && dump.speed < 0.8,
+      work: () => {
+        dump.speed = 0;
+        Audio.clank();
+        dump.tip(new THREE.Vector2(SKIP_AT.x, SKIP_AT.z), () => {
+          const from = dump.tailWorld();
+          for (let k = 0; k < 4; k++) fx.bits(from, 8, 0x8c6239, 1.2, 0.3);
+          fx.dust(SKIP_AT.clone().setY(0.8), 0.8, 14, 0xc9a27a);
+          skipFill = Math.min(1, skipFill + 0.25);
+          skipDirt.visible = true;
+          skipDirt.scale.y = 0.4 + 1.2 * skipFill;
+          pops.add(skipMesh);
+          Audio.dump();
+        });
+      },
+    };
+  }
+
+  /**
+   * The heaps at the end: the dozer pushes them away or the dump truck hauls them off, whichever
+   * you're in (the arrow suggests one). Done once they're gone and the truck's tipped what it's got.
+   */
+  function finishJob(dt: number): Job {
+    const heaps = site.quadrants.some((q) => q.mound);
+    if (!heaps && dump.load === 0 && !dump.busy() && !loading) {
+      cleanDone();
+      return none(active);
+    }
+    if (!heaps) return haulJob(dt); // just the tip left
+    const useDump = active === dump || (active !== dozer && haul);
+    return useDump ? haulJob(dt) : cleanJob(dt);
   }
 
   // ------------------------------------------------------------------ sweeping: sand blown in from the beach
@@ -848,15 +877,17 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
       pathStarted = true;
       clearArea(roller, onPath);
     }
-    const job: Job | null =
+    let job: Job | null =
       stage === "dig" ? digJob()
       : stage === "pour" ? pourJob(dt)
       : stage === "walls" || stage === "roof" ? craneJob()
       : stage === "path" ? pathJob(dt)
-      : stage === "clean" ? (haul ? haulJob(dt) : cleanJob(dt))
+      : stage === "clean" ? finishJob(dt)
       : stage === "sweep" ? sweepJob()
       : null;
     if (stage !== "pour") mixer.pouring = false;
+    // Driving the dump truck with dirt aboard (the excavator loaded it): off to the skip, whatever's next.
+    if (active === dump && (dump.load > 0 || dump.busy()) && stage !== "clean" && !hop) job = tipJob();
 
     const controls = hooks.controls();
 
@@ -984,7 +1015,7 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
     if (at > 4) {
       site.finishPath();
       rampGroup.visible = true;
-      if (!haul) clearHeapCircles();
+      clearHeapCircles();
     }
     if (at > 5) {
       for (const q of site.quadrants) {
