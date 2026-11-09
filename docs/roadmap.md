@@ -134,7 +134,7 @@ Roughly 3 to 5 times today's content.
 - [ ] **Store listing:**
   - An icon that reads at thumbnail size: a happy excavator.
   - 5–8 screenshots that show the town growing.
-  - A 15–30 s preview video, made with the Shorts workflow.
+  - A 15–30 s preview video, made with the Shorts workflow. A 42-second story promo for friends already exists (`tools/make_promo.py`, `src/promo.ts`); cut it down for the store.
   - A first line along the lines of: "No ads. No in-app nagging. No internet. Just build."
 
 ## Phase 7: Launch (1 week)

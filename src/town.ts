@@ -816,15 +816,78 @@ export function createTown(
 
   const padlockModel = M.padlock();
 
-  /** An empty lot: sand, barriers along the front, and the little model on its stand. */
+  const stringMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
+  const wheelbarrowModel = M.wheelbarrow(), planksModel = M.planks(), bricksModel = M.bricks(), pegModel = M.peg();
+
+  /**
+   * An empty lot, a little building site waiting to start: sand that isn't one flat colour, wheel
+   * ruts in from the road, the house's outline pegged and strung, a few things waiting at the
+   * edges (bricks, planks, a wheelbarrow, cones), barriers along the front, and the little model
+   * on its stand. Everything stays low and clear of the stand, the way in and where the truck's
+   * load is dropped, so the turning model is still what you see first.
+   */
   function emptyLot(l: Lot): void {
     clearLot(l);
     l.built = false;
+    const r = rng(hood * 57 + l.i * 13 + 7);
+    const top = (n: [number, number, number]) => n[1] === 1;
+    const x0 = l.zone.minX + 0.1, x1 = l.zone.maxX - 0.1, z0 = l.zone.minZ, z1 = l.zone.maxZ;
+    const hw = l.bp.w / 2, front = l.front, back = l.front - l.bp.d;
     const f = new Faces();
-    f.box(l.zone.minX + 0.1, 0, l.zone.minZ, l.zone.maxX - l.zone.minX - 0.2, 0.008, l.zone.maxZ - l.zone.minZ, C.Sand, (n) => n[1] === 1);
+    f.box(x0, 0, z0, x1 - x0, 0.008, z1 - z0, C.Sand, top);
+    // Darker patches of turned earth, and speckles of grit, each layer a little higher than the
+    // last so they never flicker through each other from far off.
+    for (let k = 0; k < 5; k++) {
+      const w = 0.7 + r() * 1.0, d = 0.5 + r() * 0.8;
+      f.box(x0 + r() * (x1 - x0 - w), 0.008, z0 + r() * (z1 - z0 - d), w, 0.006, d, r() < 0.5 ? 0xc9a06a : 0xceaa76, top);
+    }
+    const grit = [0xc4a273, 0xe6c896, 0xb08a58];
+    for (let k = 0; k < 150; k++) {
+      const s = 0.05 + r() * 0.07;
+      f.box(x0 + r() * (x1 - x0 - s), 0.008, z0 + r() * (z1 - z0 - s), s, 0.012, s * (0.6 + r() * 0.8), grit[k % 3], top);
+    }
+    // Wheel ruts in from the road, beside the stand.
+    for (const dx of [1.1, 1.5]) f.box(l.x + dx, 0.008, back + l.bp.d * 0.5, 0.13, 0.016, l.fence - (back + l.bp.d * 0.5), 0xb99467, top);
     const sand = new THREE.Mesh(f.geometry(), voxelMaterial);
     sand.receiveShadow = true;
     l.group.add(sand);
+    // The house's outline: a peg at each corner, string between (not across the stand at the front).
+    const m = 0.15;
+    const corners: [number, number][] = [[-hw - m, back - m], [hw + m, back - m], [hw + m, front + m], [-hw - m, front + m]];
+    for (const [dx, z] of corners) {
+      const p = pegModel.mesh(Cell, [0.5, 0, 0.5]);
+      p.position.set(l.x + dx, 0, z);
+      l.group.add(p);
+    }
+    const string = (ax: number, az: number, bx: number, bz: number) => {
+      const len = Math.hypot(bx - ax, bz - az);
+      if (len < 0.1) return;
+      const s = new THREE.Mesh(new THREE.BoxGeometry(len, 0.025, 0.025), stringMat);
+      s.position.set(l.x + (ax + bx) / 2, 0.45, (az + bz) / 2);
+      s.rotation.y = -Math.atan2(bz - az, bx - ax);
+      l.group.add(s);
+    };
+    string(-hw - m, back - m, hw + m, back - m);
+    string(-hw - m, back - m, -hw - m, front + m);
+    string(hw + m, back - m, hw + m, front + m);
+    if (hw + m > 1.05) {
+      string(-hw - m, front + m, -1.0, front + m);
+      string(1.0, front + m, hw + m, front + m);
+    }
+    // Things waiting at the edges.
+    const put = (mesh: THREE.Object3D, x: number, z: number, yaw = 0, scale = 1) => {
+      mesh.position.set(l.x + x, 0, z);
+      mesh.rotation.y = yaw;
+      mesh.scale.setScalar(scale);
+      l.group.add(mesh);
+    };
+    const side = Math.min(3.15, hw + 0.75);
+    put(bricksModel.mesh(Cell, [0, 0, 0]), side, back + 0.45, 0.2, 0.6);
+    put(planksModel.mesh(Cell, [0, 0, 0]), -side, back + 0.8, Math.PI / 2 + 0.1);
+    put(wheelbarrowModel.mesh(Cell, [0, 0, 0]), Math.min(3.0, hw + 0.65), front - 0.55, 2.4 + r() * 0.5);
+    const cone = M.cone();
+    put(cone.mesh(Cell, [0, 0, 0]), -3.25, l.fence - 0.55);
+    put(cone.mesh(Cell, [0, 0, 0]), 2.1, l.fence - 0.5);
     const bar = M.barrier();
     for (const dx of [-3.6, -2.6, 1.6, 2.6]) {
       const b = bar.mesh(Cell);

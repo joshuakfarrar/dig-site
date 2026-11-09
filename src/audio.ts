@@ -38,6 +38,14 @@ export function unlock(): void {
   startMusic();
 }
 
+/** Everything the game plays, as a stream to record (dev: the promo video's music). */
+export function tap(): MediaStream | null {
+  if (!ctx || !master) return null;
+  const out = ctx.createMediaStreamDestination();
+  master.connect(out);
+  return out.stream;
+}
+
 /** Hushes everything while the game's in the background (another app, a locked screen). */
 export function pause(on: boolean): void {
   if (!ctx) return;

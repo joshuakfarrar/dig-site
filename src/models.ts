@@ -1493,6 +1493,28 @@ export function tractor(): Model {
   return m;
 }
 
+// ---------------------------------------------------------------- lots waiting to be built
+
+/** A wheelbarrow with a bit of dirt in it: a green tray on one wheel, wooden handles behind. Faces +x. */
+export function wheelbarrow(): Model {
+  const m = new Model();
+  const P = 0x3fa34d;
+  m.box(-3, 2, -2, 6, 1, 5, P); // the tray's floor
+  m.box(-3, 3, -2, 6, 2, 1, P).box(-3, 3, 2, 6, 2, 1, P).box(-3, 3, -1, 1, 2, 3, P).box(2, 3, -1, 1, 3, 3, P); // its sides, the front a bit higher
+  m.box(-2, 3, -1, 4, 1, 3, C.Earth).box(-1, 4, 0, 2, 1, 1, C.Earth); // dirt
+  m.box(3, 0, 0, 2, 2, 1, C.Rubber).set(3, 1, 0, C.Gray); // the wheel
+  m.box(-2, 0, -2, 1, 2, 1, C.Steel).box(-2, 0, 2, 1, 2, 1, C.Steel); // legs
+  return m.box(-6, 3, -2, 3, 1, 1, C.Wood).box(-6, 3, 2, 3, 1, 1, C.Wood); // handles
+}
+
+/** A small stack of planks on two bearers. Along x. Pivot at the bottom middle. */
+export function planks(): Model {
+  const m = new Model();
+  m.box(-5, 0, -3, 2, 1, 7, C.Dark).box(3, 0, -3, 2, 1, 7, C.Dark);
+  for (let k = 0; k < 3; k++) for (const z of [-3, 0, 3]) m.box(-7, 1 + k, z, 14, 1, 2, (k + z) % 2 ? 0xc89a62 : 0xb5854f);
+  return m;
+}
+
 // ---------------------------------------------------------------- the crew's yard
 
 /** A stack of big pipes, lying along x, orange ends. Pivot at the bottom middle. */

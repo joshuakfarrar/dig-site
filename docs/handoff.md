@@ -265,6 +265,29 @@ Estimated at adult pace from distances, speeds and animation times, about 1 s of
 - **Icon and splash:** `tools/make_icons.py`; see `docs/android.md`.
 - **Dev:** `game.shop.forget()` un-owns it again; `game.shop.owned()` checks it.
 
+## Empty lots dressed (2026-11-09)
+
+- **`emptyLot` in `town.ts`:** each empty lot looks like a site waiting to start.
+  - **Ground:** sand with darker patches and grit, and wheel ruts in from the road.
+  - **Outline:** the house's outline pegged and strung, with no string across the stand.
+  - **Props:** bricks and planks at the back, a wheelbarrow, and two cones.
+  - **New models:** `M.wheelbarrow` and `M.planks`.
+- **Kept clear:** the stand, the way in, and where the truck drops its load.
+- **Ground layers** are each a little higher than the last, so they never flicker from far off.
+
+## Promo video (2026-11-09)
+
+- **A 42-second story:** an empty street, then digging, pouring and the roof lowered on, a family moving in, neighbours, the playground, and the Harbour at dusk. It ends on a card with the icon and "Build a town, one home at a time".
+- **To remake it:**
+  1. Open `?promo&quality=high` on the dev server.
+  2. In the console, run `promo.music(44)`, then `promo.film()`.
+  3. Run `python tools/make_promo.py`.
+  4. It writes `capture/dig-site-promo.mp4` (1080p) and `capture/dig-site-promo-720p.mp4`. `capture/` isn't in git.
+- **`src/promo.ts`** (dev only) scripts each shot: its set-up, a camera path, and the controls held. `promo.proof(name, t)` saves one frame to check.
+- **Frames reach disk** through a dev-server-only endpoint (`capture()` in `vite.config.ts`).
+- **Needs** Pillow and `imageio-ffmpeg`, which brings its own ffmpeg.
+- **Words:** the captions and the card are drawn in `tools/make_promo.py` (Segoe UI); change the story there and in the shot list.
+
 ## Design decisions the user made
 - **Diversity includes ordinary families:** the user wants a mix that reads as real streets, mostly cis/het families with children, plus the other kinds of households, not an unusual mix everywhere.
 

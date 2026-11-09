@@ -196,6 +196,8 @@ if (import.meta.env.DEV && Number.isInteger(hoodParam) && B.HOODS[hoodParam]) sa
 if (saved.at >= B.HOODS.length) saved.at = 0;
 const lotParam = params.get("lot");
 const stageParam = params.get("stage") as Stage | null;
+// The promo video's camera script (dev server only): `?promo`, then `promo.film()` in the console.
+if (import.meta.env.DEV && params.has("promo")) void import("./promo");
 if (import.meta.env.DEV && params.has("lineup")) {
   // The art review page: every machine side by side (dev server only; not in the released game).
   void import("./lineup").then((m) => use(m.createLineup()));
