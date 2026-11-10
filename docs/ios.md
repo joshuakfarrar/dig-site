@@ -5,7 +5,8 @@ The same game, wrapped for iPhone and iPad with Capacitor, like the Android app.
 
 ## What's set up
 
-- **App id:** `social.josh.digsite` (from `capacitor.config.ts`), shown as "Dig Site". It can't change once the app is on the App Store, so settle it first.
+- **Bundle id:** `io.github.joshuakfarrar.dig-site`, shown as "Dig Site". It's set on the App target in Xcode (General, or Signing & Capabilities), not by `capacitor.config.ts`, whose `appId` is Android's `social.josh.digsite`. It can't change once the app is on the App Store, so settle it first.
+- **Signing:** automatic, with team `X427K457M9`, for both Debug (Run) and Release (Archive). The first Run on a plugged-in iPhone registers it with the team and makes the profile.
 - **Landscape only**, turning with the device (`Info.plist`), and the whole screen on an iPad (`UIRequiresFullScreen`: no split view).
 - **Full screen:**
   - no status bar (`Info.plist`)
