@@ -9,7 +9,7 @@ The same game, wrapped for iPhone and iPad with Capacitor, like the Android app.
 - **Landscape only**, turning with the device (`Info.plist`), and the whole screen on an iPad (`UIRequiresFullScreen`: no split view).
 - **Full screen:**
   - no status bar (`Info.plist`)
-  - the home bar tucked away (`GameViewController` in `AppDelegate.swift`)
+  - the home bar tucked away (Capacitor's SystemBars plugin, `hidden: true` in `capacitor.config.ts`; since Capacitor 8.6 it can't be overridden in `GameViewController`)
   - a swipe from a screen edge needs a second swipe to leave, so steering near the edge doesn't drop a child out of the game
 - **Screen stays on** while it's open.
 - **Polite sound:** the "ambient" audio session, set both natively and through WebKit's Audio Session API in `audio.ts`.
@@ -69,8 +69,14 @@ The same game, wrapped for iPhone and iPad with Capacitor, like the Android app.
    ```
 
 7. **Try it in the Simulator:** in Xcode, pick an iPad simulator at the top and press Run. That needs no Apple account.
-8. **Sign it**, for a real iPad and the store. This needs the **Apple Developer Program** ($99 a year). In Xcode, select the App target, open **Signing & Capabilities**, tick "Automatically manage signing" and pick your team.
-9. **Try it on a real iPad:** plug it in, trust the Mac, pick it at the top and press Run.
+8. **Sign it**, for a real iPad and the store. The store needs the **Apple Developer Program** ($99 a year). In Xcode, select the App target, open **Signing & Capabilities**, tick "Automatically manage signing" and pick your team. Just for your own device, a free Apple ID works: add it in Xcode > Settings > Accounts and pick its "(Personal Team)". The app then stops opening after 7 days until you Run it again.
+9. **Try it on a real iPad or iPhone:**
+   1. Plug it in, unlock it and tap "Trust" on it.
+   2. Turn on Settings > Privacy & Security > Developer Mode on the device; it restarts.
+   3. Pick it at the top of Xcode and press Run.
+   4. With a free Apple ID, the first launch is refused until you allow your developer certificate in Settings > General > VPN & Device Management.
+   5. After the first time, it can run over Wi-Fi without the cable.
+   6. Xcode 26.3 may not be able to install on a device running a newer iOS. If it can't, use TestFlight (below) instead.
 10. **Upload to TestFlight:**
     1. Choose **Product > Archive**. When it's done, the Organizer opens.
     2. Press **Distribute App**, then **App Store Connect**.
