@@ -5,7 +5,7 @@ The game is wrapped as an Android app with [Capacitor](https://capacitorjs.com).
 
 ## What's set up
 
-- **App id:** `social.josh.digsite`. **Name:** Dig Site. Both are in `capacitor.config.ts`.
+- **App id:** `io.github.joshuakfarrar.digsite`, the same as on iOS, and permanent once it's on Google Play or Amazon. **Name:** Dig Site. Both are in `capacitor.config.ts`, which lists the other places the id lives.
   - The app id can't change once it's on the Play Store, so settle it, and the name, before the first upload.
   - If the id changes, also update `android/app/build.gradle` (`applicationId`, `namespace`) and the Java package folder.
 - **No permissions at all** (`AndroidManifest.xml`): the internet permission is removed, so the app can't go online even by mistake.

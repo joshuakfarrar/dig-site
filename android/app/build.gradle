@@ -1,10 +1,10 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace = "social.josh.digsite"
+    namespace = "io.github.joshuakfarrar.digsite"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "social.josh.digsite"
+        applicationId "io.github.joshuakfarrar.digsite"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

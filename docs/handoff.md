@@ -202,7 +202,7 @@ Estimated at adult pace from distances, speeds and animation times, about 1 s of
 ## Phase 4 started: Android (2026-11-09)
 
 - **Greedy meshing** in `Model.geometry` (`voxel.ts`) merges same-colour, same-facing faces into rectangles. A full street went from about 491k drawn triangles to 80k, and shadow casters from 577k to 54k. It looks the same, and building the town takes about 0.7 s.
-- **Capacitor 8 Android project** in `android/`, configured in `capacitor.config.ts`: app id `social.josh.digsite`, which isn't settled yet. See `docs/android.md`.
+- **Capacitor 8 Android project** in `android/`, configured in `capacitor.config.ts`: app id `io.github.joshuakfarrar.digsite` (settled, the same on every store). See `docs/android.md`.
   - No internet permission, `sensorLandscape`, immersive full screen, and keep-screen-on (`MainActivity.java`).
   - The back button (`@capacitor/app` in `main.ts`) exits only from the title; in play it calls `Hud.flash()`.
 - **Not done yet:** the Android SDK isn't on this PC, so no APK has been built. Install Android Studio first. The icon and splash are still defaults.

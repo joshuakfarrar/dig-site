@@ -1,4 +1,4 @@
-package social.josh.digsite;
+package io.github.joshuakfarrar.digsite;
 
 import android.os.Bundle;
 import android.view.WindowManager;
