@@ -3,12 +3,13 @@ import AVFoundation
 import Capacitor
 
 /**
- * The game's screen: Capacitor's web view, with the home bar tucked away and the edges of the
- * screen kept for the game (a swipe from an edge needs a second swipe to leave), so a small child
- * steering near the edge doesn't drop out of it. (The status bar is hidden app-wide in Info.plist.)
+ * The game's screen: Capacitor's web view, with the edges of the screen kept for the game (a swipe
+ * from an edge needs a second swipe to leave), so a small child steering near the edge doesn't drop
+ * out of it. (The status bar is hidden app-wide in Info.plist; the home bar is tucked away by
+ * Capacitor's SystemBars plugin, `hidden: true` in capacitor.config.ts, since Capacitor 8.6 owns
+ * `prefersHomeIndicatorAutoHidden` and won't let it be overridden here.)
  */
 class GameViewController: CAPBridgeViewController {
-    override var prefersHomeIndicatorAutoHidden: Bool { true }
     override var preferredScreenEdgesDeferringSystemGestures: UIRectEdge { .all }
 }
 

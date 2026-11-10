@@ -20,6 +20,11 @@ const config: CapacitorConfig = {
     backgroundColor: "#a9dcff",
     webContentsDebuggingEnabled: false,
   },
+  plugins: {
+    // Full screen: no status bar, and the iPhone's home bar tucked away (it fades back on a touch
+    // near the bottom edge).
+    SystemBars: { hidden: true },
+  },
 };
 
 export default config;
