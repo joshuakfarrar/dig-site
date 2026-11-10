@@ -435,26 +435,6 @@ const REEL: Shot[] = [
     },
   },
   {
-    name: "r_dusk",
-    caption: "",
-    seconds: 0,
-    frames: 4 * BEAT,
-    setup() {
-      town([[0, 1, 2, 3, 4, 5, 6, 7]], 0);
-      turnNearRow();
-      run(2);
-      const t = g().town.truck;
-      t.pos.set(-2, LANE_Z);
-      t.heading = Math.PI;
-      t.speed = 3.2;
-      mirroring = true;
-    },
-    frame(_t, k) {
-      const e = [STREET_EYE[0] - 6, STREET_EYE[1] - 1.2, STREET_EYE[2]] as Vec;
-      return { eye: mix(e, [e[0] - 1.5, e[1] - 0.6, e[2]], k), at: [STREET_AT[0] - 5, 0, STREET_AT[2]], input: { moveX: -0.8 } };
-    },
-  },
-  {
     name: "r_play",
     caption: "",
     seconds: 0,

@@ -818,6 +818,7 @@ export function createTown(
 
   const stringMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
   const wheelbarrowModel = M.wheelbarrow(), planksModel = M.planks(), bricksModel = M.bricks(), pegModel = M.peg();
+  const pipesModel = M.pipeStack(), skipModel = M.skip(), moundBig = M.mound(2), moundSmall = M.mound(1);
 
   /**
    * An empty lot, a little building site waiting to start: sand that isn't one flat colour, wheel
@@ -833,26 +834,37 @@ export function createTown(
     const top = (n: [number, number, number]) => n[1] === 1;
     const x0 = l.zone.minX + 0.1, x1 = l.zone.maxX - 0.1, z0 = l.zone.minZ, z1 = l.zone.maxZ;
     const hw = l.bp.w / 2, front = l.front, back = l.front - l.bp.d;
+    const m = 0.15;
+    // Each lot's at its own stage, so the street doesn't look stamped out: 0 just pegged out on the
+    // grass, 1 the materials delivered, 2 the digging begun. Neighbours always differ, and which side
+    // the heavy things go swaps lot to lot.
+    const stage = (l.i * 2 + hood) % 3;
+    const flip = (l.i + hood) % 2 ? 1 : -1;
     const f = new Faces();
-    f.box(x0, 0, z0, x1 - x0, 0.008, z1 - z0, C.Sand, top);
+    // Pegged out: still grass, with the turf lifted inside the strings. Otherwise sand all over.
+    const fx0 = l.x - hw - m, fx1 = l.x + hw + m, fz0 = back - m, fz1 = front + m;
+    const [ax0, ax1, az0, az1] = stage === 0 ? [fx0, fx1, fz0, fz1] : [x0, x1, z0, z1];
+    if (stage === 0) {
+      f.box(x0, 0, z0, x1 - x0, 0.008, z1 - z0, 0x8fd65e, top);
+      f.box(fx0, 0.008, fz0, fx1 - fx0, 0.004, fz1 - fz0, C.Sand, top);
+    } else f.box(x0, 0, z0, x1 - x0, 0.012, z1 - z0, C.Sand, top);
     // Darker patches of turned earth, and speckles of grit, each layer a little higher than the
     // last so they never flicker through each other from far off.
-    for (let k = 0; k < 5; k++) {
-      const w = 0.7 + r() * 1.0, d = 0.5 + r() * 0.8;
-      f.box(x0 + r() * (x1 - x0 - w), 0.008, z0 + r() * (z1 - z0 - d), w, 0.006, d, r() < 0.5 ? 0xc9a06a : 0xceaa76, top);
+    for (let k = 0; k < (stage === 0 ? 3 : 5); k++) {
+      const w = Math.min(ax1 - ax0 - 0.2, 0.7 + r() * 1.0), d = Math.min(az1 - az0 - 0.2, 0.5 + r() * 0.8);
+      f.box(ax0 + r() * (ax1 - ax0 - w), 0.012, az0 + r() * (az1 - az0 - d), w, 0.006, d, r() < 0.5 ? 0xc9a06a : 0xceaa76, top);
     }
     const grit = [0xc4a273, 0xe6c896, 0xb08a58];
-    for (let k = 0; k < 150; k++) {
+    for (let k = 0; k < (stage === 0 ? 60 : 150); k++) {
       const s = 0.05 + r() * 0.07;
-      f.box(x0 + r() * (x1 - x0 - s), 0.008, z0 + r() * (z1 - z0 - s), s, 0.012, s * (0.6 + r() * 0.8), grit[k % 3], top);
+      f.box(ax0 + r() * (ax1 - ax0 - s), 0.012, az0 + r() * (az1 - az0 - s), s, 0.012, s * (0.6 + r() * 0.8), grit[k % 3], top);
     }
-    // Wheel ruts in from the road, beside the stand.
-    for (const dx of [1.1, 1.5]) f.box(l.x + dx, 0.008, back + l.bp.d * 0.5, 0.13, 0.016, l.fence - (back + l.bp.d * 0.5), 0xb99467, top);
+    // Wheel ruts in from the road, beside the stand, once lorries have been in.
+    if (stage > 0) for (const dx of [1.1, 1.5]) f.box(l.x + flip * dx - (flip < 0 ? 0.13 : 0), 0.012, back + l.bp.d * 0.5, 0.13, 0.016, l.fence - (back + l.bp.d * 0.5), 0xb99467, top);
     const sand = new THREE.Mesh(f.geometry(), voxelMaterial);
     sand.receiveShadow = true;
     l.group.add(sand);
     // The house's outline: a peg at each corner, string between (not across the stand at the front).
-    const m = 0.15;
     const corners: [number, number][] = [[-hw - m, back - m], [hw + m, back - m], [hw + m, front + m], [-hw - m, front + m]];
     for (const [dx, z] of corners) {
       const p = pegModel.mesh(Cell, [0.5, 0, 0.5]);
@@ -882,12 +894,33 @@ export function createTown(
       l.group.add(mesh);
     };
     const side = Math.min(3.15, hw + 0.75);
-    put(bricksModel.mesh(Cell, [0, 0, 0]), side, back + 0.45, 0.2, 0.6);
-    put(planksModel.mesh(Cell, [0, 0, 0]), -side, back + 0.8, Math.PI / 2 + 0.1);
-    put(wheelbarrowModel.mesh(Cell, [0, 0, 0]), Math.min(3.0, hw + 0.65), front - 0.55, 2.4 + r() * 0.5);
+    const barrow = (x: number, z: number, yaw: number) => put(wheelbarrowModel.mesh(Cell, [0, 0, 0]), x, z, yaw + (r() - 0.5) * 0.4);
+    if (stage === 0) {
+      // Just pegged out: one pallet of bricks dropped off, a few planks, nothing else yet.
+      put(bricksModel.mesh(Cell, [0, 0, 0]), flip * side, back + 0.5 + r() * 0.6, r() * 0.4, 0.6);
+      put(planksModel.mesh(Cell, [0, 0, 0]), -flip * side, front - 0.9, 0.1 + r() * 0.2);
+    } else if (stage === 1) {
+      // Materials in: two pallets of bricks side by side, a stack of pipes, the wheelbarrow out front.
+      const bz = back + 0.45 + r() * 0.3;
+      put(bricksModel.mesh(Cell, [0, 0, 0]), flip * side, bz, 0.1, 0.6);
+      put(bricksModel.mesh(Cell, [0, 0, 0]), flip * side, bz + 0.85, -0.1, 0.6);
+      put(pipesModel.mesh(Cell, [10, 0, 0]), -flip * side, back + 1.1 + r() * 0.4, Math.PI / 2, 0.75);
+      barrow(flip * Math.min(3.0, hw + 0.65), front - 0.55, flip > 0 ? 2.5 : 0.65);
+    } else {
+      // Digging begun: earth heaped at the back, a skip to fill, planks and the wheelbarrow by the heap.
+      const mx = -flip * hw * 0.45;
+      put(moundBig.mesh(Cell, [0, 0, 0]), mx, back + 0.9, r() * 6);
+      put(moundSmall.mesh(Cell, [0, 0, 0]), mx + flip * 0.9, back + 0.55, r() * 6);
+      barrow(mx + flip * 1.0, back + 1.7, flip > 0 ? Math.PI : 0);
+      if (back - z0 >= 1.4) put(skipModel.mesh(Cell, [0, 0, 0]), flip * hw * 0.4, Math.max(z0 + 0.8, back - 0.85), 0, 0.8);
+      else put(skipModel.mesh(Cell, [0, 0, 0]), flip * side, back + 0.8, Math.PI / 2, 0.7);
+      put(planksModel.mesh(Cell, [0, 0, 0]), flip * side, front - 0.8, Math.PI / 2 + 0.1);
+    }
+    // A cone or three along the front, between the barriers.
     const cone = M.cone();
-    put(cone.mesh(Cell, [0, 0, 0]), -3.25, l.fence - 0.55);
-    put(cone.mesh(Cell, [0, 0, 0]), 2.1, l.fence - 0.5);
+    const coneSpots = [-3.25, -2.1, 2.1, 3.25].map((x) => x * flip);
+    const cones = 1 + Math.floor(r() * 3);
+    for (let k = 0; k < cones; k++) put(cone.mesh(Cell, [0, 0, 0]), coneSpots[(k * 2 + stage) % 4], l.fence - 0.5 - r() * 0.1);
     const bar = M.barrier();
     for (const dx of [-3.6, -2.6, 1.6, 2.6]) {
       const b = bar.mesh(Cell);

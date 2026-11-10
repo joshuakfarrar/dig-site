@@ -49,7 +49,6 @@ WORDS = {
     "r_roof": [(0, "BUILD!", 3)],
     "r_home": [(0, "WELCOME\nHOME!", 1)],
     "r_street": [(1, "ONE HOUSE...", 4), (6, "...A WHOLE\nSTREET!", 0)],
-    "r_dusk": [(0, "...A WHOLE\nTOWN!", 5)],
     "r_play": [(0, "WITH FRIENDS\nTO PLAY WITH", 3)],
     "r_roller": [(0, "NO ADS", 2)],
     "r_fork": [(0, "NO TIMERS", 1)],
@@ -244,7 +243,7 @@ MELODY = [  # (beat in the bar, note, beats long), two bars that repeat
 RISE = ["C5", "D5", "E5", "G5", "A5", "C6", "D6", "E6"]
 
 
-def music(total_beats, cuts, pops, words, dusk_beat, card_beat):
+def music(total_beats, cuts, pops, words, play, card_beat):
     n = int((total_beats * SPB + 3) * SR)
     mix = {k: np.zeros(n) for k in ("pluck", "bass", "glock", "drums", "fx", "pad")}
 
@@ -277,7 +276,7 @@ def music(total_beats, cuts, pops, words, dusk_beat, card_beat):
         elif b == 3:
             add("bass", tone(hz(root) * 2, 0.3, ((1, 1),), 0.01, 0.15) * 0.3, at)
         # Drums once it's going; a quieter patch over the playground.
-        quiet = 31 <= beat < 39
+        quiet = play[0] <= beat < play[1]
         if 4 <= beat < card_beat:
             if b in (0, 2):
                 add("drums", kick * (0.35 if quiet else 0.7), at)
@@ -291,10 +290,7 @@ def music(total_beats, cuts, pops, words, dusk_beat, card_beat):
                 if p <= off < p + 1:
                     add("glock", tone(hz(note), 1.2, ((1, 1), (2.76, 0.25), (5.4, 0.08)), 0.002, 0.45) * 0.26, at + (off - p) * SPB)
 
-    # A warm swell under the dusk, and the ta-da on the card.
-    for note in ("C4", "E4", "G4", "C5"):
-        sw = tone(hz(note), 3.0, ((1, 1), (2, 0.3)), 1.2, 2.0) * 0.12
-        add("pad", sw, dusk_beat * SPB - 0.6)
+    # The ta-da on the card.
     for k, note in enumerate(("C5", "E5", "G5", "C6")):
         add("glock", tone(hz(note), 2.5, ((1, 1), (2.76, 0.3), (5.4, 0.1)), 0.002, 0.9) * 0.3, card_beat * SPB + k * 0.07)
     for note in ("C3", "G3", "C4", "E4", "G4"):
@@ -372,12 +368,12 @@ def main():
             emit(im.convert("RGB"))
         beat_at += s["frames"] // BEAT
     card_beat = beat_at
-    # Where the dusk shot starts, for the swell.
-    dusk_beat = None
+    # Where the playground shot is, for the quieter patch under it.
+    play = (0, 0)
     acc = 0
     for s in m["shots"]:
-        if s["name"] == "r_dusk":
-            dusk_beat = acc
+        if s["name"] == "r_play":
+            play = (acc, acc + s["frames"] // BEAT)
         acc += s["frames"] // BEAT
     cuts.append(card_beat)
     words.append(card_beat)
@@ -390,7 +386,7 @@ def main():
         emit(card_frame(W, H, j, icon))
 
     total_beats = card_beat + CARD_BEATS
-    audio = music(total_beats, cuts, pops, words, dusk_beat or 27, card_beat)
+    audio = music(total_beats, cuts, pops, words, play, card_beat)
     seconds = n / FPS
     audio = audio[: int(seconds * SR)]
     fade = int(1.2 * SR)

@@ -287,12 +287,12 @@ Estimated at adult pace from distances, speeds and animation times, about 1 s of
 - **Frames reach disk** through a dev-server-only endpoint (`capture()` in `vite.config.ts`).
 - **Needs** Pillow and `imageio-ffmpeg`, which brings its own ffmpeg.
 - **Words:** the captions and the card are drawn in `tools/make_promo.py` (Segoe UI); change the story there and in the shot list.
-- **The reel** (vertical 9:16, 28.5 s, for phones):
+- **The reel** (vertical 9:16, 26.5 s, for phones):
   - Run `promo.film("reel")`, then `python tools/make_reel.py`. It writes `capture/dig-site-reel.mp4`.
   - **Cut to the beat:** a 120 bpm tune made in the script (numpy), a beat every 15 frames. Big sticker words pop in on the beat, and every cut lands on one.
   - **Running order:**
     1. Close-ups: DIG!, POUR!, BUILD!, WELCOME HOME!
-    2. The street filling up one house a beat, each with a rising chime, then the street at dusk.
+    2. The street filling up one house a beat, each with a rising chime, as the player's truck drives down it.
     3. The playground.
     4. "No ads", "No timers", "No reading needed", "Just build".
     5. The end card.
