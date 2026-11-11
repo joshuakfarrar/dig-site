@@ -58,7 +58,7 @@ No to all.
 
 ### Store settings
 - **App or game:** Game. **Category:** Simulation.
-- **Contact details:** hello@galu.games and https://galu.games/dig-site/
+- **Contact details:** support@galu.games and https://galu.games/dig-site/
 
 ### Monetise > In-app products
 - **Product ID:** `full_game`. It can't be changed later, and it has to match the code.

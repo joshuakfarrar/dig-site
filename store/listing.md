@@ -66,7 +66,7 @@ capitals to stand out. That's a common choice, but they can be left out.
 
 - **App category:** Game > Simulation. It's tagged for kids by the target-audience form, not the category.
 - **Tags:** pick from Google's list. "Building", "Construction", "Casual", "Offline", "Single player".
-- **Contact email:** hello@galu.games. **Website:** https://galu.games/dig-site/. **Privacy policy:** https://galu.games/dig-site/privacy/
+- **Contact email:** support@galu.games. **Website:** https://galu.games/dig-site/. **Privacy policy:** https://galu.games/dig-site/privacy/
 
 ## Amazon only
 
