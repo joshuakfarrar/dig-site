@@ -34,12 +34,17 @@ The roadmap (`roadmap.md`) has the reasons; `android.md` and `ios.md` have the h
       - Mattel's BUILD AROUND TOWN: toy vehicle sets.
       - Lots of construction-themed kids' play centres use "dig" (Little Diggers, Dig 'n Play, Digs and Rigs), so no one owns "dig" for kids' construction play.
     - **No app called "Dig Site"** turned up on Google Play or the App Store. "Prehistoric Dig Site" and several dinosaur "dig" games share search results.
-- [ ] **You: the upload key** for Google Play and Amazon. It's one `keytool` command (`android.md`, "Release builds and the upload key"). Then fill in `android/keystore.properties`, and back up the `.jks` file and its password together, in a password manager.
+- [x] **You: the upload key** for Google Play and Amazon. It's one `keytool` command (`android.md`, "Release builds and the upload key"). Then fill in `android/keystore.properties`, and back up the `.jks` file and its password together, in a password manager.
 - [ ] **You: the Amazon developer account** (free; it doesn't need the D-U-N-S): https://developer.amazon.com, "Sign in", then create an account. Sign up as Galu LLC, with tax (the EIN) and payment details.
+  - [x] The account, as Galu LLC.
+  - [ ] **Waiting: Galu LLC's business bank account** (opened 2026-11-11, 3–5 business days). Then add it under Settings > Payment Information, and finish the tax identity interview if it's still open. Until then the IAP won't submit: Amazon's page shows only a generic error, but the server's reply is `VENDOR_NO_PAYMENT_INFO`.
   - Amazon's Appstore now reaches only Fire tablets. Amazon stopped making them in October 2026 (the new Alexa Tablets run Google Play), but there are a great many in families' hands, kids' editions especially, and they get updates for years. It's still worth doing, and Google Play matters more than it did.
-  - [ ] Create the app ("Dig Site", `io.github.joshuakfarrar.digsite`).
-  - [ ] Add the in-app item `full_game` as an **Entitlement** at $2.99.
-  - [ ] Download the app's public key (`AppstoreAuthenticationKey.pem`) and give it to Claude, which puts it in `android/app/src/amazon/assets/`.
+  - [x] Create the app ("Dig Site", `io.github.joshuakfarrar.digsite`).
+  - [x] Add the in-app item `full_game` as an **Entitlement** at $2.99 ("The whole town"), with its icons.
+    - [ ] Submit it, once the bank account is in (above).
+  - [x] Download the app's public key (`AppstoreAuthenticationKey.pem`) and give it to Claude, which puts it in `android/app/src/amazon/assets/`.
+  - [x] Upload the signed `amazon` bundle (1.0, build 1).
+  - [ ] The Appstore details, from `store/listing.md` and `store/forms.md`: descriptions, icons, screenshots (`capture/store/android-16x10/`), the feature graphic as the promo image, the 1920×1080 preview video, content rating, and privacy. None of this waits on the bank.
 - [x] **Claude (Mac): the iOS refund test** (with the rest, in `1cf9b01`). Buy in the Simulator, then Debug > StoreKit > Manage Transactions > Refund Purchases. The padlocks should come back (`ios.md`).
 - [x] **Claude: the store listing pack**, in `store/` (`listing.md`, `forms.md`; pictures from `tools/make_store_art.py`):
   - [x] Name, subtitle or short description (80 characters for Google, 30 for Apple's subtitle), full description, and keywords for Apple.
@@ -48,6 +53,8 @@ The roadmap (`roadmap.md`) has the reasons; `android.md` and `ios.md` have the h
   - [x] A preview video, to each store's rules (Apple: 15–30 s, from the app itself): `tools/make_preview.py`.
   - [x] Drafted answers for every form (below), to copy in: `store/forms.md`.
 - [ ] **Claude: release builds.** Set the version (1.0.0, build 1), build the signed `play` and `amazon` bundles, and check a release build on the Fire (the real key, no web debugging).
+  - [x] `amazon`: signed (1.0, build 1), and the release build runs on the Fire 7 in Production Mode.
+  - [ ] `play`: build it when there's a Play Console to upload to.
 
 ## The forms (Claude drafts, you submit)
 
