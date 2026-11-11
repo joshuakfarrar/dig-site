@@ -18,7 +18,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Amazon Appstore in-app purchasing (Fire tablets), for the one-time unlock, an "entitled" product
@@ -43,7 +45,8 @@ final class AmazonBackend implements StoreBackend, PurchasingListener {
     private static final class Restore {
         final String sku;
         final Callback<String> done; // null for the quiet check on coming back to the front
-        boolean owned;
+        final Set<String> active = new HashSet<>();
+        final Set<String> cancelled = new HashSet<>();
 
         Restore(String sku, Callback<String> done) {
             this.sku = sku;
@@ -188,15 +191,24 @@ final class AmazonBackend implements StoreBackend, PurchasingListener {
             return;
         }
         for (Receipt receipt : response.getReceipts()) {
-            if (receipt.isCanceled()) continue;
+            if (receipt.isCanceled()) {
+                r.cancelled.add(receipt.getSku());
+                continue;
+            }
             PurchasingService.notifyFulfillment(receipt.getReceiptId(), FulfillmentResult.FULFILLED);
-            onOwned.owned(receipt.getSku());
-            if (receipt.getSku().equals(r.sku)) r.owned = true;
+            r.active.add(receipt.getSku());
         }
         if (response.hasMore()) {
             restores.put(PurchasingService.getPurchaseUpdates(false), r);
             return;
         }
-        if (r.done != null) r.done.done(r.owned ? "bought" : "none");
+        // A cancelled receipt is Amazon saying outright that it was refunded or taken back; it only
+        // counts if there's no live purchase of the same thing (bought again after a refund).
+        for (String sku : r.active) onOwned.owned(sku);
+        for (String sku : r.cancelled) if (!r.active.contains(sku)) onOwned.revoked(sku);
+        if (r.done == null) return;
+        if (r.active.contains(r.sku)) r.done.done("bought");
+        else if (r.cancelled.contains(r.sku)) r.done.done("revoked");
+        else r.done.done("none");
     }
 }

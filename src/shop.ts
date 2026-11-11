@@ -13,9 +13,12 @@ import { Capacitor, registerPlugin } from "@capacitor/core";
  * On the dev server, `?paywall` turns the padlocks on and buying just unlocks, so the whole flow can
  * be tried in a browser.
  *
- * Owning it is remembered on this device only, like the town, and checked with the store at start
- * (a purchase made on another device, or a pending payment that's cleared). It's never taken back
- * if the store can't be reached. Nothing about the family is sent anywhere.
+ * Owning it is remembered on this device only, like the town, and checked with the store quietly
+ * at every start: a purchase made on another device, or a pending payment that's cleared, unlocks
+ * it. It's taken back only when the store says outright that it was refunded ("revoked": Apple and
+ * Amazon say so; Google Play never does, since a purchase missing there could just mean another
+ * account on a family tablet). Never because the store couldn't be reached or found nothing.
+ * Nothing about the family is sent anywhere.
  */
 const KEY = "dig-site/unlocked/v1";
 
@@ -25,13 +28,13 @@ export const PRODUCT = "full_game";
 /** How many lots are free, in all, before the rest are locked. */
 export const FREE_LOTS = 2;
 
-type Answer = "bought" | "pending" | "cancelled" | "none" | "failed" | "unavailable";
+type Answer = "bought" | "pending" | "cancelled" | "none" | "revoked" | "failed" | "unavailable";
 interface StorePlugin {
   sells(): Promise<{ sells: boolean }>;
   price(o: { id: string }): Promise<{ price?: string }>;
   buy(o: { id: string }): Promise<{ outcome: Answer }>;
   restore(o: { id: string; quiet?: boolean }): Promise<{ outcome: Answer }>;
-  addListener(event: "owned", f: (e: { id: string }) => void): Promise<unknown>;
+  addListener(event: "owned" | "revoked", f: (e: { id: string }) => void): Promise<unknown>;
 }
 const Store = registerPlugin<StorePlugin>("Store");
 const native = Capacitor.isNativePlatform() && Capacitor.isPluginAvailable("Store");
@@ -67,15 +70,20 @@ function remember(on: boolean): void {
   }
 }
 
-// At start: can this build sell, and does the store already say it's owned? (Quietly: no sheet.)
+/** What a store's answer means for what the device remembers: only "bought" and "revoked" change it. */
+function heed(a: Answer): void {
+  if (a === "bought") remember(true);
+  else if (a === "revoked") remember(false);
+}
+
+// At start: can this build sell, and what does the store say now? (Quietly: no sheet, no sign-in.)
 if (native) {
-  void Store.addListener("owned", (e) => {
-    if (e.id === PRODUCT) remember(true);
-  });
+  void Store.addListener("owned", (e) => e.id === PRODUCT && heed("bought"));
+  void Store.addListener("revoked", (e) => e.id === PRODUCT && heed("revoked"));
   void Store.sells()
     .then((r) => {
       sells = r.sells;
-      if (sells && !owned()) return Store.restore({ id: PRODUCT, quiet: true }).then((a) => a.outcome === "bought" && remember(true));
+      if (sells) return Store.restore({ id: PRODUCT, quiet: true }).then((a) => heed(a.outcome));
     })
     .catch(() => {});
 }
@@ -92,12 +100,12 @@ export async function price(): Promise<string | null> {
 }
 
 /** How a purchase or restore went, as the grown-ups' card tells it. */
-export type Outcome = "bought" | "pending" | "cancelled" | "none" | "failed" | "unavailable";
+export type Outcome = Answer;
 
 async function ask(f: () => Promise<{ outcome: Answer }>): Promise<Outcome> {
   try {
     const { outcome } = await f();
-    if (outcome === "bought") remember(true);
+    heed(outcome);
     return outcome;
   } catch {
     return "failed";

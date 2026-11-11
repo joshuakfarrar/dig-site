@@ -8,7 +8,8 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 
 /**
  * The game's one purchase, for `src/shop.ts`: `sells`, `price`, `buy` and `restore`, plus an
- * "owned" event when a purchase goes through later (a pending payment clearing). This build's store
+ * "owned" event when a purchase goes through later (a pending payment clearing) and a "revoked"
+ * event when the store says outright that it was refunded. This build's store
  * comes from `Backends`: Google Play or Amazon. Nothing here talks to anything but the store app on
  * the device, and nothing about the buyer reaches the game.
  */
@@ -19,11 +20,23 @@ public class StorePlugin extends Plugin {
     @Override
     public void load() {
         store = Backends.create(getContext());
-        store.start((id) -> {
-            JSObject o = new JSObject();
-            o.put("id", id);
-            notifyListeners("owned", o, true);
+        store.start(new StoreBackend.Owned() {
+            @Override
+            public void owned(String id) {
+                tell("owned", id);
+            }
+
+            @Override
+            public void revoked(String id) {
+                tell("revoked", id);
+            }
         });
+    }
+
+    private void tell(String event, String id) {
+        JSObject o = new JSObject();
+        o.put("id", id);
+        notifyListeners(event, o, true);
     }
 
     @PluginMethod

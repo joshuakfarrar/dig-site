@@ -9,16 +9,21 @@ import android.app.Activity;
  *
  * Outcomes are plain words the game understands: "bought", "pending" (paid by a method that takes a
  * while, like cash at a shop; it unlocks when it clears), "cancelled", "none" (restore found
- * nothing), "failed" and "unavailable" (no store to talk to).
+ * nothing), "revoked" (restore found it, refunded: only when the store says so outright; Google
+ * Play never does, because a purchase missing there could just be another account), "failed" and
+ * "unavailable" (no store to talk to).
  */
 public interface StoreBackend {
     interface Callback<T> {
         void done(T value);
     }
 
-    /** Told when something's owned outside a purchase call, like a pending payment clearing. */
+    /** Told when something's owned outside a purchase call (a pending payment clearing), or when the
+     *  store says outright that a purchase was refunded or taken back. */
     interface Owned {
         void owned(String productId);
+
+        default void revoked(String productId) {}
     }
 
     /** True if this build can sell at all (not whether the store's reachable right now). */

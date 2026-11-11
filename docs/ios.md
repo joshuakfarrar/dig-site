@@ -90,6 +90,8 @@ The same game, wrapped for iPhone and iPad with Capacitor, like the Android app.
 - **One product, `full_game`:** a **Non-Consumable** in App Store Connect, at $2.99 (Tier 3).
 - **Ask to Buy:** a child's purchase that waits for a parent says "pending". When it's approved, StoreKit's `Transaction.updates` unlocks the game.
 - **Restore purchase** syncs with the App Store first (`AppStore.sync`), which may ask the parent to sign in. Apple requires a restore button. The quiet check at start-up only looks at what's on the device, so it never asks.
+- **Refunds re-lock it:** a transaction with a `revocationDate` sends "revoked" (through `Transaction.updates`), and restore answers "revoked" when `Transaction.latest` shows one. See "The free tier and the purchase" in `docs/android.md`.
+  - **To try it:** in Xcode, **Debug > StoreKit > Manage Transactions**, select the purchase, and choose **Refund Purchases**. The game should re-lock: the padlocks come back after two lots.
 - **Tried in the Simulator:** the price ($2.99), Apple's test sheet, and `bought` back in the game.
 - **To try it in the Simulator, with no App Store Connect needed:**
   1. **Test store:** `ios/App/DigSite.storekit` holds `full_game` at $2.99, and the shared App scheme already uses it (Edit Scheme > Run > Options > StoreKit Configuration).

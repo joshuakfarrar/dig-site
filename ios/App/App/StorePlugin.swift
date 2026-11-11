@@ -4,7 +4,8 @@ import StoreKit
 /**
  * The game's one purchase on iOS, through StoreKit 2: the same calls as Android's StorePlugin, for
  * `src/shop.ts`. `sells`, `price`, `buy` and `restore`, plus an "owned" event when a purchase goes
- * through later: "Ask to Buy", where a parent approves a child's purchase on their own device.
+ * through later ("Ask to Buy", where a parent approves a child's purchase on their own device) and
+ * a "revoked" event when Apple refunds it.
  *
  * The product is `full_game`, a non-consumable. Transactions are checked by StoreKit on the device
  * (`.verified`) and finished here; there's no server, and nothing about the buyer reaches the game.
@@ -25,12 +26,13 @@ public class StorePlugin: CAPPlugin, CAPBridgedPlugin {
 
     override public func load() {
         // Purchases that land while the game's open, or that were waiting from before: an approved
-        // Ask to Buy, a purchase from another device, an interrupted one finishing.
+        // Ask to Buy, a purchase from another device, an interrupted one finishing. And refunds:
+        // Apple sets `revocationDate` when it takes a purchase back, which re-locks the game.
         updates = Task.detached { [weak self] in
             for await result in Transaction.updates {
                 guard case .verified(let t) = result else { continue }
                 await t.finish()
-                if t.revocationDate == nil { self?.owned(t.productID) }
+                self?.tell(t.revocationDate == nil ? "owned" : "revoked", t.productID)
             }
         }
     }
@@ -39,8 +41,8 @@ public class StorePlugin: CAPPlugin, CAPBridgedPlugin {
         updates?.cancel()
     }
 
-    private func owned(_ id: String) {
-        notifyListeners("owned", data: ["id": id], retainUntilConsumed: true)
+    private func tell(_ event: String, _ id: String) {
+        notifyListeners(event, data: ["id": id], retainUntilConsumed: true)
     }
 
     /// The App Store's always there to sell through. (If a parent's turned purchases off in Screen
@@ -114,6 +116,11 @@ public class StorePlugin: CAPPlugin, CAPBridgedPlugin {
                 if case .verified(let t) = result, t.productID == id, t.revocationDate == nil {
                     return call.resolve(["outcome": "bought"])
                 }
+            }
+            // Not owned now. Was it bought and then refunded? Apple says so outright, and that
+            // re-locks the game; anything else ("none") leaves what the device remembers alone.
+            if case .verified(let t)? = await Transaction.latest(for: id), t.revocationDate != nil {
+                return call.resolve(["outcome": "revoked"])
             }
             call.resolve(["outcome": "none"])
         }

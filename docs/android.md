@@ -86,7 +86,11 @@ Without `keystore.properties`, release builds still work but come out unsigned.
 - **One product, `full_game`**, a one-time in-app purchase ("managed product" in Play Console) at $2.99.
 - **The plugin:** `StorePlugin.java` (`sells`, `price`, `buy`, `restore`, and an "owned" event), with each store's backend in its own build: `src/play/java/.../PlayBackend.java` (Play Billing Library 9.1) and `src/amazon/java/.../AmazonBackend.java`.
 - **Purchases are acknowledged on the device.** There's no server, and Google refunds a purchase that's never acknowledged within three days.
-- **Owning it is checked with the store at start,** quietly. That picks up a purchase made on another device, or a pending payment that's cleared. It's never taken back if the store can't be reached.
+- **Checked with the store quietly at every start.** That picks up a purchase made on another device, or a pending payment that's cleared.
+- **Refunds re-lock it, but only when the store says so outright** ("revoked"). The device's memory is changed only by "bought" and "revoked". It's never taken back because the store couldn't be reached, or found nothing.
+  - **Amazon** marks the receipt cancelled. It's seen when the game comes back to the front, at start, or on Restore. A purchase made again after a refund wins over the refunded one.
+  - **Apple** sets a revocation date on the transaction. It's seen through `Transaction.updates`, or at start through `Transaction.latest`.
+  - **Google Play** never re-locks. Its list of purchases just leaves a refunded one out, and that looks the same as another Google account being signed in on a family tablet.
 - **To try it on the dev server,** open `?paywall`: padlocks after two lots, and buying just unlocks.
 - **Pending purchases:** Google Play's slow payment methods (cash at a shop), and Amazon Kids, where a child's purchase goes to a parent to approve. The card says it's on its way, and it unlocks when the store says so (Amazon's is checked each time the app comes back to the front).
 - **To try real Google Play purchases,** the app has to come from Google Play. Upload a signed bundle to an internal testing track, add `full_game` in Play Console, and add your Google account as a license tester. Its purchases are free test purchases.
@@ -106,6 +110,12 @@ Without `keystore.properties`, release builds still work but come out unsigned.
   - Restore: "bought"
   - forgotten, then picked back up quietly at the next start
   - Request Purchase: "pending"; once approved, it arrived as "owned" when the game came back to the front
+  - Request Purchase, then declined by the "parent": it stayed locked, and Restore said "none"
+  - a refund (App Tester's Cancel on the transaction): it re-locked when the game came back to the front, Restore said "revoked", and it stayed locked after a restart
+  - bought again after the refund: "bought", and it stayed unlocked after a restart
+  - Restore with no purchases on record: "none", leaving an unlocked game unlocked
+  - uninstalled and reinstalled: the purchase came back on its own at the first start, while the title was still up
+  - on screen: padlocks after two lots, the grown-ups' button, the gate's sum, the card with the store's price, "No purchase found for this account." from Restore, then Unlock through App Tester: the card closed, and the padlocks and the grown-ups' button went
 
 ## Still to do
 - A real purchase through Google Play's internal testing track. It needs the Play Console account and the upload key.
