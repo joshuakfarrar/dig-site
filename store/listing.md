@@ -110,7 +110,14 @@ comment says how to render the screenshots first, from the game itself, on the d
 - **The finished neighbourhoods turn to dusk,** so the Market Square and Harbour views are half built, in daylight (the `STILLS` shots).
 - **`google-feature-graphic.png`:** 1024×500, the family moving in, with the icon, "Dig Site" and "Build a town, one home at a time."
 - **`icon-512.png`** for Google Play, and **`icon-114.png`** with the 512 for Amazon. Apple takes its icon from the app itself.
-- **Preview video:** not made yet.
-  - Apple's must be 15–30 s of footage from the app, landscape for a landscape app (1920×886 for the iPhone set, 1600×1200 for the iPad).
-  - Google's is a YouTube link.
-  - The 26-second reel is vertical, so it suits YouTube Shorts and Amazon. The App Store needs a landscape cut from the story trailer's footage, with no captions.
+- **Preview video:** `python tools/make_preview.py` (its opening comment says how to film it first),
+  about 28 seconds, made into `capture/dig-site-preview-<size>.mp4`:
+  - Footage from the game only, with no words, as Apple asks: digging, pouring, the roof going on, a
+    family moving in, Home Street, the playground, Market Square, and the Harbour.
+  - Slow, steady camera moves and slow dissolves. It's always daytime, and every building faces the
+    camera. The game's own music, quiet.
+  - **1920×886:** the App Store's iPhone preview (it's the size for both the 6.9" and 6.5" sets).
+  - **1600×1200:** the App Store's iPad preview (13").
+  - **1920×1080:** for YouTube (Google Play takes a YouTube link; upload it unlisted, or public) and for Amazon.
+  - Apple picks a poster frame from it (the still shown before it plays); choose one in App Store Connect, the family moving in is a good one.
+  - The 26-second reel is vertical, so it suits YouTube Shorts and social posts.

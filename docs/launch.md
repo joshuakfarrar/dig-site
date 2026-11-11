@@ -24,18 +24,19 @@ The roadmap (`roadmap.md`) has the reasons; `android.md` and `ios.md` have the h
 
 ## Now: nothing here waits on the D-U-N-S
 
-- [ ] **You: the name.** Search "Dig Site" in the USPTO trademark search (tmsearch.uspto.gov) and in each store. Anything too close in kids' games means choosing another name now, before any store page exists.
+- [ ] **You: the name.** Search "Dig Site" in the USPTO's trademark search (https://tmsearch.uspto.gov, no account needed) and in each store. Anything too close in kids' games means choosing another name now, before any store page exists.
 - [ ] **You: the upload key** for Google Play and Amazon. It's one `keytool` command (`android.md`, "Release builds and the upload key"). Then fill in `android/keystore.properties`, and back up the `.jks` file and its password together, in a password manager.
-- [ ] **You: the Amazon developer account** (free; it doesn't need the D-U-N-S). Sign up as Galu LLC, with tax and payment details.
+- [ ] **You: the Amazon developer account** (free; it doesn't need the D-U-N-S): https://developer.amazon.com, "Sign in", then create an account. Sign up as Galu LLC, with tax (the EIN) and payment details.
+  - Amazon's Appstore now reaches only Fire tablets. Amazon stopped making them in October 2026 (the new Alexa Tablets run Google Play), but there are a great many in families' hands, kids' editions especially, and they get updates for years. It's still worth doing, and Google Play matters more than it did.
   - [ ] Create the app ("Dig Site", `io.github.joshuakfarrar.digsite`).
   - [ ] Add the in-app item `full_game` as an **Entitlement** at $2.99.
   - [ ] Download the app's public key (`AppstoreAuthenticationKey.pem`) and give it to Claude, which puts it in `android/app/src/amazon/assets/`.
-- [ ] **Claude (Mac): the iOS refund test.** Buy in the Simulator, then Debug > StoreKit > Manage Transactions > Refund Purchases. The padlocks should come back (`ios.md`).
+- [x] **Claude (Mac): the iOS refund test** (with the rest, in `1cf9b01`). Buy in the Simulator, then Debug > StoreKit > Manage Transactions > Refund Purchases. The padlocks should come back (`ios.md`).
 - [x] **Claude: the store listing pack**, in `store/` (`listing.md`, `forms.md`; pictures from `tools/make_store_art.py`):
   - [x] Name, subtitle or short description (80 characters for Google, 30 for Apple's subtitle), full description, and keywords for Apple.
   - [x] Screenshots: iPhone 6.9", iPad 13", Android phone and 7–10" tablet, and Fire (landscape). Each shows the town growing, with no words on the pictures that a child would need to read.
   - [x] Google's feature graphic (1024×500).
-  - [ ] A preview video cut from the reel, to each store's rules (Apple: 15–30 s, from the app itself).
+  - [x] A preview video, to each store's rules (Apple: 15–30 s, from the app itself): `tools/make_preview.py`.
   - [x] Drafted answers for every form (below), to copy in: `store/forms.md`.
 - [ ] **Claude: release builds.** Set the version (1.0.0, build 1), build the signed `play` and `amazon` bundles, and check a release build on the Fire (the real key, no web debugging).
 

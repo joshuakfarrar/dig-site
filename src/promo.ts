@@ -362,6 +362,147 @@ const STILLS: Shot[] = [
   },
 ];
 
+// ------------------------------------------------------------------ the App Store preview
+
+/**
+ * The store preview (`tools/make_preview.py`): about 28 seconds, landscape, footage only. It's the
+ * story's shots made softer. Every camera moves slowly and steadily, and keeps a little speed at
+ * both ends, so the moves carry on through the slow dissolves rather than stopping and starting.
+ * Every neighbourhood is a lot short of finished, so it's always daytime (a finished one turns to
+ * dusk), and the empty lot is one out of shot. Every building faces south, toward these cameras.
+ */
+const glide = (k: number) => 0.4 * k + 0.6 * ease(k);
+// Every lot but the near row's west end (lot 4), which the Square and Harbour shots don't see.
+const OUT_OF_SHOT = [0, 1, 2, 3, 5, 6, 7];
+const PREVIEW: Shot[] = [
+  {
+    name: "p_dig",
+    caption: "",
+    seconds: 3.6,
+    setup() {
+      g().saved.at = 1;
+      g().goBuild(7);
+      const b = g().build, e = b.excavator;
+      const q = b.site.quadrants.slice().sort((a: Any, c: Any) => a.spot.distanceTo(e.pos) - c.spot.distanceTo(e.pos))[0];
+      driveTo(e, q.spot.x, q.spot.y, 0.4);
+      run(0.4);
+      run(1.0, { work: true, workPressed: true });
+      digAt = [e.pos.x, e.pos.y];
+    },
+    frame(t, k) {
+      // Round the digger from where it stopped (not from wherever it rocks to as it digs).
+      const [x, z] = digAt;
+      const a = 0.85 + glide(k) * 0.35;
+      return { eye: [x + Math.cos(a) * 5.0, 3.3, z + Math.sin(a) * 5.0], at: [x + 0.4, 0.8, z - 0.5], input: { work: true, workPressed: t === 0 } };
+    },
+  },
+  {
+    name: "p_pour",
+    caption: "",
+    seconds: 3.4,
+    setup() {
+      g().saved.at = 0;
+      g().goBuild(2, "pour");
+      const m = g().build.mixer, F = g().build.site.foot;
+      driveTo(m, m.pos.x, 3.4, 0.3);
+      driveTo(m, F.cx - 0.6, 3.4, 0.3);
+      driveTo(m, F.cx - 0.6, 2.2, 0.3);
+      driveTo(m, F.cx - 0.6, -0.6, 0.3);
+      pourAt = [m.pos.x, m.pos.y];
+    },
+    frame(_t, k) {
+      // A still camera turning slowly to follow the truck, rather than riding along with it.
+      const [x, z] = pourAt;
+      const m = g().build.mixer.pos;
+      return { eye: [x + 4.6, 3.2, z + 4.2 + glide(k) * 0.4], at: [x - 0.2 + (m.x - x) * 0.6, 0.4, z + 0.8 + (m.y - z) * 0.6], input: { moveY: 0.3 } };
+    },
+  },
+  {
+    name: "p_roof",
+    caption: "",
+    seconds: 3.2,
+    setup() {
+      // As the reel: everything up to the roof starting down onto the walls, unfilmed.
+      REEL.find((s) => s.name === "r_roof")!.setup();
+    },
+    frame(t, k) {
+      const e = glide(k);
+      return { eye: mix([0.2, 4.6, 6.4], [-0.6, 4.2, 5.6], e), at: [-1.3, 1.5, -1.6], input: { work: t < 0.05, workPressed: t === 0 } };
+    },
+  },
+  {
+    name: "p_home",
+    caption: "",
+    seconds: 4.2,
+    setup() {
+      const game = g();
+      game.saved.built = [[0]];
+      game.saved.at = 0;
+      game.goTown(0);
+      game.town.truck.root.visible = false;
+      run(0.1); // so the house pops up just after the dissolve into this shot has settled
+    },
+    frame(_t, k) {
+      return { eye: mix([-10.4, 3.1, 1.6], [-11.0, 3.6, 2.6], glide(k)), at: [-12, 1.4, -5.6] };
+    },
+  },
+  {
+    name: "p_street",
+    caption: "",
+    seconds: 4.2,
+    setup() {
+      town([[0, 1, 2, 3, 4, 5, 6]], 0);
+      run(3);
+    },
+    frame(_t, k) {
+      const e = glide(k);
+      // Out over the road, in front of the gardens behind (whose hedges would poke into the frame).
+      return { eye: mix([-12, 6.2, 0.8], [2, 6.2, 0.8], e), at: mix([-8, 0.8, -6], [6, 0.8, -6], e) };
+    },
+  },
+  {
+    name: "p_play",
+    caption: "",
+    seconds: 4.2,
+    setup() {
+      town([ALL, OUT_OF_SHOT], 1);
+      run(6);
+    },
+    frame(_t, k) {
+      const a = 1.2 + glide(k) * 0.4;
+      return { eye: [4 + Math.cos(a) * 5.6, 3.5, 3.6 + Math.sin(a) * 5.6], at: [4, 0.8, 3.6] };
+    },
+  },
+  {
+    name: "p_square",
+    caption: "",
+    seconds: 4.2,
+    setup() {
+      town([ALL, OUT_OF_SHOT], 1);
+      run(3);
+    },
+    frame(_t, k) {
+      const e = glide(k);
+      return { eye: mix([18.5, 9.6, 18], [14, 9.2, 20.5], e), at: mix([3.5, 0.8, 3], [1.5, 0.8, 3], e) };
+    },
+  },
+  {
+    name: "p_harbour",
+    caption: "",
+    seconds: 4.8,
+    setup() {
+      town([ALL, ALL, OUT_OF_SHOT], 2);
+      run(3);
+    },
+    frame(_t, k) {
+      const e = glide(k);
+      return { eye: mix([18.5, 6.9, 19], [14, 6.3, 20.5], e), at: mix([11, 1.4, 4], [9, 1.3, 4], e) };
+    },
+  },
+];
+let digAt: [number, number] = [0, 0];
+let pourAt: [number, number] = [0, 0];
+
 const REEL: Shot[] = [
   {
     name: "r_dig",
@@ -576,12 +717,20 @@ const CUTS: Record<string, { shots: Shot[]; w: number; h: number; fov: number }>
   story: { shots: SHOTS, w: 1920, h: 1080, fov: 42 },
   reel: { shots: REEL, w: 1080, h: 1920, fov: 58 },
   stills: { shots: STILLS, w: 1920, h: 1080, fov: 42 },
+  preview: { shots: PREVIEW, w: 1920, h: 1080, fov: 42 },
 };
 const cutOf = (name: string) => Object.values(CUTS).find((c) => c.shots.some((s) => s.name === name))!;
-function useCut(c: { w: number; h: number; fov: number }): void {
-  W = c.w;
-  H = c.h;
-  FOV = c.fov;
+/**
+ * Films cut `c` at `w`×`h` (its own size if not given). Wider than the cut, it keeps the cut's
+ * height of view (so more shows at the sides); narrower, it keeps its width, so nothing at the
+ * sides is lost.
+ */
+function useCut(c: { w: number; h: number; fov: number }, w = c.w, h = c.h): void {
+  const base = c.w / c.h;
+  const across = 2 * Math.atan(Math.tan((c.fov * Math.PI) / 360) * base);
+  W = w;
+  H = h;
+  FOV = w / h >= base ? c.fov : (2 * Math.atan(Math.tan(across / 2) / (w / h)) * 180) / Math.PI;
 }
 
 const canvas = (): HTMLCanvasElement => g().renderer.domElement;
@@ -671,11 +820,7 @@ const promo = {
     const was = frameNo;
     for (const [i, [name, t]] of list.entries()) {
       const c = cutOf(name);
-      const base = c.w / c.h;
-      const across = 2 * Math.atan(Math.tan((c.fov * Math.PI) / 360) * base);
-      W = w;
-      H = h;
-      FOV = w / h >= base ? c.fov : (2 * Math.atan(Math.tan(across / 2) / (w / h)) * 180) / Math.PI;
+      useCut(c, w, h);
       const s = c.shots.find((x) => x.name === name)!;
       mirroring = false;
       s.setup();
@@ -689,10 +834,13 @@ const promo = {
     dispatchEvent(new Event("resize"));
     return `${list.length} at ${w}x${h}`;
   },
-  /** Films every shot of `cut` ("story" or "reel"), or just those named, into `capture/`. */
-  async film(cut = "story", names?: string[]): Promise<string> {
+  /**
+   * Films every shot of `cut` ("story", "reel" or "preview"), or just those named, into
+   * `capture/`, at `w`×`h` if given (the cut's own size if not).
+   */
+  async film(cut = "story", names?: string[], w?: number, h?: number): Promise<string> {
     const c = CUTS[cut];
-    useCut(c);
+    useCut(c, w, h);
     await fetch("/__capture/reset", { method: "POST" });
     frameNo = 0;
     const list: { name: string; caption: string; from: number; frames: number }[] = [];

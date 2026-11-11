@@ -128,6 +128,8 @@ No to all.
 - Then download the app's key (`AppstoreAuthenticationKey.pem`) for the build.
 
 ### Device support
-- Fire tablets, and Android phones and tablets.
+- **Fire tablets only.** Amazon closed its Appstore on other Android phones and tablets in August 2025.
+- Amazon stopped making Fire tablets in October 2026; its new Alexa Tablets run Google Play instead.
+  The Appstore still serves the Fire tablets families already have, and those get updates for years.
 - **Landscape only.**
 - **Minimum Android:** 7.0 (API 24).
