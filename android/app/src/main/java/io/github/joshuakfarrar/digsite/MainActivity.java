@@ -1,6 +1,8 @@
 package io.github.joshuakfarrar.digsite;
 
+import android.content.pm.ApplicationInfo;
 import android.os.Bundle;
+import android.webkit.WebView;
 import android.view.WindowManager;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -16,6 +18,9 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(StorePlugin.class); // the one purchase (see StorePlugin)
         super.onCreate(savedInstanceState);
+        // Debug builds only: the web view can be inspected from a computer over USB (chrome://inspect),
+        // for testing. The shipped app keeps it off (capacitor.config.ts).
+        if ((getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0) WebView.setWebContentsDebuggingEnabled(true);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         hideSystemBars();
     }

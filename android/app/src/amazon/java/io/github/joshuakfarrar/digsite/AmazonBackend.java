@@ -2,6 +2,7 @@ package io.github.joshuakfarrar.digsite;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import com.amazon.device.iap.PurchasingListener;
 import com.amazon.device.iap.PurchasingService;
@@ -55,7 +56,11 @@ final class AmazonBackend implements StoreBackend, PurchasingListener {
         // Only sells with the Amazon Appstore on the device and the app's public key built in (from
         // the Amazon developer console, src/amazon/assets/AppstoreAuthenticationKey.pem). Without
         // the key Amazon never answers, so a build missing it must not lock anything.
-        hasAppstore = installed("com.amazon.venezia") && hasKey();
+        // A debug build may stand in Amazon's App Tester for the key: with the tablet in sandbox
+        // mode (`adb shell setprop debug.amazon.sandboxmode debug`), App Tester answers instead of
+        // the Appstore. See docs/android.md. A release build always needs the real key.
+        boolean debuggable = (this.context.getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0;
+        hasAppstore = installed("com.amazon.venezia") && (hasKey() || (debuggable && installed("com.amazon.sdktestclient")));
     }
 
     private boolean installed(String pkg) {

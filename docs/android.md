@@ -14,7 +14,7 @@ The game is wrapped as an Android app with [Capacitor](https://capacitorjs.com).
 - **Locked to landscape** (`sensorLandscape`): it turns with the tablet, but never stands upright.
 - **Full screen and awake** (`MainActivity.java`): the status and navigation bars are hidden (swipe from the edge to bring them back for a moment), and the screen doesn't sleep while it's open.
 - **Back button** (`main.ts`): on the title it closes the app. In play it never leaves; it only bounces the hold-to-confirm corner button, so a grown-up can see how to get out.
-- **Web debugging** is off in the shipped app.
+- **Web debugging** is off in the shipped app. Debug builds turn it on (`MainActivity`), for testing from a computer.
 
 ## Building it
 
@@ -91,12 +91,23 @@ Without `keystore.properties`, release builds still work but come out unsigned.
 - **Pending purchases:** Google Play's slow payment methods (cash at a shop), and Amazon Kids, where a child's purchase goes to a parent to approve. The card says it's on its way, and it unlocks when the store says so (Amazon's is checked each time the app comes back to the front).
 - **To try real Google Play purchases,** the app has to come from Google Play. Upload a signed bundle to an internal testing track, add `full_game` in Play Console, and add your Google account as a license tester. Its purchases are free test purchases.
 - **Amazon needs the app's key.** In the Amazon developer console, open the app, then **App Services > In-App Items**, and add `full_game` as an Entitlement. Then download the public key file ("AppstoreAuthenticationKey.pem") and save it as `android/app/src/amazon/assets/AppstoreAuthenticationKey.pem`. It's a public key, so it's fine in git. Without it Amazon never answers, so the build sells nothing.
-- **To try Amazon purchases** before it's published, on a Fire tablet:
+- **To try Amazon purchases** before it's published, on a Fire tablet (no Amazon account or key needed):
   1. Install Amazon's **App Tester** from the Amazon Appstore.
-  2. Copy the in-app items file from the developer console (`amazon.sdktester.json`) to the tablet: `adb push amazon.sdktester.json /sdcard/amazon.sdktester.json`.
-  3. Turn on sandbox mode with `adb shell setprop debug.amazon.sandboxmode debug`, then install the `amazon` build. App Tester fakes the purchases.
+  2. Give it the product: `adb push android/amazon.sdktester.json /sdcard/amazon.sdktester.json`.
+  3. Turn on sandbox mode with `adb shell setprop debug.amazon.sandboxmode debug` (it's off again after a restart), then install the `amazon` **debug** build.
+  4. A debug build counts App Tester as the store, even without the key. A release build always needs the real key.
+  5. App Tester shows its own purchase sheet: Get Item buys, Cancel cancels, and Request Purchase sends it to a "parent". Approve or decline that under **8. Manage Transactions**, which also undoes purchases. Its screens come out black in screenshots; `adb shell uiautomator dump` reads them.
+  6. To call the store from a computer, debug builds allow web debugging: see `tools/webview-eval.mjs`.
+- **Tried on a Fire 7 (2022) with App Tester, 2026-11-11:** each of these gave the expected answer:
+  - price: "USD2.99" (App Tester's format)
+  - buy: "bought", confirmed with Amazon
+  - the game remembered it by itself, through the "owned" event
+  - Cancel: "cancelled"
+  - Restore: "bought"
+  - forgotten, then picked back up quietly at the next start
+  - Request Purchase: "pending"; once approved, it arrived as "owned" when the game came back to the front
 
 ## Still to do
 - A real purchase through Google Play's internal testing track. It needs the Play Console account and the upload key.
-- A test purchase through Amazon's App Tester. It needs the Amazon developer account and the app's key.
+- The Amazon app's key, from the Amazon developer console, before the first release build.
 - The Play Console listing, the data-safety form (no data collected) and the Families policy. See `roadmap.md`, Phase 5.
