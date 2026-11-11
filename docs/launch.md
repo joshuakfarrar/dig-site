@@ -25,6 +25,15 @@ The roadmap (`roadmap.md`) has the reasons; `android.md` and `ios.md` have the h
 ## Now: nothing here waits on the D-U-N-S
 
 - [ ] **You: the name.** Search "Dig Site" in the USPTO's trademark search (https://tmsearch.uspto.gov, no account needed) and in each store. Anything too close in kids' games means choosing another name now, before any store page exists.
+  - Claude searched on 2026-11-11 (not a lawyer's clearance search):
+    - **"Dig Site" itself is clear.** The only filing for exactly "DIG SITE" is dead (clothing, 1996). The only live "DIGSITE" is for pens.
+    - **Nearest live marks:**
+      - DIG (Sunny Days Entertainment): toy construction vehicles, class 28.
+      - DIG-IT! GAMES: computer games, class 9. They make archaeology games for schools.
+      - DIG WORLD (AUC Ventures, filed 2024): construction toys and a play park.
+      - Mattel's BUILD AROUND TOWN: toy vehicle sets.
+      - Lots of construction-themed kids' play centres use "dig" (Little Diggers, Dig 'n Play, Digs and Rigs), so no one owns "dig" for kids' construction play.
+    - **No app called "Dig Site"** turned up on Google Play or the App Store. "Prehistoric Dig Site" and several dinosaur "dig" games share search results.
 - [ ] **You: the upload key** for Google Play and Amazon. It's one `keytool` command (`android.md`, "Release builds and the upload key"). Then fill in `android/keystore.properties`, and back up the `.jks` file and its password together, in a password manager.
 - [ ] **You: the Amazon developer account** (free; it doesn't need the D-U-N-S): https://developer.amazon.com, "Sign in", then create an account. Sign up as Galu LLC, with tax (the EIN) and payment details.
   - Amazon's Appstore now reaches only Fire tablets. Amazon stopped making them in October 2026 (the new Alexa Tablets run Google Play), but there are a great many in families' hands, kids' editions especially, and they get updates for years. It's still worth doing, and Google Play matters more than it did.
