@@ -73,10 +73,12 @@ public class StorePlugin: CAPPlugin, CAPBridgedPlugin {
         guard let id = call.getString("id") else { return call.reject("No product id") }
         Task { @MainActor in
             guard AppStore.canMakePayments else { return call.resolve(["outcome": "unavailable"]) }
+            // The product can't be looked up (offline, or the store's not answering): "unavailable",
+            // so the card says to check the device is online, rather than that something went wrong.
+            guard let product = try? await Product.products(for: [id]).first else {
+                return call.resolve(["outcome": "unavailable"])
+            }
             do {
-                guard let product = try await Product.products(for: [id]).first else {
-                    return call.resolve(["outcome": "unavailable"])
-                }
                 switch try await purchase(product) {
                 case .success(let result):
                     if case .verified(let t) = result {
@@ -105,11 +107,14 @@ public class StorePlugin: CAPPlugin, CAPBridgedPlugin {
         guard let id = call.getString("id") else { return call.reject("No product id") }
         let quiet = call.getBool("quiet") ?? false
         Task {
+            var cancelled = false
             if !quiet {
                 do {
                     try await AppStore.sync()
+                } catch StoreKitError.userCancelled {
+                    cancelled = true // they backed out of signing in: nothing was looked up
                 } catch {
-                    // Cancelled the sign-in, or offline: still say what's known on the device.
+                    // Offline: still say what's known on the device.
                 }
             }
             for await result in Transaction.currentEntitlements {
@@ -122,7 +127,8 @@ public class StorePlugin: CAPPlugin, CAPBridgedPlugin {
             if case .verified(let t)? = await Transaction.latest(for: id), t.revocationDate != nil {
                 return call.resolve(["outcome": "revoked"])
             }
-            call.resolve(["outcome": "none"])
+            // "none" only when the App Store was asked; a cancelled sign-in isn't "no purchase found".
+            call.resolve(["outcome": cancelled ? "cancelled" : "none"])
         }
     }
 }

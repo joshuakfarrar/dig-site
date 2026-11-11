@@ -88,11 +88,20 @@ The same game, wrapped for iPhone and iPad with Capacitor, like the Android app.
 - **`App/StorePlugin.swift`:** the same calls as Android's: `sells`, `price`, `buy`, `restore`, and an "owned" event. `GameViewController` registers it (`AppDelegate.swift`), so `SceneDelegate.swift` must make a `GameViewController`, not a plain `CAPBridgeViewController`. Without it the store never loads and nothing is locked.
 - **Apple's sheet is shown over the game's window** (`purchase(confirmIn:)` on iOS 17 and later). Without the scene, the Simulator's sheet failed with "Payment Sheet Failed: Presentation failed".
 - **One product, `full_game`:** a **Non-Consumable** in App Store Connect, at $2.99 (Tier 3).
-- **Ask to Buy:** a child's purchase that waits for a parent says "pending". When it's approved, StoreKit's `Transaction.updates` unlocks the game.
+- **Ask to Buy:** a child's purchase that waits for a parent says "pending". When it's approved, StoreKit's `Transaction.updates` unlocks the game, and closes the grown-ups' card if it's still up.
 - **Restore purchase** syncs with the App Store first (`AppStore.sync`), which may ask the parent to sign in. Apple requires a restore button. The quiet check at start-up only looks at what's on the device, so it never asks.
+  - Backing out of that sign-in answers "cancelled", and the card says nothing; "No purchase found" is only for when the App Store was asked.
+- **Store can't be reached:** if the product can't be looked up (offline), Unlock answers "unavailable", and the card asks to check the device is online.
 - **Refunds re-lock it:** a transaction with a `revocationDate` sends "revoked" (through `Transaction.updates`), and restore answers "revoked" when `Transaction.latest` shows one. See "The free tier and the purchase" in `docs/android.md`.
   - **To try it:** in Xcode, **Debug > StoreKit > Manage Transactions**, select the purchase, and choose **Refund Purchases**. The game should re-lock: the padlocks come back after two lots.
-- **Tried in the Simulator:** the price ($2.99), Apple's test sheet, and `bought` back in the game.
+- **Tried in the Simulator** (November 2026), through the game's own padlock, sum and card:
+  - **Buying:** the price, cancelling Apple's sheet, and buying.
+  - **Start-up check:** after a relaunch, and after a reinstall with the purchase still on record.
+  - **Restore:** with and without a purchase, and with the sign-in cancelled.
+  - **Failures:** a failed purchase, and a product that can't load.
+  - **Ask to Buy:** pending, then approved in the Transaction Manager.
+  - **Refunds:** while playing, and after a relaunch.
+- **Errors and Ask to Buy for testing:** in `DigSite.storekit`'s editor (Editor menu), turn on Ask to Buy, or pick an error for Load Products or Purchase. Turn them back off afterwards. Deleting the app from the Simulator also clears its test purchases.
 - **To try it in the Simulator, with no App Store Connect needed:**
   1. **Test store:** `ios/App/DigSite.storekit` holds `full_game` at $2.99, and the shared App scheme already uses it (Edit Scheme > Run > Options > StoreKit Configuration).
   2. **Run from Xcode.** Only Xcode's Run uses the test store; launching the app any other way finds no product.

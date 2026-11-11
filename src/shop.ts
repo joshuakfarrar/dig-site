@@ -71,6 +71,16 @@ function remember(on: boolean): void {
 }
 
 /** What a store's answer means for what the device remembers: only "bought" and "revoked" change it. */
+const arrived = new Set<() => void>();
+
+/**
+ * Runs `f` when the unlock arrives from the store on its own, not from a Buy or Restore press: an
+ * approved Ask to Buy, or a payment that's cleared. (The grown-ups' card closes if it's still up.)
+ */
+export function onArrived(f: () => void): void {
+  arrived.add(f);
+}
+
 function heed(a: Answer): void {
   if (a === "bought") remember(true);
   else if (a === "revoked") remember(false);
@@ -78,7 +88,12 @@ function heed(a: Answer): void {
 
 // At start: can this build sell, and what does the store say now? (Quietly: no sheet, no sign-in.)
 if (native) {
-  void Store.addListener("owned", (e) => e.id === PRODUCT && heed("bought"));
+  void Store.addListener("owned", (e) => {
+    if (e.id !== PRODUCT) return;
+    const was = owned();
+    heed("bought");
+    if (!was) arrived.forEach((f) => f());
+  });
   void Store.addListener("revoked", (e) => e.id === PRODUCT && heed("revoked"));
   void Store.sells()
     .then((r) => {

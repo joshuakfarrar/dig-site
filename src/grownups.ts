@@ -42,6 +42,15 @@ export function close(): void {
   root.innerHTML = "";
 }
 
+// The unlock arriving while the card's still up (a parent approving "Ask to Buy" there and then):
+// close it and celebrate, as if Unlock had just gone through, rather than leave "still going through".
+Shop.onArrived(() => {
+  if (!isOpen || !root.querySelector(".buy")) return;
+  const f = onUnlocked;
+  close();
+  f?.();
+});
+
 function closeButton(): string {
   return `<button class="gx" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="#3a3f47" stroke-width="2.6" stroke-linecap="round"/></svg></button>`;
 }
@@ -136,7 +145,7 @@ function sheet(): void {
       const f = onUnlocked;
       close();
       f?.();
-    } else status.textContent = said[o] ?? (restoring ? "No purchase found for this account." : "");
+    } else status.textContent = said[o] ?? (restoring && (o === "none" || o === "revoked") ? "No purchase found for this account." : "");
   };
   buyBtn.addEventListener("click", () => {
     busy(true);
