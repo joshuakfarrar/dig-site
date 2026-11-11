@@ -114,7 +114,7 @@ Roughly 3 to 5 times today's content.
   - Add a "restore purchase" option, which Apple requires.
 - [x] **Parent gate:** something an adult can pass and a small child can't, in front of the purchase, restore and any outside link.
   - Built (`src/grownups.ts`): a padlock button top left (only while lots are locked) asks a sum in words ("What is seven plus six?") on a number pad. Three wrong answers close it. Then the unlock card: price, Unlock, Restore purchase.
-- [ ] **Privacy policy:** one static page ("we collect nothing"), hosted free.
+- [x] **Privacy policy:** https://galu.games/dig-site/privacy/ ("we collect nothing"). The step-by-step launch list is `docs/launch.md`.
   - Google Play's data-safety form says no data collected.
   - Apple's privacy label says "Data Not Collected".
 - [ ] **Ratings and kids programmes:**
