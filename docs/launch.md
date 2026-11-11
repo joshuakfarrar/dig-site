@@ -10,7 +10,7 @@ The roadmap (`roadmap.md`) has the reasons; `android.md` and `ios.md` have the h
 
 - [x] The game: three neighbourhoods, the free tier, the parent gate, touch controls, loading screen.
 - [x] Purchases in all three stores' code (`full_game`, one-time, $2.99).
-  - [x] Apple: a test purchase in the Simulator.
+  - [x] Apple: every path in the Simulator, through the game's own card: buy, cancel, restore, a failed purchase, offline, Ask to Buy pending and approved, refund, relaunch and reinstall (`ios.md`).
   - [x] Amazon: every path through App Tester on a Fire 7: buy, cancel, restore, pending, refund, reinstall, and the card on screen.
   - [ ] Google Play: built, but untested until there's an internal test track (below).
 - [x] Privacy policy: https://galu.games/dig-site/privacy/ (the app collects nothing).
