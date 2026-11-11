@@ -83,9 +83,22 @@ The same game, wrapped for iPhone and iPad with Capacitor, like the Android app.
     2. Press **Distribute App**, then **App Store Connect**.
     3. The build appears in App Store Connect under TestFlight after processing, usually within the hour.
 
+## The purchase (StoreKit 2)
+
+- **`App/StorePlugin.swift`:** the same calls as Android's: `sells`, `price`, `buy`, `restore`, and an "owned" event. `GameViewController` registers it (`AppDelegate.swift`).
+- **One product, `full_game`:** a **Non-Consumable** in App Store Connect, at $2.99 (Tier 3).
+- **Ask to Buy:** a child's purchase that waits for a parent says "pending". When it's approved, StoreKit's `Transaction.updates` unlocks the game.
+- **Restore purchase** syncs with the App Store first (`AppStore.sync`), which may ask the parent to sign in. Apple requires a restore button. The quiet check at start-up only looks at what's on the device, so it never asks.
+- **Untried:** it was written on Windows, so its first build is on the Mac.
+- **To try it in the Simulator, with no App Store Connect needed:**
+  1. In Xcode, **File > New > File from Template > StoreKit Configuration File**. Name it `DigSite`, leave "Sync with App Store Connect" off, and save it in `ios/App`.
+  2. Press **+ > Add Non-Consumable In-App Purchase**, with reference name `Full game`, product ID `full_game` and price 2.99.
+  3. Choose **Product > Scheme > Edit Scheme > Run > Options > StoreKit Configuration** and pick `DigSite.storekit`.
+  4. Run. After two lots, the grown-ups' button opens the card, and Unlock shows Apple's test purchase sheet. **Debug > StoreKit > Manage Transactions** undoes it.
+
 ## Still to do
 
-- **In-app purchase (StoreKit):** the one unlock, plus "Restore purchase", through a small native plugin. `src/shop.ts` has the calls to fill in.
+- **Try the purchase:** on the Mac, Simulator first, with a StoreKit configuration file (below), then on a device through TestFlight.
 - **Store listing:**
   - The Kids category (ages 5 and under, or 6 to 8).
   - The privacy label says "Data Not Collected".

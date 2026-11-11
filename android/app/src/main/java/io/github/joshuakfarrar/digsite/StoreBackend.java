@@ -26,6 +26,9 @@ public interface StoreBackend {
 
     void start(Owned onOwned);
 
+    /** The app's come back to the front: a store that needs to can look for purchases made meanwhile. */
+    default void resumed() {}
+
     /** The store's price in the buyer's currency, like "$2.99", or null if it can't say. */
     void price(String productId, Callback<String> done);
 

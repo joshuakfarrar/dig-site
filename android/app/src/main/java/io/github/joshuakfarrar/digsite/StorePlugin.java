@@ -75,6 +75,11 @@ public class StorePlugin extends Plugin {
     }
 
     @Override
+    protected void handleOnResume() {
+        if (store != null) store.resumed();
+    }
+
+    @Override
     protected void handleOnDestroy() {
         if (store != null) store.stop();
     }

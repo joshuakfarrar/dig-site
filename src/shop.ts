@@ -4,10 +4,11 @@ import { Capacitor, registerPlugin } from "@capacitor/core";
  * The one purchase: everything unlocked, for good. The first `FREE_LOTS` lots are free to build;
  * after that the rest wait behind a parent gate (see `grownups.ts`).
  *
- * The store is the app's own `Store` plugin (Android: `StorePlugin` and a backend per store build,
- * Google Play's or Amazon's; iOS: StoreKit, to come). Nothing is locked unless this build can
- * actually sell the unlock, so a build without a working store (the iOS app for now, the web page,
- * the Amazon build until its purchases are in) is simply the whole game.
+ * The store is the app's own `Store` plugin: on Android `StorePlugin.java`, with Google Play's or
+ * Amazon's backend in each store's build; on iOS `StorePlugin.swift` (StoreKit 2). Nothing is locked
+ * unless this build can actually sell the unlock, so a build without a working store (the web page,
+ * a Play build on a device without Google Play, an Amazon build without its key) is simply the
+ * whole game.
  *
  * On the dev server, `?paywall` turns the padlocks on and buying just unlocks, so the whole flow can
  * be tried in a browser.
@@ -29,7 +30,7 @@ interface StorePlugin {
   sells(): Promise<{ sells: boolean }>;
   price(o: { id: string }): Promise<{ price?: string }>;
   buy(o: { id: string }): Promise<{ outcome: Answer }>;
-  restore(o: { id: string }): Promise<{ outcome: Answer }>;
+  restore(o: { id: string; quiet?: boolean }): Promise<{ outcome: Answer }>;
   addListener(event: "owned", f: (e: { id: string }) => void): Promise<unknown>;
 }
 const Store = registerPlugin<StorePlugin>("Store");
@@ -74,7 +75,7 @@ if (native) {
   void Store.sells()
     .then((r) => {
       sells = r.sells;
-      if (sells && !owned()) return Store.restore({ id: PRODUCT }).then((a) => a.outcome === "bought" && remember(true));
+      if (sells && !owned()) return Store.restore({ id: PRODUCT, quiet: true }).then((a) => a.outcome === "bought" && remember(true));
     })
     .catch(() => {});
 }

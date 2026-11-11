@@ -107,8 +107,8 @@ Roughly 3 to 5 times today's content.
   - On only where this build can sell the unlock (`Store.sells`), so a build without working purchases is simply the whole game. `?paywall` on the dev server.
 - [ ] **Store purchases:**
   - [x] **Google Play:** the app's own `Store` plugin (Android, `play` build) on Play Billing Library 9.1. It's built, but a real purchase is still untried: that needs the app on an internal testing track. See `docs/android.md`.
-  - [ ] **Apple StoreKit:** the same `Store` plugin calls, in Swift, for iOS.
-  - [ ] **Amazon:** the `amazon` build's backend.
+  - [x] **Apple StoreKit:** `StorePlugin.swift` (StoreKit 2). Written on Windows and not yet built: try it in the Simulator with a StoreKit configuration file. See `docs/ios.md`.
+  - [x] **Amazon:** `AmazonBackend.java` (Appstore SDK 3.0.9). It needs the app's key from the Amazon developer console, then a test through App Tester. See `docs/android.md`.
   - Amazon's Appstore (Fire tablets) needs Amazon's own in-app purchasing, not Google's: a third small plugin.
   - No third-party purchase or analytics SDKs; Apple's Kids category bans them, and they'd collect data.
   - Add a "restore purchase" option, which Apple requires.

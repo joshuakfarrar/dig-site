@@ -60,6 +60,7 @@ dependencies {
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
     implementation project(':capacitor-android')
     playImplementation "com.android.billingclient:billing:9.1.0"
+    amazonImplementation "com.amazon.device:amazon-appstore-sdk:3.0.9"
     testImplementation "junit:junit:$junitVersion"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"

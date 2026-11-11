@@ -11,6 +11,10 @@ import Capacitor
  */
 class GameViewController: CAPBridgeViewController {
     override var preferredScreenEdgesDeferringSystemGestures: UIRectEdge { .all }
+
+    override func capacitorDidLoad() {
+        bridge?.registerPluginInstance(StorePlugin()) // the one purchase (StorePlugin.swift)
+    }
 }
 
 @UIApplicationMain
