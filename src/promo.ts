@@ -314,6 +314,54 @@ function restoreWorld(): void {
 }
 let popped = -1;
 
+/**
+ * Extra views for store screenshots only (`promo.stills`): the other two neighbourhoods half built,
+ * in daylight. (A finished neighbourhood turns to dusk, which the story's "town" shot shows.)
+ */
+const ALL = [0, 1, 2, 3, 4, 5, 6, 7];
+const STILLS: Shot[] = [
+  {
+    name: "s_square",
+    caption: "",
+    seconds: 1,
+    setup() {
+      town([ALL, [0, 1, 2, 3, 4, 5]], 1);
+      run(3);
+    },
+    frame: () => ({ eye: [15, 8.5, 17], at: [1, 0.8, 3.5] }),
+  },
+  {
+    name: "s_square_low",
+    caption: "",
+    seconds: 1,
+    setup() {
+      town([ALL, [0, 1, 2, 3, 4, 5]], 1);
+      run(3);
+    },
+    frame: () => ({ eye: [-16, 6.5, 3.4], at: [-6, 0.9, -4.5] }),
+  },
+  {
+    name: "s_harbour",
+    caption: "",
+    seconds: 1,
+    setup() {
+      town([ALL, ALL, [0, 1, 2, 3, 4, 5]], 2);
+      run(3);
+    },
+    frame: () => ({ eye: [-6, 6, 21], at: [-1, 1, 5] }),
+  },
+  {
+    name: "s_harbour_low",
+    caption: "",
+    seconds: 1,
+    setup() {
+      town([ALL, ALL, [0, 1, 2, 3, 4, 5]], 2);
+      run(3);
+    },
+    frame: () => ({ eye: [16, 6.5, 20], at: [10, 1.4, 4] }),
+  },
+];
+
 const REEL: Shot[] = [
   {
     name: "r_dig",
@@ -527,6 +575,7 @@ let sweepAt: [number, number] = [0, 0];
 const CUTS: Record<string, { shots: Shot[]; w: number; h: number; fov: number }> = {
   story: { shots: SHOTS, w: 1920, h: 1080, fov: 42 },
   reel: { shots: REEL, w: 1080, h: 1920, fov: 58 },
+  stills: { shots: STILLS, w: 1920, h: 1080, fov: 42 },
 };
 const cutOf = (name: string) => Object.values(CUTS).find((c) => c.shots.some((s) => s.name === name))!;
 function useCut(c: { w: number; h: number; fov: number }): void {
@@ -567,8 +616,8 @@ let sending: Promise<unknown>[] = [];
  * Saves the frame just drawn. Encoded straight away (a hidden page puts `toBlob` at the back of
  * the queue) and sent without waiting; `flush` waits for them all.
  */
-async function save(): Promise<void> {
-  const url = canvas().toDataURL("image/jpeg", 0.92);
+async function save(quality = 0.92): Promise<void> {
+  const url = canvas().toDataURL("image/jpeg", quality);
   const bytes = Uint8Array.from(atob(url.slice(url.indexOf(",") + 1)), (c) => c.charCodeAt(0));
   sending.push(fetch(`/__capture/frame/${String(frameNo++).padStart(4, "0")}`, { method: "POST", body: bytes }));
   if (sending.length >= 24) await flush();
@@ -611,6 +660,34 @@ const promo = {
     await flush();
     frameNo = was;
     dispatchEvent(new Event("resize"));
+  },
+  /**
+   * Store screenshots: each [shot, seconds] in `list` drawn at `w`×`h` and saved as
+   * `capture/frames/9NNN.jpg`, numbered from 9000 + `from`. Wider than the shot's own cut, it keeps
+   * the cut's height of view (so more shows at the sides); narrower, it keeps its width, so nothing
+   * at the sides is lost.
+   */
+  async stills(list: [string, number][], w: number, h: number, from = 0): Promise<string> {
+    const was = frameNo;
+    for (const [i, [name, t]] of list.entries()) {
+      const c = cutOf(name);
+      const base = c.w / c.h;
+      const across = 2 * Math.atan(Math.tan((c.fov * Math.PI) / 360) * base);
+      W = w;
+      H = h;
+      FOV = w / h >= base ? c.fov : (2 * Math.atan(Math.tan(across / 2) / (w / h)) * 180) / Math.PI;
+      const s = c.shots.find((x) => x.name === name)!;
+      mirroring = false;
+      s.setup();
+      const n = Math.round(t * FPS);
+      for (let f = 0; f <= n; f++) stepShot(s, f);
+      frameNo = 9000 + from + i;
+      await save(0.95);
+    }
+    await flush();
+    frameNo = was;
+    dispatchEvent(new Event("resize"));
+    return `${list.length} at ${w}x${h}`;
   },
   /** Films every shot of `cut` ("story" or "reel"), or just those named, into `capture/`. */
   async film(cut = "story", names?: string[]): Promise<string> {

@@ -31,12 +31,12 @@ The roadmap (`roadmap.md`) has the reasons; `android.md` and `ios.md` have the h
   - [ ] Add the in-app item `full_game` as an **Entitlement** at $2.99.
   - [ ] Download the app's public key (`AppstoreAuthenticationKey.pem`) and give it to Claude, which puts it in `android/app/src/amazon/assets/`.
 - [ ] **Claude (Mac): the iOS refund test.** Buy in the Simulator, then Debug > StoreKit > Manage Transactions > Refund Purchases. The padlocks should come back (`ios.md`).
-- [ ] **Claude: the store listing pack**, written into `store/`:
-  - [ ] Name, subtitle or short description (80 characters for Google, 30 for Apple's subtitle), full description, and keywords for Apple.
-  - [ ] Screenshots: iPhone 6.9", iPad 13", Android phone and 7–10" tablet, and Fire (landscape). Each shows the town growing, with no words on the pictures that a child would need to read.
-  - [ ] Google's feature graphic (1024×500).
+- [x] **Claude: the store listing pack**, in `store/` (`listing.md`, `forms.md`; pictures from `tools/make_store_art.py`):
+  - [x] Name, subtitle or short description (80 characters for Google, 30 for Apple's subtitle), full description, and keywords for Apple.
+  - [x] Screenshots: iPhone 6.9", iPad 13", Android phone and 7–10" tablet, and Fire (landscape). Each shows the town growing, with no words on the pictures that a child would need to read.
+  - [x] Google's feature graphic (1024×500).
   - [ ] A preview video cut from the reel, to each store's rules (Apple: 15–30 s, from the app itself).
-  - [ ] Drafted answers for every form (below), to copy in.
+  - [x] Drafted answers for every form (below), to copy in: `store/forms.md`.
 - [ ] **Claude: release builds.** Set the version (1.0.0, build 1), build the signed `play` and `amazon` bundles, and check a release build on the Fire (the real key, no web debugging).
 
 ## The forms (Claude drafts, you submit)

@@ -70,7 +70,6 @@ function remember(on: boolean): void {
   }
 }
 
-/** What a store's answer means for what the device remembers: only "bought" and "revoked" change it. */
 const arrived = new Set<() => void>();
 
 /**
@@ -81,6 +80,7 @@ export function onArrived(f: () => void): void {
   arrived.add(f);
 }
 
+/** What a store's answer means for what the device remembers: only "bought" and "revoked" change it. */
 function heed(a: Answer): void {
   if (a === "bought") remember(true);
   else if (a === "revoked") remember(false);
