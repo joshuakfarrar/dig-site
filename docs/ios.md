@@ -85,20 +85,21 @@ The same game, wrapped for iPhone and iPad with Capacitor, like the Android app.
 
 ## The purchase (StoreKit 2)
 
-- **`App/StorePlugin.swift`:** the same calls as Android's: `sells`, `price`, `buy`, `restore`, and an "owned" event. `GameViewController` registers it (`AppDelegate.swift`).
+- **`App/StorePlugin.swift`:** the same calls as Android's: `sells`, `price`, `buy`, `restore`, and an "owned" event. `GameViewController` registers it (`AppDelegate.swift`), so `SceneDelegate.swift` must make a `GameViewController`, not a plain `CAPBridgeViewController`. Without it the store never loads and nothing is locked.
+- **Apple's sheet is shown over the game's window** (`purchase(confirmIn:)` on iOS 17 and later). Without the scene, the Simulator's sheet failed with "Payment Sheet Failed: Presentation failed".
 - **One product, `full_game`:** a **Non-Consumable** in App Store Connect, at $2.99 (Tier 3).
 - **Ask to Buy:** a child's purchase that waits for a parent says "pending". When it's approved, StoreKit's `Transaction.updates` unlocks the game.
 - **Restore purchase** syncs with the App Store first (`AppStore.sync`), which may ask the parent to sign in. Apple requires a restore button. The quiet check at start-up only looks at what's on the device, so it never asks.
-- **Untried:** it was written on Windows, so its first build is on the Mac.
+- **Tried in the Simulator:** the price ($2.99), Apple's test sheet, and `bought` back in the game.
 - **To try it in the Simulator, with no App Store Connect needed:**
-  1. In Xcode, **File > New > File from Template > StoreKit Configuration File**. Name it `DigSite`, leave "Sync with App Store Connect" off, and save it in `ios/App`.
-  2. Press **+ > Add Non-Consumable In-App Purchase**, with reference name `Full game`, product ID `full_game` and price 2.99.
-  3. Choose **Product > Scheme > Edit Scheme > Run > Options > StoreKit Configuration** and pick `DigSite.storekit`.
-  4. Run. After two lots, the grown-ups' button opens the card, and Unlock shows Apple's test purchase sheet. **Debug > StoreKit > Manage Transactions** undoes it.
+  1. **Test store:** `ios/App/DigSite.storekit` holds `full_game` at $2.99, and the shared App scheme already uses it (Edit Scheme > Run > Options > StoreKit Configuration).
+  2. **Run from Xcode.** Only Xcode's Run uses the test store; launching the app any other way finds no product.
+  3. **Unlock:** after two lots, the grown-ups' button opens the card, and Unlock shows Apple's test purchase sheet.
+  4. **Start over:** Debug > StoreKit > Manage Transactions deletes the purchase, so the padlocks come back on the next launch.
 
 ## Still to do
 
-- **Try the purchase:** on the Mac, Simulator first, with a StoreKit configuration file (below), then on a device through TestFlight.
+- **Try the purchase on a device:** through the game's own card in the Simulator (above), then on a phone through TestFlight, with `full_game` set up in App Store Connect.
 - **Store listing:**
   - The Kids category (ages 5 and under, or 6 to 8).
   - The privacy label says "Data Not Collected".

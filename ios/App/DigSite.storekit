@@ -1,0 +1,38 @@
+{
+  "identifier" : "6D1A5E7C",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "2.99",
+      "familyShareable" : false,
+      "internalID" : "6739000001",
+      "localizations" : [
+        {
+          "description" : "Every lot on every street, and every neighbourhood added later.",
+          "displayName" : "Full game",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "full_game",
+      "referenceName" : "Full game",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+    "_failTransactionsEnabled" : false,
+    "_locale" : "en_US",
+    "_storefront" : "USA",
+    "_storeKitErrors" : [
+
+    ]
+  },
+  "subscriptionGroups" : [
+
+  ],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}

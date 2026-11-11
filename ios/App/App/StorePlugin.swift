@@ -57,6 +57,16 @@ public class StorePlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
+    /// Buys it with Apple's sheet shown over the game's own window. Without the scene, StoreKit can
+    /// fail to find one to show the sheet in ("Payment Sheet Failed: Presentation failed").
+    @MainActor
+    private func purchase(_ product: Product) async throws -> Product.PurchaseResult {
+        if #available(iOS 17.0, *), let scene = bridge?.viewController?.view.window?.windowScene {
+            return try await product.purchase(confirmIn: scene)
+        }
+        return try await product.purchase()
+    }
+
     @objc func buy(_ call: CAPPluginCall) {
         guard let id = call.getString("id") else { return call.reject("No product id") }
         Task { @MainActor in
@@ -65,7 +75,7 @@ public class StorePlugin: CAPPlugin, CAPBridgedPlugin {
                 guard let product = try await Product.products(for: [id]).first else {
                     return call.resolve(["outcome": "unavailable"])
                 }
-                switch try await product.purchase() {
+                switch try await purchase(product) {
                 case .success(let result):
                     if case .verified(let t) = result {
                         await t.finish()
