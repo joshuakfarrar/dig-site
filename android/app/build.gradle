@@ -1,5 +1,11 @@
 apply plugin: 'com.android.application'
 
+// The upload key for Google Play and Amazon: android/keystore.properties (never in git) names the
+// keystore and its passwords. Without it, release builds come out unsigned. See docs/android.md.
+def keystoreProps = new Properties()
+def keystoreFile = rootProject.file('keystore.properties')
+if (keystoreFile.exists()) keystoreFile.withInputStream { keystoreProps.load(it) }
+
 android {
     namespace = "io.github.joshuakfarrar.digsite"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -16,8 +22,25 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // One build per store: Google Play's billing in `play`, Amazon's in `amazon` (src/<flavor>/java).
+    flavorDimensions = ["store"]
+    productFlavors {
+        play { dimension "store" }
+        amazon { dimension "store" }
+    }
+    signingConfigs {
+        if (keystoreProps['storeFile']) {
+            upload {
+                storeFile rootProject.file(keystoreProps['storeFile'])
+                storePassword keystoreProps['storePassword']
+                keyAlias keystoreProps['keyAlias']
+                keyPassword keystoreProps['keyPassword']
+            }
+        }
+    }
     buildTypes {
         release {
+            if (keystoreProps['storeFile']) signingConfig signingConfigs.upload
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
@@ -36,6 +59,7 @@ dependencies {
     implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
     implementation project(':capacitor-android')
+    playImplementation "com.android.billingclient:billing:9.1.0"
     testImplementation "junit:junit:$junitVersion"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"

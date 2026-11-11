@@ -125,14 +125,18 @@ function sheet(): void {
   const busy = (on: boolean) => {
     buyBtn.disabled = restoreBtn.disabled = on;
   };
+  const said: Partial<Record<Shop.Outcome, string>> = {
+    pending: "Your payment is still going through. Everything unlocks as soon as it does.",
+    failed: "Something went wrong with the store. Please try again.",
+    unavailable: "The store can't be reached right now. Check the device is online, then try again.",
+  };
   const settle = (o: Shop.Outcome, restoring: boolean) => {
     busy(false);
     if (o === "bought") {
       const f = onUnlocked;
       close();
       f?.();
-    } else if (o === "unavailable") status.textContent = "The store isn't available in this version yet.";
-    else status.textContent = restoring ? "No purchase found for this account." : "";
+    } else status.textContent = said[o] ?? (restoring ? "No purchase found for this account." : "");
   };
   buyBtn.addEventListener("click", () => {
     busy(true);

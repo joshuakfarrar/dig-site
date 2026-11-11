@@ -1,26 +1,46 @@
+import { Capacitor, registerPlugin } from "@capacitor/core";
+
 /**
  * The one purchase: everything unlocked, for good. The first `FREE_LOTS` lots are free to build;
  * after that the rest wait behind a parent gate (see `grownups.ts`).
  *
- * There's no store yet: Google Play Billing, Apple StoreKit and Amazon's in-app purchasing each need
- * a small native plugin, which comes with the store accounts. Until then:
- * - the paywall is off unless asked for, so nothing is locked in a build that can't sell anything
- *   (turn it on with `VITE_PAYWALL=on` at build time, or `?paywall` on the dev server);
- * - on the dev server, buying just unlocks, so the whole flow can be tried;
- * - in a release build, buying and restoring say the store isn't available.
+ * The store is the app's own `Store` plugin (Android: `StorePlugin` and a backend per store build,
+ * Google Play's or Amazon's; iOS: StoreKit, to come). Nothing is locked unless this build can
+ * actually sell the unlock, so a build without a working store (the iOS app for now, the web page,
+ * the Amazon build until its purchases are in) is simply the whole game.
  *
- * Owning it is remembered on this device only, like the town. Nothing is sent anywhere.
+ * On the dev server, `?paywall` turns the padlocks on and buying just unlocks, so the whole flow can
+ * be tried in a browser.
+ *
+ * Owning it is remembered on this device only, like the town, and checked with the store at start
+ * (a purchase made on another device, or a pending payment that's cleared). It's never taken back
+ * if the store can't be reached. Nothing about the family is sent anywhere.
  */
 const KEY = "dig-site/unlocked/v1";
+
+/** The product's id in every store (Google Play, Amazon, the App Store). */
+export const PRODUCT = "full_game";
 
 /** How many lots are free, in all, before the rest are locked. */
 export const FREE_LOTS = 2;
 
-const devPaywall = import.meta.env.DEV && new URLSearchParams(location.search).has("paywall");
+type Answer = "bought" | "pending" | "cancelled" | "none" | "failed" | "unavailable";
+interface StorePlugin {
+  sells(): Promise<{ sells: boolean }>;
+  price(o: { id: string }): Promise<{ price?: string }>;
+  buy(o: { id: string }): Promise<{ outcome: Answer }>;
+  restore(o: { id: string }): Promise<{ outcome: Answer }>;
+  addListener(event: "owned", f: (e: { id: string }) => void): Promise<unknown>;
+}
+const Store = registerPlugin<StorePlugin>("Store");
+const native = Capacitor.isNativePlatform() && Capacitor.isPluginAvailable("Store");
 
-/** Whether anything is ever locked in this build. */
+const devPaywall = import.meta.env.DEV && new URLSearchParams(location.search).has("paywall");
+let sells = false; // this build's store can sell (asked once, at start)
+
+/** Whether anything is locked in this build: only if the unlock can actually be bought here. */
 export function paywallOn(): boolean {
-  return import.meta.env.VITE_PAYWALL === "on" || devPaywall;
+  return devPaywall || sells;
 }
 
 let ownedNow: boolean | null = null; // read once, then kept here (it's asked every frame)
@@ -46,6 +66,19 @@ function remember(on: boolean): void {
   }
 }
 
+// At start: can this build sell, and does the store already say it's owned? (Quietly: no sheet.)
+if (native) {
+  void Store.addListener("owned", (e) => {
+    if (e.id === PRODUCT) remember(true);
+  });
+  void Store.sells()
+    .then((r) => {
+      sells = r.sells;
+      if (sells && !owned()) return Store.restore({ id: PRODUCT }).then((a) => a.outcome === "bought" && remember(true));
+    })
+    .catch(() => {});
+}
+
 /** True once `builtSoFar` lots are built and the rest need the unlock. */
 export function locked(builtSoFar: number): boolean {
   return paywallOn() && !owned() && builtSoFar >= FREE_LOTS;
@@ -53,12 +86,25 @@ export function locked(builtSoFar: number): boolean {
 
 /** The store's price for it, in the buyer's currency, or null if the store can't say. */
 export async function price(): Promise<string | null> {
+  if (native) return Store.price({ id: PRODUCT }).then((r) => r.price ?? null).catch(() => null);
   return import.meta.env.DEV ? "$2.99" : null;
 }
 
-export type Outcome = "bought" | "cancelled" | "unavailable";
+/** How a purchase or restore went, as the grown-ups' card tells it. */
+export type Outcome = "bought" | "pending" | "cancelled" | "none" | "failed" | "unavailable";
+
+async function ask(f: () => Promise<{ outcome: Answer }>): Promise<Outcome> {
+  try {
+    const { outcome } = await f();
+    if (outcome === "bought") remember(true);
+    return outcome;
+  } catch {
+    return "failed";
+  }
+}
 
 export async function buy(): Promise<Outcome> {
+  if (native) return ask(() => Store.buy({ id: PRODUCT }));
   if (import.meta.env.DEV) {
     remember(true);
     return "bought";
@@ -66,9 +112,10 @@ export async function buy(): Promise<Outcome> {
   return "unavailable";
 }
 
-/** Looks the purchase up with the store (a new device, or reinstalled): true if it's owned. */
+/** Looks the purchase up with the store (a new device, or reinstalled). */
 export async function restore(): Promise<Outcome> {
-  if (import.meta.env.DEV) return owned() ? "bought" : "cancelled";
+  if (native) return ask(() => Store.restore({ id: PRODUCT }));
+  if (import.meta.env.DEV) return owned() ? "bought" : "none";
   return "unavailable";
 }
 

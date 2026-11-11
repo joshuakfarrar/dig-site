@@ -253,8 +253,8 @@ Estimated at adult pace from distances, speeds and animation times, about 1 s of
 
 - **`src/shop.ts`:**
   - `FREE_LOTS` is 2, counted across every neighbourhood.
-  - `locked(builtSoFar)` asks `paywallOn()` (off unless `VITE_PAYWALL=on`, or `?paywall` in dev) and `owned()` (kept on the device under `dig-site/unlocked/v1`).
-  - `price`, `buy` and `restore` are stubs: dev unlocks, a release build says the store isn't available. Fill them in with the billing plugins.
+  - `locked(builtSoFar)` asks `paywallOn()` (on only where this build's store can sell: see "Store purchases" below; `?paywall` in dev) and `owned()` (kept on the device under `dig-site/unlocked/v1`).
+  - `price`, `buy` and `restore` go to the app's `Store` plugin. On the dev server, buying just unlocks.
 - **In town while locked:**
   - Padlocks bob over the materials pile and every empty lot. The arrow, load ring and lot rings are hidden.
   - Work at the pile jiggles its padlock (`Audio.pop`) and bobs the grown-ups' button, through `TownHooks.locked` and `askGrownUp`.

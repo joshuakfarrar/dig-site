@@ -104,9 +104,11 @@ Roughly 3 to 5 times today's content.
 
 - [x] **Free tier:** the first two lots, celebration included. One unlock opens everything, including future updates.
   - Built (`src/shop.ts`): after two lots, padlocks sit over the materials pile and the empty lots, and Work at the pile just jiggles its padlock and bobs the grown-ups' button. No words, no nagging.
-  - Off until purchases work: `VITE_PAYWALL=on` at build time turns it on (`?paywall` on the dev server).
+  - On only where this build can sell the unlock (`Store.sells`), so a build without working purchases is simply the whole game. `?paywall` on the dev server.
 - [ ] **Store purchases:**
-  - Use Google Play Billing and Apple StoreKit through a minimal native plugin. `src/shop.ts` has the `price`, `buy` and `restore` calls to fill in; for now the dev server just unlocks.
+  - [x] **Google Play:** the app's own `Store` plugin (Android, `play` build) on Play Billing Library 9.1. It's built, but a real purchase is still untried: that needs the app on an internal testing track. See `docs/android.md`.
+  - [ ] **Apple StoreKit:** the same `Store` plugin calls, in Swift, for iOS.
+  - [ ] **Amazon:** the `amazon` build's backend.
   - Amazon's Appstore (Fire tablets) needs Amazon's own in-app purchasing, not Google's: a third small plugin.
   - No third-party purchase or analytics SDKs; Apple's Kids category bans them, and they'd collect data.
   - Add a "restore purchase" option, which Apple requires.

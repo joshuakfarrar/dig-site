@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <application
         android:allowBackup="true"
@@ -36,6 +37,12 @@
         </provider>
     </application>
 
-    <!-- No permissions at all: the game runs entirely offline, from files inside the app. No
-         internet, no camera, no location. -->
+    <!-- No permissions of our own: the game runs entirely offline, from files inside the app. No
+         internet, no camera, no location.
+
+         Google Play Billing (the `play` build) brings Google's logging library, which asks for the
+         internet to send the billing library's own diagnostics to Google. It's taken back out here,
+         so the app still can't go online: purchases don't need it, because the Play Store app on
+         the device does the paying. (It keeps BILLING, and network-state, which sends nothing.) -->
+    <uses-permission android:name="android.permission.INTERNET" tools:node="remove" />
 </manifest>
