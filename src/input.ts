@@ -19,7 +19,11 @@ export interface Frame {
 
 const keys = new Set<string>();
 const pressed = new Set<string>();
-let using: Controls = "keys";
+// A phone or tablet starts with its touch controls up, before the first touch: a child shouldn't
+// have to find them. (A laptop with a touch screen still starts with keys; touching it switches.)
+const touchFirst = matchMedia("(pointer: coarse)").matches || (navigator.maxTouchPoints > 0 && !matchMedia("(pointer: fine)").matches);
+let using: Controls = touchFirst ? "touch" : "keys";
+Touch.show(touchFirst);
 function use(c: Controls): void {
   if (using === c) return;
   using = c;

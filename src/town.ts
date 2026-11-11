@@ -1689,7 +1689,8 @@ export function createTown(
       const top = new THREE.Vector3(next.x, 0.52 + (B.roofAt(next.bp).y + next.bp.roof.height) * 0.3 + 0.2, next.fence - 1.1);
       marker.update(dt, top, null, 1, from);
     }
-    hooks.hints(!!(at || atPile), false);
+    // At the locked pile too: Work there jiggles the padlock and nudges the grown-ups' button.
+    hooks.hints(!!(at || atPile || (isLocked && atPileSpot)), false);
     workPrompt.show(at || atPile ? workGlyph(hooks.controls()) : null, new THREE.Vector3(truck.pos.x, truck.y + 1.75, truck.pos.y), dt);
 
     if (atPile && input.workPressed) {

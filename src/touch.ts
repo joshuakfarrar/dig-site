@@ -1,11 +1,13 @@
+import * as Audio from "./audio";
 import { touchIconURL } from "./guide";
 
 /**
  * Touch controls, for tablets and phones. A thumb anywhere on the left half of the screen is a
- * stick: it appears under the thumb and steers like a pad's stick. On the right half, a big orange
- * Work button (any tap on that side that isn't the Hop button counts, so small hands can't miss)
- * and a blue Hop button that's only there when there's a machine to hop into. They only show once
- * the screen's been touched; a mouse never brings them up.
+ * stick: it rests in the corner and jumps to under the thumb, steering like a pad's stick. On the
+ * right half, a big orange Work button that pops up when there's work to do (any tap on that side
+ * that isn't the Hop button counts, so small hands can't miss), and a blue Hop button that's only
+ * there when there's a machine to hop into. A phone or tablet has them up from the start (see
+ * `input.ts`); a mouse never brings them up.
  */
 export interface TouchFrame {
   moveX: number;
@@ -135,9 +137,28 @@ export function show(on: boolean): void {
   document.body.classList.toggle("touch", on);
 }
 
-/** What the game can do right now: Work glows when it'd do something; Hop's only there when there's a machine to hop into. */
+const LINGER = 600; // ms Work stays up after the job's out of reach, so it doesn't flicker at the edge
+let workUntil = 0;
+let workShown = false;
+let workGone = 0;
+
+/**
+ * What the game can do right now. Work and Hop are only on screen when pressing them would do
+ * something: a button turning up means "press me". Work never goes from under a thumb that's on it,
+ * and stays a moment after the job's out of reach, so it doesn't flicker as the truck edges about.
+ */
 export function hints(work: boolean, hop: boolean): void {
-  workBtn.classList.toggle("ready", work);
+  const now = performance.now();
+  if (work) workUntil = now + LINGER;
+  const show = work || now < workUntil || (workShown && workIds.size > 0);
+  if (show !== workShown) {
+    workShown = show;
+    workBtn.classList.toggle("ready", show);
+    // A little sound as it pops up, unless it was only gone a moment (the crane stopping and
+    // starting between pieces shouldn't ping every time).
+    if (show && now - workGone > 1500 && document.body.classList.contains("touch")) Audio.ready();
+    if (!show) workGone = now;
+  }
   if (hop !== hopShown) {
     hopShown = hop;
     hopBtn.classList.toggle("shown", hop);

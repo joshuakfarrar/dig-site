@@ -129,6 +129,13 @@ export function sectionDone(step = 0): void {
   pop();
 }
 
+/** Soft and quick, two notes up: the Work button's popped up, there's a job to do. */
+export function ready(): void {
+  const t = now();
+  tone(note(4), t, 0.18, "sine", 0.1);
+  tone(note(7), t + 0.07, 0.25, "sine", 0.1);
+}
+
 export function pop(): void {
   const t = now();
   tone(320, t, 0.12, "sine", 0.3, 2.4);

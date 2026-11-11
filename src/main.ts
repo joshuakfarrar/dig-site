@@ -208,6 +208,8 @@ else {
   // The title first, unless a dev link asked for somewhere in particular.
   if (!params.has("hood")) Hud.title(() => Audio.unlock());
 }
+// The page starts covered, bricks hopping, while the game loads; it clears once the first frame's drawn.
+requestAnimationFrame(() => requestAnimationFrame(() => void Hud.fade(false)));
 
 // For poking at it from the console (and for checking renders); not in the released game.
 if (import.meta.env.DEV) Object.assign(window, {
