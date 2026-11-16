@@ -126,7 +126,10 @@ The roadmap (`roadmap.md`) has the reasons; `android.md` and `ios.md` have the h
 
 ## Submit
 
-- [ ] **Amazon** first, if it's ready first. It doesn't wait on the D-U-N-S.
+- [x] **Amazon** first, if it's ready first. It doesn't wait on the D-U-N-S.
+  - Submitted 2026-11-16. Amazon's estimate: live before 10:30 PM PST on 2026-11-20.
+  - [ ] **When it's live, the first real purchase:** install it from the Appstore on the Fire 7 (remove the USB-installed build first), build two lots, and buy the unlock. Nobody has seen a real purchase work yet. Then Restore, and a reinstall.
+  - [ ] If Amazon's reviewers come back with anything, it goes here.
 - [ ] **Google Play:** from internal testing to production.
 - [ ] **Apple:** submit for review. Kids' apps can take a little longer, and a rejection usually just needs one fix.
 - [ ] **Each store page,** once it's live: check it on a phone (pictures, price, the privacy link).
