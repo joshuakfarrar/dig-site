@@ -2,7 +2,7 @@
 
 First render the screenshots on the dev server (`?promo&quality=high`, then in the console):
 
-    const L = [["home",3],["crane",3.5],["dig",2.5],["s_square",0],["play",3],["pour",2],["neighbours",3],["s_harbour_low",0]];
+    const L = [["home",3],["crane",3.5],["dig",1.6],["s_square",0],["play",3],["pour",2],["neighbours",3],["s_harbour_low",0]];
     for (const [w, h, from] of [[2868,1320,300],[2752,2064,400],[1920,1080,500],[1920,1200,600]]) await promo.stills(L, w, h, from);
 
 then run `python tools/make_store_art.py`. It writes:

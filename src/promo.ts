@@ -391,20 +391,31 @@ const PREVIEW: Shot[] = [
     caption: "",
     seconds: 3.6,
     setup() {
-      g().saved.at = 1;
-      g().goBuild(7);
-      const b = g().build, e = b.excavator;
-      const q = b.site.quadrants.slice().sort((a: Any, c: Any) => a.spot.distanceTo(e.pos) - c.spot.distanceTo(e.pos))[0];
-      driveTo(e, q.spot.x, q.spot.y, 0.4);
-      run(0.4);
-      run(1.0, { work: true, workPressed: true });
-      digAt = [e.pos.x, e.pos.y];
+      // The cottage's lot, where the digger loads the dump truck (as in the story's dig shot): the
+      // truck's brought round to the pit, then a hop into the digger and over to its ring.
+      g().saved.at = 0;
+      g().goBuild(0);
+      const b = g().build, d = b.dump, e = b.excavator;
+      run(0.2);
+      const park = b.job.spot;
+      driveTo(d, park.x, park.z + 0.2, 0.25);
+      run(0.6);
+      g().mode.tick(1 / 60, { ...idle, hopPressed: true });
+      run(1.6);
+      const s = b.job.spot;
+      driveTo(e, s.x, s.z, 0.3);
+      run(1.0);
+      digAt = [(e.pos.x + d.pos.x) / 2, (e.pos.y + d.pos.y) / 2];
     },
     frame(t, k) {
-      // Round the digger from where it stopped (not from wherever it rocks to as it digs).
+      // From behind the pit, round the two of them from where they stopped (not from wherever the
+      // digger rocks to as it digs). A calm moment first, then one bucketful: out of the pit,
+      // across, and into the truck's bed. It starts 0.6 s in so the second bite, when the ring
+      // moves on to the next quarter, falls just after the shot.
       const [x, z] = digAt;
-      const a = 0.85 + glide(k) * 0.35;
-      return { eye: [x + Math.cos(a) * 5.0, 3.3, z + Math.sin(a) * 5.0], at: [x + 0.4, 0.8, z - 0.5], input: { work: true, workPressed: t === 0 } };
+      const a = -1.0 - glide(k) * 0.3;
+      const f = Math.round(t * FPS);
+      return { eye: [x + Math.cos(a) * 7.2, 4.3, z + Math.sin(a) * 7.2], at: [x - 0.3, 0.7, z - 0.2], input: f >= 18 ? { work: true, workPressed: f === 18 } : {} };
     },
   },
   {

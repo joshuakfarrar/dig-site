@@ -17,7 +17,8 @@ The roadmap (`roadmap.md`) has the reasons; `android.md` and `ios.md` have the h
 - [x] Support page: https://galu.games/dig-site/ (#support).
 - [x] Mailing list for grown-ups on galu.games (Buttondown).
 - [x] Icon, splash, a 42-second story trailer, and a 26-second vertical reel.
-  - [x] The trailer re-rendered (2026-11-15) with American spelling ("Soon there were neighbors...") and the dump truck: in the digging shot, the digger now loads it. `capture/dig-site-promo.mp4` and `dig-site-promo-720p.mp4`. The reel, the store preview videos, the screenshots and the feature graphic have no British spelling in them, so they stay as they are.
+  - [x] The trailer re-rendered (2026-11-15) with American spelling ("Soon there were neighbors...") and the dump truck: in the digging shot, the digger now loads it. `capture/dig-site-promo.mp4` and `dig-site-promo-720p.mp4`. The reel has no British spelling in it, and stays as it is (its digging shot has no dump truck).
+  - [x] The store preview videos (all three sizes) and the screenshots remade with the dump truck (2026-11-16): the preview opens on the digger loading it, and screenshot 3 (`03-dig.png`) shows the bucket over its bed. The other seven screenshots, the feature graphic and the icons are the same pictures as before (only the confetti and where people stand differ).
   - [ ] **You:** have the galu.games session refresh the press kit and the Dig Site page from the new `capture/dig-site-promo-720p.mp4`.
 - [x] Galu LLC, and its D-U-N-S number applied for directly with Dun & Bradstreet (2026-11-10). Apple's lookup page didn't offer to apply.
   - Waiting: the free route can take up to about 30 business days. D&B emails the number.
@@ -65,6 +66,7 @@ The roadmap (`roadmap.md`) has the reasons; `android.md` and `ios.md` have the h
     - **A purchase Amazon couldn't make says so.** If Amazon fails before its own sheet ever comes up, the card says "Something went wrong with the store. Please try again." Before, a press on Unlock did nothing at all. Closing Amazon's sheet is still a quiet cancel. Found pressing Unlock on the Fire.
     - **More dump truck:** Market Square's school, terrace, police station and playground now have it too, so 16 of the 24 lots do (all of Home Street, half of each other street). The rest keep the bulldozer.
   - [ ] **The developer name:** Company Profile says "Abrilas Galu Games", which the store page shows. Change it to Galu LLC before submitting the app.
+  - [ ] **You: the dump truck on Amazon's page.** Replace the video with the new `capture/dig-site-preview-1920x1080.mp4`, and screenshot 3 with the new `capture/store/android-16x10/03-dig.png`. Nothing else there needs replacing.
   - [ ] The Appstore details, from `store/listing.md` and `store/forms.md`: descriptions, icons, screenshots (`capture/store/android-16x10/`), the feature graphic as the promo image, the 1920×1080 preview video, content rating, and privacy. None of this waits on the bank.
 - [x] **Claude (Mac): the iOS refund test** (with the rest, in `1cf9b01`). Buy in the Simulator, then Debug > StoreKit > Manage Transactions > Refund Purchases. The padlocks should come back (`ios.md`).
 - [x] **Claude: the store listing pack**, in `store/` (`listing.md`, `forms.md`; pictures from `tools/make_store_art.py`):
