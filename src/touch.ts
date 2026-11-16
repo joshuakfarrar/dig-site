@@ -161,6 +161,10 @@ export function hints(work: boolean, hop: boolean): void {
     if (show && now - workGone > 1500 && document.body.classList.contains("touch")) Audio.ready();
     if (!show) workGone = now;
   }
+  // One button at a time: Hop waits while there's work to do, and for the moment Work lingers after.
+  // (Not while Work's only still up because a thumb's on it: the job's done, and the arrow may
+  // want the other machine now.)
+  hop &&= !(work || now < workUntil);
   if (hop !== hopShown) {
     hopShown = hop;
     hopBtn.classList.toggle("shown", hop);

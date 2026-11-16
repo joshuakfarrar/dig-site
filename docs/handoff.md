@@ -176,7 +176,7 @@ The order is `dig, pour, clean, walls, roof, path, sweep, done`. The user wants 
 
 - **Hop goes to the machine the arrow wants** (`wanted` in the build tick), from any distance. The builder takes a longer, higher leap, and the Hop prompt shows over the machine you're in.
   - Before, after parking the truck you had to drive it next to the excavator to hop, which left the parking ring, so the arrow sent you back.
-  - Next to some other machine, Hop still goes to that one.
+  - Next to some other machine, Hop still goes to that one. But only one button at a time: while the machine you're in has work it can do right there (`job.canWork`), Hop isn't offered to a machine alongside, and on touch it waits out Work's linger.
 - **Dump truck model:** chunkier, with six big wheels, mudguards, a short cab, a steel tipper with teal ribs, and a guard over the cab. Collision is a little wider (radius 0.7).
 
 - **Camera:** near the building it holds back (the focus z stays at most 2.6), and further towards the gate it follows (`2.6 + (z - 4.2)`), so tipping at the skip is framed in the middle.

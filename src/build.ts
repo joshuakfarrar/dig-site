@@ -1064,6 +1064,9 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
       wanted = null;
       near = null;
     }
+    // One button at a time: while there's work to do right here, Hop isn't offered to a machine
+    // that just happens to be alongside (the digger in its ring beside the dump truck it's loading).
+    if (job && !hop && job.machine === active && job.canWork) near = null;
     const hopTo = wanted ?? near;
 
     const from = new THREE.Vector3(active.pos.x, active.y, active.pos.y);
