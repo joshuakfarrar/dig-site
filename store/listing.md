@@ -35,7 +35,7 @@ long description.
 >
 > Dig Site is a calm building game for children aged about 3 to 7. Drive chunky machines around a building site and build each home from the ground up: dig the hole with the excavator, pour the floor from the mixer truck, swing the walls into place with the crane and lower the roof on. Then the family moves in, and the street fills up.
 >
-> There are three neighbourhoods, each with eight lots to build: Home Street with its houses and playground, Market Square with the school, café, library and town hall, and the Harbour with its lighthouse and aquarium.
+> There are three neighborhoods, each with eight lots to build: Home Street with its houses and playground, Market Square with the school, café, library and town hall, and the Harbor with its lighthouse and aquarium.
 >
 > MADE FOR SMALL HANDS
 > • One stick to drive, one button to work, one to hop into the next machine. The buttons appear only when there's something to do.
@@ -46,7 +46,7 @@ long description.
 > • No ads, ever.
 > • No data collected. No accounts, no tracking, and the game never goes online.
 > • Plays offline, so it's good for car trips and planes.
-> • The first two homes are free. One purchase, behind a grown-ups' question, unlocks every street and every neighbourhood added later. No subscriptions.
+> • The first two homes are free. One purchase, behind a grown-ups' question, unlocks every street and every neighborhood added later. No subscriptions.
 >
 > Made with care by Galu, a small independent studio.
 
@@ -72,7 +72,7 @@ capitals to stand out. That's a common choice, but they can be left out.
 
 - **Feature bullets (3–10):**
   - Drive diggers, mixer trucks and cranes to build homes from the ground up
-  - Three neighbourhoods to fill, twenty-four buildings in all
+  - Three neighborhoods to fill, twenty-four buildings in all
   - Made for small hands: one stick, one Work button, nothing to read
   - No ads, no data collected, plays fully offline
   - First two homes free; one purchase unlocks everything
@@ -81,7 +81,7 @@ capitals to stand out. That's a common choice, but they can be left out.
 
 ## What's new (version 1.0)
 
-"The first release: Home Street, Market Square and the Harbour, twenty-four buildings in all."
+"The first release: Home Street, Market Square and the Harbor, twenty-four buildings in all."
 
 ## Pictures
 
@@ -95,8 +95,8 @@ comment says how to render the screenshots first, from the game itself, on the d
   4. Market Square growing
   5. the playground
   6. pouring the floor
-  7. neighbours along Home Street
-  8. the Harbour
+  7. neighbors along Home Street
+  8. the Harbor
 - **The sets:**
 
   | Folder | Size | Where it goes |
@@ -107,13 +107,13 @@ comment says how to render the screenshots first, from the game itself, on the d
   | `android-16x10/` | 1920×1200 | Google Play: 7" and 10" tablet. Amazon. |
 
 - **No words on the screenshots,** and no interface. They're the 3D game itself, drawn by its own renderer from the camera paths in `src/promo.ts` (`promo.stills`). Words could go on later as a caption band, for parents.
-- **The finished neighbourhoods turn to dusk,** so the Market Square and Harbour views are half built, in daylight (the `STILLS` shots).
+- **The finished neighborhoods turn to dusk,** so the Market Square and Harbor views are half built, in daylight (the `STILLS` shots).
 - **`google-feature-graphic.png`:** 1024×500, the family moving in, with the icon, "Dig Site" and "Build a town, one home at a time."
 - **`icon-512.png`** for Google Play, and **`icon-114.png`** with the 512 for Amazon. Apple takes its icon from the app itself.
 - **Preview video:** `python tools/make_preview.py` (its opening comment says how to film it first),
   about 28 seconds, made into `capture/dig-site-preview-<size>.mp4`:
   - Footage from the game only, with no words, as Apple asks: digging, pouring, the roof going on, a
-    family moving in, Home Street, the playground, Market Square, and the Harbour.
+    family moving in, Home Street, the playground, Market Square, and the Harbor.
   - Slow, steady camera moves and slow dissolves. It's always daytime, and every building faces the
     camera. The game's own music, quiet.
   - **1920×886:** the App Store's iPhone preview (it's the size for both the 6.9" and 6.5" sets).

@@ -25,7 +25,7 @@ https://galu.games/dig-site/privacy/
 **All functionality is available without special access** (no login).
 
 ### App content > Target audience and content
-- **Target age groups:** 5 and under, and 6–8. Picking only these puts the app in the **Families** programme, and Google applies its Families policy.
+- **Target age groups:** 5 and under, and 6–8. Picking only these puts the app in the **Families** program, and Google applies its Families policy.
 - **Could the store listing appeal to children?** Yes. It's made for them.
 - **Families policy requirements this meets:**
   - no ads
@@ -62,7 +62,7 @@ No to all.
 
 ### Monetise > In-app products
 - **Product ID:** `full_game`. It can't be changed later, and it has to match the code.
-- **Name:** "The whole town". **Description:** "Every lot on every street, and every neighbourhood added later."
+- **Name:** "The whole town". **Description:** "Every lot on every street, and every neighborhood added later."
 - **Price:** USD 2.99. Let Google set the local prices in other countries.
 - **Status:** Active.
 
@@ -93,7 +93,7 @@ No to all.
 - **Type:** **Non-Consumable**.
 - **Reference name:** "Full game". **Product ID:** `full_game`.
 - **Price:** USD 2.99.
-- **Display name:** "The whole town". **Description:** "Every lot on every street, and every neighbourhood added later."
+- **Display name:** "The whole town". **Description:** "Every lot on every street, and every neighborhood added later."
 - **Review screenshot:** the grown-ups' card ("Unlock all of Dig Site"), taken from the game.
 - **Family Sharing:** turn it **on**, so siblings' devices share the unlock. That's kind, and parents expect it.
 

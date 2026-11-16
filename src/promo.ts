@@ -162,7 +162,7 @@ const SHOTS: Shot[] = [
   },
   {
     name: "neighbours",
-    caption: "Soon there were neighbours...",
+    caption: "Soon there were neighbors...",
     seconds: 5,
     setup() {
       town([[0, 1, 2, 3, 4, 5, 6]], 0);

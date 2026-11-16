@@ -116,7 +116,7 @@ function sheet(): void {
     <div class="card wide">
       ${closeButton()}
       <h2>Unlock all of Dig Site</h2>
-      <p>The first ${Shop.FREE_LOTS} lots are free. One purchase unlocks every lot on every street (Home Street, Market Square and the Harbour), and every neighbourhood added later.</p>
+      <p>The first ${Shop.FREE_LOTS} lots are free. One purchase unlocks every lot on every street (Home Street, Market Square and the Harbor), and every neighborhood added later.</p>
       <p class="small">No ads, no subscriptions, nothing to sign up for, and nothing about your family is collected or sent anywhere.</p>
       <div class="actions">
         <button class="buy">Unlock</button>
