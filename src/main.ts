@@ -58,6 +58,7 @@ function goTown(arrived: number | null, via: "next" | "back" | null = null): voi
     travel: (to) =>
       void switchTo(() => {
         saved.at = to;
+        Save.builtIn(saved, to); // its (empty) list of lots, so it loads back as where you are
         Save.save(saved);
         goTown(null, to > h ? "back" : "next");
       }),
@@ -84,13 +85,17 @@ function goBuild(i: number, at?: Stage): void {
   town = null;
   Hud.nudge(false);
   const h = saved.at;
+  const keep = (looks: B.Looks) => {
+    if (looks[0] || looks[1]) saved.looks[`${h}:${i}`] = looks;
+    const built = Save.builtIn(saved, h);
+    if (!built.includes(i)) built.push(i);
+    Save.save(saved);
+  };
   build = createBuild(B.HOODS[h].lots[i], {
+    built: keep,
     finished: (looks) =>
       void switchTo(() => {
-        if (looks[0] || looks[1]) saved.looks[`${h}:${i}`] = looks;
-        const built = Save.builtIn(saved, h);
-        if (!built.includes(i)) built.push(i);
-        Save.save(saved);
+        keep(looks);
         goTown(i);
       }),
     controls: Input.controls,
@@ -132,6 +137,7 @@ async function switchTo(go: () => void): Promise<void> {
 const idle: Input.Frame = { moveX: 0, moveY: 0, work: false, workPressed: false, hopPressed: false, restartPressed: false, restart: false };
 
 function tick(dt: number, read: Input.Frame): void {
+  const restartDown = read.restart;
   const pressed = read.workPressed || read.hopPressed || read.moveX !== 0 || read.moveY !== 0;
   if (pressed) Audio.unlock();
   // On the title, the first press starts; the town waits behind it.
@@ -144,7 +150,7 @@ function tick(dt: number, read: Input.Frame): void {
   grownButton.hidden = !(town && Shop.locked(builtSoFar()));
   const input = switching ? idle : read;
   mode.tick(dt, input);
-  Hud.updateHold(dt, input.restart);
+  Hud.updateHold(dt, input.restart, restartDown);
   Audio.music();
 }
 

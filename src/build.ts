@@ -23,6 +23,8 @@ export type Stage = "dig" | "pour" | "clean" | "walls" | "roof" | "path" | "swee
 export const STAGES: Stage[] = ["dig", "pour", "clean", "walls", "roof", "path", "sweep", "done"];
 
 export interface BuildHooks {
+  /** The last job's done, with the colours picked for it: kept there and then, before the celebration. */
+  built?(looks: B.Looks): void;
   /** It's built and the celebration's had its moment: back to town, with the colours picked for it. */
   finished(looks: B.Looks): void;
   /** Which button pictures to show: keys, pad or touch. */
@@ -484,6 +486,8 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
   }
 
   function allDone(): void {
+    // Kept now, not when the party's over: closing the game during the confetti mustn't lose the house.
+    hooks.built?.([...looks] as B.Looks);
     Audio.fanfare();
     celebrate = 0;
     setStage("done");
@@ -528,11 +532,14 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
     return { qs, park: new THREE.Vector3(F.cx, 0, front ? F.maxZ + 1.7 : F.minZ - 1.7) };
   });
   const pairNow = () => pairs.find((p) => p.qs.some((q) => q.scoops < SCOOPS_PER_QUADRANT)) ?? null;
-  /** The truck's bed is where the arm can tip into it from this dig spot. */
-  const bedInReach = (from: THREE.Vector2) => {
+  const BED_REACH = 3.0; // from the excavator to where its arm tips out, held high
+  /** The truck's bed is about an arm's length from here. */
+  const bedAtArmsLength = (from: THREE.Vector2) => {
     const bed = dump.bedWorld();
-    return Math.abs(Math.hypot(bed.x - from.x, bed.z - from.y) - 3.0) < 1.05 && !dump.busy() && dump.speed < 0.3 && !dump.full;
+    return Math.abs(Math.hypot(bed.x - from.x, bed.z - from.y) - BED_REACH) < 1.05;
   };
+  /** The truck's bed is where the arm can tip into it from this dig spot. */
+  const bedInReach = (from: THREE.Vector2) => bedAtArmsLength(from) && !dump.busy() && dump.speed < 0.3 && !dump.full;
 
   function loadJob(): Job {
     if (site.pitDug()) {
@@ -561,8 +568,19 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
   function digJob(only?: Quadrant[]): Job {
     const q = only ? only.filter((x) => x.scoops < SCOOPS_PER_QUADRANT).sort((a, b) => a.spot.distanceTo(excavator.pos) - b.spot.distanceTo(excavator.pos))[0] : nearestQuadrant();
     if (!q) return none(excavator);
-    const spot = new THREE.Vector3(q.spot.x, 0, q.spot.y);
-    const there = excavator.pos.distanceTo(q.spot) < 1.25;
+    // Loading the truck, the dig spot's measured from its bed, wherever in its ring it stopped: out
+    // along the line to the quadrant's own spot, an arm's length off. So the ring is always somewhere
+    // the bed's in reach from. (The quadrant's own spot could be out of reach of a truck parked a
+    // little short: a ring to stand in, and no Work.)
+    let at = q.spot;
+    if (haul) {
+      const bed = dump.bedWorld();
+      const out = q.spot.clone().sub(new THREE.Vector2(bed.x, bed.z));
+      const d = out.length();
+      if (d > 1e-3) at = new THREE.Vector2(bed.x, bed.z).add(out.multiplyScalar(BED_REACH / d));
+    }
+    const spot = new THREE.Vector3(at.x, 0, at.y);
+    const there = excavator.pos.distanceTo(at) < 1.25 && (!haul || bedAtArmsLength(excavator.pos));
     ghostDig.visible = true;
     ghostDig.scale.set((q.i1 - q.i0) * 0.5 - 0.1, (q.j1 - q.j0) * 0.5 - 0.1, 1);
     ghostDig.position.set(q.centre.x, site.heightAt(q.centre.x, q.centre.y) + 0.02, q.centre.y);
@@ -964,6 +982,7 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
   const focus = new THREE.Vector3(active.pos.x, 0, active.pos.y);
   let clock = 0;
   let debugCam: { pos: THREE.Vector3; at: THREE.Vector3 } | null = null;
+  let jobNow: Job | null = null; // the last tick's job, for `debug`
   let left = false;
 
   function machineTop(m: Machine): THREE.Vector3 {
@@ -1037,7 +1056,9 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
     // But not from on the building's pad: a machine left there is in the way. First, a ring just
     // off the pad to drive to; then Hop.
     const onPad = stage !== "dig" && active.circleCentres().some((c) => c.x > F.minX - 0.3 && c.x < F.maxX + 0.3 && c.y > F.minZ - 0.3 && c.y < F.maxZ + 0.3);
-    if (onPad && (wanted || near) && !hop) {
+    const ownWork = !!job && job.machine === active && !wanted && (job.canWork || !!job.spot || !!job.over);
+    if (onPad && ownWork) near = null; // it has work to do here: carry on, and no hopping out to leave it on the pad
+    else if (onPad && (wanted || near) && !hop) {
       const exit = padExit(active.pos);
       job = { machine: active, over: exit.clone().setY(0.5), spot: exit, ring: 1.0, canWork: false, work: () => {} };
       wanted = null;
@@ -1060,6 +1081,7 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
     } else marker.update(dt, null, null, 1, null);
     if (!job) workPrompt.show(null, null, dt);
 
+    jobNow = job;
     // Work glows when it'd do something (and once the celebration's had its moment, to head back).
     hooks.hints((!!job && !hop && job.machine === active && job.canWork) || celebrate > 2, hopTo !== null);
     // The hop button's picture: over the machine you're in when the arrow wants you elsewhere (that's
@@ -1221,6 +1243,7 @@ export function createBuild(bp: B.Blueprint, hooks: BuildHooks): BuildMode {
       wallLoads, moduleLoads, roofLoad,
       get wallsUp() { return wallsUp; },
       get stage() { return stage; },
+      get job() { return jobNow; },
       get active() { return active; },
       look(x?: number, y = 0, z = 0, ax = 0, ay = 0, az = 0) {
         debugCam = x === undefined ? null : { pos: new THREE.Vector3(x, y, z), at: new THREE.Vector3(ax, ay, az) };

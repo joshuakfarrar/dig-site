@@ -148,7 +148,7 @@ Phase 3 is complete apart from the "about an hour of play" check, which needs a 
 
 - **Guided loading** (`loadJob` in `build.ts`) on hauling sites (`finish: "haul"`: Home Street, and the Harbour's odd lots):
   - The truck parks at `pairs[i].park`, centred 1.7 in front of or behind the pit.
-  - The excavator digs that side's two quarters into it. `bedInReach` means the bed is 3.0 ± 1.05 from the excavator, and it uses the `Excavator.LOAD` pose.
+  - The excavator digs that side's two quarters into it. `bedInReach` means the bed is 3.0 ± 1.05 from the excavator, and it uses the `Excavator.LOAD` pose. The excavator's dig spot there is measured from the bed (3.0 out along the line to the quadrant's own spot), so wherever in its ring the truck stopped, the bed's in reach from the excavator's ring.
   - When the truck's full, `tipJob`. When the pit's dug and the truck's empty, `digDone`. There's no heaps stage.
   - You start in the truck, and the progress strip shows a truck step after dig.
 - **Push sites** (Market Square, the Harbour's even lots): heaps, then the dozer. No dump truck or skip.

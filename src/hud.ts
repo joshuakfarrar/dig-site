@@ -83,11 +83,16 @@ export function corner(kind: "home" | "fresh" | null, confirm: (() => void) | nu
   hold.style.setProperty("--p", "0");
 }
 
-/** `keyHeld`: the keyboard's or pad's restart button is down this frame. */
-export function updateHold(dt: number, keyHeld: boolean): void {
+/**
+ * `keyHeld`: the keyboard's or pad's restart button is down this frame, as the game sees it.
+ * `keyDown`: whether it's really down, even while the game's ignoring input (a fade): once the
+ * button's gone off it has to be let go for real, or holding it on from a site ("back to town")
+ * would run straight into the town's own ("a new town").
+ */
+export function updateHold(dt: number, keyHeld: boolean, keyDown = keyHeld): void {
   if (!holdKind) return;
   let down = pointerHeld || keyHeld;
-  if (!down) needRelease = false;
+  if (!pointerHeld && !keyDown) needRelease = false;
   if (needRelease) down = false;
   held = down ? held + dt : Math.max(0, held - dt * 3);
   const need = HOLD_SECONDS[holdKind];
@@ -210,6 +215,8 @@ titleEl.innerHTML = `
 document.body.appendChild(titleEl);
 let onStart: (() => void) | null = null;
 titleEl.querySelector(".play")!.addEventListener("click", () => startPlay());
+// A tap anywhere else on it starts too (on the left half it would only have been a still stick).
+titleEl.addEventListener("pointerup", () => startPlay());
 
 export function title(start: () => void): void {
   onStart = start;

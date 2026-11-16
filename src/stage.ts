@@ -79,6 +79,12 @@ export function lit(): Lit {
 /** Frees what a scene's meshes hold on the GPU (shared materials are left alone). */
 export function disposeScene(scene: THREE.Scene, keep: Set<THREE.Material>): void {
   scene.traverse((o) => {
+    // A light's shadow map is a render target of its own (megabytes): it goes with the scene.
+    const shadow = (o as THREE.DirectionalLight).shadow as THREE.LightShadow | undefined;
+    if (shadow?.map) {
+      shadow.map.dispose();
+      shadow.map = null;
+    }
     const m = o as THREE.Mesh;
     if (m.geometry) m.geometry.dispose();
     const mats = Array.isArray(m.material) ? m.material : m.material ? [m.material] : [];

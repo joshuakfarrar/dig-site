@@ -82,6 +82,9 @@ function showTyped(): void {
 
 function digit(n: number): void {
   if (!isOpen || !root.querySelector(".pad")) return;
+  // Two digits are the whole answer. While a wrong one shakes, more presses don't count: a third
+  // digit would make "0", "1", "5" read as 15, and each stray press would be another miss.
+  if (typed.length >= 2) return;
   typed += String(n);
   showTyped();
   if (typed.length < 2) return;
@@ -98,7 +101,10 @@ function digit(n: number): void {
   card.classList.remove("shake");
   void (card as HTMLElement).offsetWidth;
   card.classList.add("shake");
-  setTimeout(gate, 450);
+  // A new sum, unless it's been closed meanwhile.
+  setTimeout(() => {
+    if (isOpen && root.querySelector(".pad")) gate();
+  }, 450);
 }
 
 addEventListener("keydown", (e) => {

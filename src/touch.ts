@@ -77,7 +77,9 @@ addEventListener("pointerdown", (e) => {
     hopBtn.classList.add("down");
     return;
   }
-  if (e.clientX < innerWidth * 0.5 && stickId === null) {
+  // A thumb that's on the left half but not steering (gripping the tablet's edge, a resting palm)
+  // gives the stick up to the next finger down there.
+  if (e.clientX < innerWidth * 0.5 && (stickId === null || (vec.x === 0 && vec.y === 0))) {
     stickId = e.pointerId;
     origin = { x: e.clientX, y: e.clientY };
     vec = { x: 0, y: 0 };
