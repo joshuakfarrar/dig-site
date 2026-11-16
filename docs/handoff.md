@@ -75,7 +75,7 @@ Where Dig Site stands, for whichever session picks it up next. Everything below 
 
 ## Phase 3, new machines
 
-- **Finishing jobs:** `Blueprint.finish` is `"push"` (dozer) or `"haul"` (dump truck), and `Blueprint.sweep` adds a `sweep` stage. `B.HOODS` sets them: Home Street pushes, Market Square hauls, and the Harbour alternates between the two, with sweeping on every lot. Only the machines a site needs are parked there.
+- **Finishing jobs:** `Blueprint.finish` is `"push"` (dozer) or `"haul"` (dump truck), and `Blueprint.sweep` adds a `sweep` stage. `B.HOODS` sets them: Home Street hauls on every lot, Market Square on its even lots and the Harbour on its odd ones (16 of the 24 lots have the dump truck), with sweeping on every Harbour lot. Only the machines a site needs are parked there.
 - **Stages:** `STAGES` now has `sweep` before `done`, so `?stage=done` is index 7.
 - **Dump truck** (`DumpTruck`):
   - Load: stop within about 2.3 of a heap and press Work; the heap sinks into the bed. It carries two heaps.
@@ -146,12 +146,12 @@ Phase 3 is complete apart from the "about an hour of play" check, which needs a 
 
 ## Playtest fixes, round three (2026-11-09)
 
-- **Guided loading** (`loadJob` in `build.ts`) on hauling sites (`finish: "haul"`: Home Street, and the Harbour's odd lots):
+- **Guided loading** (`loadJob` in `build.ts`) on hauling sites (`finish: "haul"`: Home Street, Market Square's even lots, and the Harbour's odd lots):
   - The truck parks at `pairs[i].park`, centred 1.7 in front of or behind the pit.
   - The excavator digs that side's two quarters into it. `bedInReach` means the bed is 3.0 ± 1.05 from the excavator, and it uses the `Excavator.LOAD` pose. The excavator's dig spot there is measured from the bed (3.0 out along the line to the quadrant's own spot), so wherever in its ring the truck stopped, the bed's in reach from the excavator's ring.
   - When the truck's full, `tipJob`. When the pit's dug and the truck's empty, `digDone`. There's no heaps stage.
   - You start in the truck, and the progress strip shows a truck step after dig.
-- **Push sites** (Market Square, the Harbour's even lots): heaps, then the dozer. No dump truck or skip.
+- **Push sites** (Market Square's odd lots, the Harbour's even lots): heaps, then the dozer. No dump truck or skip. Market Square's town hall (lot 7) is one of them, and the preview's and reel's dig shots are filmed there.
 - **Parking:** only the machines a site uses. Homes: excavator (-6.4, 5.4), mixer (-3.6, 6.4), roller (-1.4, 6.9), crane by the trailer (6.4, -4.2), dozer or dump (7.4, 5.6), sweeper (-8.6, 2.6).
 - **Front walk:** one row of slabs on the path's half-tile grid, leaving out the path's own columns, so nothing overlaps and flickers. No pots.
 - **Flowers:** `M.flowers` takes the seed modulo, so negative seeds no longer give black flowers.
@@ -283,6 +283,7 @@ Estimated at adult pace from distances, speeds and animation times, about 1 s of
   2. In the console, run `promo.music(44)`, then `promo.film()`.
   3. Run `python tools/make_promo.py`.
   4. It writes `capture/dig-site-promo.mp4` (1080p) and `capture/dig-site-promo-720p.mp4`. `capture/` isn't in git.
+- **The story's dig shot** is the cottage's own lot (Home Street, lot 0), filmed from behind the pit: the digger tips each bucketful into the dump truck.
 - **`src/promo.ts`** (dev only) scripts each shot: its set-up, a camera path, and the controls held. `promo.proof(name, t)` saves one frame to check.
 - **Frames reach disk** through a dev-server-only endpoint (`capture()` in `vite.config.ts`).
 - **Needs** Pillow and `imageio-ffmpeg`, which brings its own ffmpeg.

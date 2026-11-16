@@ -713,7 +713,9 @@ export interface Hood {
 /** The neighbourhoods, in the order they open: finish one and the gate to the next swings open. */
 export const HOODS: Hood[] = [
   { theme: "park", lots: HOME_STREET.map((bp) => ({ ...bp, finish: "haul" as const })), landmark: HOME_STREET[0] },
-  { theme: "square", lots: MARKET_SQUARE, landmark: MARKET_SQUARE[7] },
+  // Every other lot here has the dump truck too (it's a favourite); the rest keep the bulldozer.
+  // The even ones, so the town hall (7) stays a bulldozer site: the promo's dig shots are filmed there.
+  { theme: "square", lots: MARKET_SQUARE.map((bp, i) => ({ ...bp, finish: i % 2 ? ("push" as const) : ("haul" as const) })), landmark: MARKET_SQUARE[7] },
   { theme: "harbour", lots: HARBOUR.map((bp, i) => ({ ...bp, finish: i % 2 ? ("haul" as const) : ("push" as const), sweep: true })), landmark: HARBOUR[7] },
 ];
 

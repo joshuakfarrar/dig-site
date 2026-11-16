@@ -17,7 +17,7 @@ The roadmap (`roadmap.md`) has the reasons; `android.md` and `ios.md` have the h
 - [x] Support page: https://galu.games/dig-site/ (#support).
 - [x] Mailing list for grown-ups on galu.games (Buttondown).
 - [x] Icon, splash, a 42-second story trailer, and a 26-second vertical reel.
-  - [x] The trailer re-rendered with American spelling ("Soon there were neighbors...", 2026-11-15): `capture/dig-site-promo.mp4` and `dig-site-promo-720p.mp4`. The reel, the store preview videos, the screenshots and the feature graphic have no British spelling in them, so they stay as they are.
+  - [x] The trailer re-rendered (2026-11-15) with American spelling ("Soon there were neighbors...") and the dump truck: in the digging shot, the digger now loads it. `capture/dig-site-promo.mp4` and `dig-site-promo-720p.mp4`. The reel, the store preview videos, the screenshots and the feature graphic have no British spelling in them, so they stay as they are.
   - [ ] **You:** have the galu.games session refresh the press kit and the Dig Site page from the new `capture/dig-site-promo-720p.mp4`.
 - [x] Galu LLC, and its D-U-N-S number applied for directly with Dun & Bradstreet (2026-11-10). Apple's lookup page didn't offer to apply.
   - Waiting: the free route can take up to about 30 business days. D&B emails the number.
@@ -49,7 +49,7 @@ The roadmap (`roadmap.md`) has the reasons; `android.md` and `ios.md` have the h
     - [ ] **You:** edit its description in Amazon's console to "Every lot on every street, and every neighborhood added later."
   - [x] Download the app's public key (`AppstoreAuthenticationKey.pem`) and give it to Claude, which puts it in `android/app/src/amazon/assets/`.
   - [x] Upload the signed `amazon` bundle (1.0, build 1).
-  - [ ] **You: upload build 2** (1.0, version code 2) in Amazon's console, in place of build 1: `android/app/build/outputs/bundle/amazonRelease/app-amazon-release.aab`, with a copy in Downloads as `dig-site-1.0-build2-amazon.aab`. The app hasn't been submitted, so no review restarts. What's new in build 2:
+  - [ ] **You: upload build 3** (1.0, version code 3) in Amazon's console, in place of build 1: `android/app/build/outputs/bundle/amazonRelease/app-amazon-release.aab`, with a copy in Downloads as `dig-site-1.0-build3-amazon.aab`. The app hasn't been submitted, so no review restarts. (Build 2 was made the same evening and never uploaded; build 3 has everything in it.) What's new since build 1:
     - The unlock card says "Harbor" and "neighborhood" (build 1: "Harbour", "neighbourhood").
     - Fixes from a look over the whole game before release (2026-11-15):
       - **The parent gate** ignores presses while a wrong answer shakes. Before, a third digit counted ("0", "1", "5" read as 15), and each stray press was another miss.
@@ -61,6 +61,7 @@ The roadmap (`roadmap.md`) has the reasons; `android.md` and `ios.md` have the h
       - **The hold-to-go-back button** on a keyboard or game pad has to be let go before it works again. Held on, it used to run straight from "back to town" into "a new town".
       - **The mixer's arrow** no longer points away from the pit when another machine is parked beside it.
       - **Memory:** each scene's shadow map is freed with the scene.
+    - **More dump truck:** Market Square's school, terrace, police station and playground now have it too, so 16 of the 24 lots do (all of Home Street, half of each other street). The rest keep the bulldozer.
   - [ ] **The developer name:** Company Profile says "Abrilas Galu Games", which the store page shows. Change it to Galu LLC before submitting the app.
   - [ ] The Appstore details, from `store/listing.md` and `store/forms.md`: descriptions, icons, screenshots (`capture/store/android-16x10/`), the feature graphic as the promo image, the 1920×1080 preview video, content rating, and privacy. None of this waits on the bank.
 - [x] **Claude (Mac): the iOS refund test** (with the rest, in `1cf9b01`). Buy in the Simulator, then Debug > StoreKit > Manage Transactions > Refund Purchases. The padlocks should come back (`ios.md`).
@@ -72,7 +73,7 @@ The roadmap (`roadmap.md`) has the reasons; `android.md` and `ios.md` have the h
   - [x] Drafted answers for every form (below), to copy in: `store/forms.md`.
 - [ ] **Claude: release builds.** Set the version (1.0.0, build 1), build the signed `play` and `amazon` bundles, and check a release build on the Fire (the real key, no web debugging).
   - [x] `amazon`: signed (1.0, build 1), and the release build runs on the Fire 7 in Production Mode.
-  - [x] `amazon`, build 2 (1.0, version code 2, 2026-11-15): signed with the same upload key, for the American spelling and the pre-release fixes (listed under the Amazon upload, above).
+  - [x] `amazon`, build 3 (1.0, version code 3, 2026-11-15): signed with the same upload key, for the American spelling, the pre-release fixes and the dump truck on Market Square (listed under the Amazon upload, above).
   - [ ] `play`: build it when there's a Play Console to upload to.
 
 ## The forms (Claude drafts, you submit)

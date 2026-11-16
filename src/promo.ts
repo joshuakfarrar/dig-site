@@ -78,18 +78,29 @@ const SHOTS: Shot[] = [
     caption: "Then a little digger got to work.",
     seconds: 4.5,
     setup() {
-      g().saved.at = 1;
-      g().goBuild(7);
-      const b = g().build, e = b.excavator;
-      const q = b.site.quadrants.slice().sort((a: Any, c: Any) => a.spot.distanceTo(e.pos) - c.spot.distanceTo(e.pos))[0];
-      driveTo(e, q.spot.x, q.spot.y, 0.4);
+      // The cottage's own lot (the house the crane roofs two shots on), where the digger loads the
+      // dump truck: the truck's brought round to the pit first, then a hop into the digger.
+      g().saved.at = 0;
+      g().goBuild(0);
+      const b = g().build, d = b.dump, e = b.excavator;
+      run(0.2);
+      const park = b.job.spot;
+      driveTo(d, park.x, park.z + 0.2, 0.25);
+      run(0.6);
+      g().mode.tick(1 / 60, { ...idle, hopPressed: true });
+      run(1.6);
+      const s = b.job.spot;
+      driveTo(e, s.x, s.z, 0.3);
       run(0.4);
-      run(1.2, { work: true, workPressed: true });
+      run(0.3, { work: true, workPressed: true });
     },
     frame(t, k) {
-      const e = g().build.excavator.pos;
-      const a = 0.9 + k * 0.7;
-      return { eye: [e.x + Math.cos(a) * 4.2, 2.6, e.y + Math.sin(a) * 4.2], at: [e.x + 0.6, 0.5, e.y - 0.4], input: { work: true, workPressed: t === 0 } };
+      // From behind the pit, drifting round: the hole in front, the digger swinging each bucketful
+      // across into the truck's open bed.
+      const b = g().build, e = b.excavator.pos, d = b.dump.pos;
+      const mx = (e.x + d.x) / 2, mz = (e.y + d.y) / 2;
+      const a = -1.0 - ease(k) * 0.35;
+      return { eye: [mx + Math.cos(a) * 7.2, 4.3, mz + Math.sin(a) * 7.2], at: [mx - 0.3, 0.7, mz - 0.2], input: { work: true, workPressed: t === 0 } };
     },
   },
   {
