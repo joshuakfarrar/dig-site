@@ -38,6 +38,8 @@ The roadmap (`roadmap.md`) has the reasons; `android.md` and `ios.md` have the h
 - [ ] **You: the Amazon developer account** (free; it doesn't need the D-U-N-S): https://developer.amazon.com, "Sign in", then create an account. Sign up as Galu LLC, with tax (the EIN) and payment details.
   - [x] The account, as Galu LLC.
   - [ ] **Waiting: Galu LLC's business bank account** (opened 2026-11-11, 3–5 business days). Then add it under Settings > Payment Information, and finish the tax identity interview if it's still open. Until then the IAP won't submit: Amazon's page shows only a generic error, but the server's reply is `VENDOR_NO_PAYMENT_INFO`.
+  - [x] The bank account and the Royalty Tax Interview are in (2026-11-15). The IAP then failed with `VENDOR_NO_ROYALTY_TAX_INFO_NON_US`: Amazon wants tax details for the stores outside the US, such as Amazon.ca, where Galu has no registration.
+  - [ ] **The United States only, for now:** set the app's Availability & Pricing to just the United States, then submit the IAP again. Add other countries later, once Amazon's non-US tax details are sorted (Support > My Cases, quoting that error) and the iPostal1 address is approved for the EU's trader rules.
   - Amazon's Appstore now reaches only Fire tablets. Amazon stopped making them in October 2026 (the new Alexa Tablets run Google Play), but there are a great many in families' hands, kids' editions especially, and they get updates for years. It's still worth doing, and Google Play matters more than it did.
   - [x] Create the app ("Dig Site", `io.github.joshuakfarrar.digsite`).
   - [x] Add the in-app item `full_game` as an **Entitlement** at $2.99 ("The whole town"), with its icons.
