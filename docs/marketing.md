@@ -4,7 +4,10 @@ How Dig Site gets found. The game is finished and honest; almost nobody knows it
 plan for changing that, in the order it can happen. **You** is Josh; **Claude** is a Claude session.
 Tick things off here, like `launch.md`.
 
-Drafted 2026-11-16, the day the game went to Amazon. Nothing here has been started.
+Drafted 2026-11-16, the day the game went to Amazon.
+
+**On hold (decided 2026-11-16): none of this starts until the game is live on the app stores.**
+That includes the steps under "Now". The outreach list (`outreach.md`) is done; nothing else is.
 
 ## The aim, in numbers
 
