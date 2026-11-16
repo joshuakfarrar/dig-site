@@ -13,7 +13,7 @@ android {
         applicationId "io.github.joshuakfarrar.digsite"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 4
+        versionCode 5
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
@@ -39,6 +39,11 @@ android {
         }
     }
     buildTypes {
+        debug {
+            // `-PsideBySide`: the debug build gets its own app id, so it installs beside the store
+            // build (which keeps its town) instead of replacing it. See docs/android.md.
+            if (project.hasProperty('sideBySide')) applicationIdSuffix ".debug"
+        }
         release {
             if (keystoreProps['storeFile']) signingConfig signingConfigs.upload
             minifyEnabled false

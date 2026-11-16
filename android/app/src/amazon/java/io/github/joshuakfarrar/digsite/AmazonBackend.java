@@ -38,6 +38,8 @@ final class AmazonBackend implements StoreBackend, PurchasingListener {
     private final Map<RequestId, Callback<String>> prices = new HashMap<>();
     private final Map<RequestId, String> priceSkus = new HashMap<>();
     private final Map<RequestId, Callback<String>> buys = new HashMap<>();
+    /** Whether Amazon's purchase sheet has come up over the game since the last purchase was asked for. */
+    private boolean sheetShown;
     /** Restores in flight, by request id, carried across pages of purchase updates. */
     private final Map<RequestId, Restore> restores = new HashMap<>();
     private boolean started;
@@ -121,7 +123,14 @@ final class AmazonBackend implements StoreBackend, PurchasingListener {
             done.done("unavailable");
             return;
         }
+        sheetShown = false;
         buys.put(PurchasingService.purchase(productId), done);
+    }
+
+    @Override
+    public void paused() {
+        // Amazon's sheet is the Appstore's own screen, over the game: the game's paused while it's up.
+        if (!buys.isEmpty()) sheetShown = true;
     }
 
     @Override
@@ -176,8 +185,11 @@ final class AmazonBackend implements StoreBackend, PurchasingListener {
                 outcome = "unavailable";
                 break;
             default:
-                // FAILED covers the buyer closing Amazon's sheet too; the game treats that as a cancel.
-                outcome = "cancelled";
+                // FAILED covers the buyer closing Amazon's sheet too, which the game treats as a quiet
+                // cancel. But if the sheet never came up, nobody closed it: Amazon couldn't sell
+                // (no connection, or the Appstore's own trouble), and the card says so, rather than
+                // a press on Unlock doing nothing at all.
+                outcome = sheetShown ? "cancelled" : "failed";
         }
         if (done != null) done.done(outcome);
     }

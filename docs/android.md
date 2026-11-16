@@ -102,11 +102,13 @@ Without `keystore.properties`, release builds still work but come out unsigned.
   4. A debug build counts App Tester as the store, even without the key. A release build always needs the real key.
   5. App Tester shows its own purchase sheet: Get Item buys, Cancel cancels, and Request Purchase sends it to a "parent". Approve or decline that under **8. Manage Transactions**, which also undoes purchases. Its screens come out black in screenshots; `adb shell uiautomator dump` reads them.
   6. To call the store from a computer, debug builds allow web debugging: see `tools/webview-eval.mjs`.
+  7. To keep the store build (and its town) on the tablet meanwhile, build the debug one with its own app id: `./gradlew assembleAmazonDebug -PsideBySide`. It installs beside the other as `io.github.joshuakfarrar.digsite.debug`.
 - **Tried on a Fire 7 (2022) with App Tester, 2026-11-11:** each of these gave the expected answer:
   - price: "USD2.99" (App Tester's format)
   - buy: "bought", confirmed with Amazon
   - the game remembered it by itself, through the "owned" event
   - Cancel: "cancelled"
+  - (2026-11-16) Amazon answers "failed" both when the buyer closes its sheet and when it couldn't sell at all. The game tells them apart by whether the sheet came up (the game's paused while it's over it): closed is a quiet "cancelled"; never shown is "failed", and the card says so. Checked both ways: Cancel on App Tester's sheet, and Unlock on a release build installed over USB, which Amazon refuses.
   - Restore: "bought"
   - forgotten, then picked back up quietly at the next start
   - Request Purchase: "pending"; once approved, it arrived as "owned" when the game came back to the front

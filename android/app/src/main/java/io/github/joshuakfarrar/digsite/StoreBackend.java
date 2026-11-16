@@ -34,6 +34,9 @@ public interface StoreBackend {
     /** The app's come back to the front: a store that needs to can look for purchases made meanwhile. */
     default void resumed() {}
 
+    /** Something's come up over the game (the store's own purchase sheet, or another app). */
+    default void paused() {}
+
     /** The store's price in the buyer's currency, like "$2.99", or null if it can't say. */
     void price(String productId, Callback<String> done);
 

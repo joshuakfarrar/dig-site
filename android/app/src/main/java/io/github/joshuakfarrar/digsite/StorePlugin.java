@@ -93,6 +93,11 @@ public class StorePlugin extends Plugin {
     }
 
     @Override
+    protected void handleOnPause() {
+        if (store != null) store.paused();
+    }
+
+    @Override
     protected void handleOnDestroy() {
         if (store != null) store.stop();
     }
