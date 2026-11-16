@@ -39,13 +39,14 @@ The roadmap (`roadmap.md`) has the reasons; `android.md` and `ios.md` have the h
   - [x] The account, as Galu LLC.
   - [ ] **Waiting: Galu LLC's business bank account** (opened 2026-11-11, 3–5 business days). Then add it under Settings > Payment Information, and finish the tax identity interview if it's still open. Until then the IAP won't submit: Amazon's page shows only a generic error, but the server's reply is `VENDOR_NO_PAYMENT_INFO`.
   - [x] The bank account and the Royalty Tax Interview are in (2026-11-15). The IAP then failed with `VENDOR_NO_ROYALTY_TAX_INFO_NON_US`: Amazon wants tax details for the stores outside the US, such as Amazon.ca, where Galu has no registration.
-  - [ ] **The United States only, for now:** set the app's Availability & Pricing to just the United States, then submit the IAP again. Add other countries later, once Amazon's non-US tax details are sorted (Support > My Cases, quoting that error) and the iPostal1 address is approved for the EU's trader rules.
+  - [x] **The United States only, for now:** set the app's Availability & Pricing to just the United States, then submit the IAP again. Add other countries later, once Amazon's non-US tax details are sorted (Support > My Cases, quoting that error) and the iPostal1 address is approved for the EU's trader rules.
   - Amazon's Appstore now reaches only Fire tablets. Amazon stopped making them in October 2026 (the new Alexa Tablets run Google Play), but there are a great many in families' hands, kids' editions especially, and they get updates for years. It's still worth doing, and Google Play matters more than it did.
   - [x] Create the app ("Dig Site", `io.github.joshuakfarrar.digsite`).
   - [x] Add the in-app item `full_game` as an **Entitlement** at $2.99 ("The whole town"), with its icons.
-    - [ ] Submit it, once the bank account is in (above).
+    - [x] Submitted (2026-11-15), for the United States.
   - [x] Download the app's public key (`AppstoreAuthenticationKey.pem`) and give it to Claude, which puts it in `android/app/src/amazon/assets/`.
   - [x] Upload the signed `amazon` bundle (1.0, build 1).
+  - [ ] **The developer name:** Company Profile says "Abrilas Galu Games", which the store page shows. Change it to Galu LLC before submitting the app.
   - [ ] The Appstore details, from `store/listing.md` and `store/forms.md`: descriptions, icons, screenshots (`capture/store/android-16x10/`), the feature graphic as the promo image, the 1920×1080 preview video, content rating, and privacy. None of this waits on the bank.
 - [x] **Claude (Mac): the iOS refund test** (with the rest, in `1cf9b01`). Buy in the Simulator, then Debug > StoreKit > Manage Transactions > Refund Purchases. The padlocks should come back (`ios.md`).
 - [x] **Claude: the store listing pack**, in `store/` (`listing.md`, `forms.md`; pictures from `tools/make_store_art.py`):
