@@ -4,7 +4,8 @@ Everything between today and Dig Site on the three stores, in the order it can h
 Josh; **Claude** is a Claude session (this PC's for Android, the Mac's for iOS). Tick things off
 here as they're done, so every session knows where it stands.
 
-The roadmap (`roadmap.md`) has the reasons; `android.md` and `ios.md` have the how.
+The roadmap (`roadmap.md`) has the reasons; `android.md` and `ios.md` have the how. Getting the
+game found is its own plan: `marketing.md`.
 
 ## Done
 
@@ -140,4 +141,4 @@ The roadmap (`roadmap.md`) has the reasons; `android.md` and `ios.md` have the h
 - [ ] Send a short email to the mailing list.
 - [ ] Post the reel to friends, parents' groups and family.
 - [ ] Ask friends who play it to leave an honest review.
-- [ ] Nominate the app for Apple's featuring in App Store Connect, and ask Google about Teacher Approved.
+- [ ] Featuring can't wait for launch day: Apple's nomination goes in at least three weeks before, and Google's Teacher Approved review starts by itself once the app's published. See `marketing.md`.
